@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-pulsar-paper: #F2EFEA;
+  --color-pulsar-coral: #FC7753;
+  --color-pulsar-mint: #66D7D1;
+  --color-pulsar-charcoal: #403D58;
+  --color-pulsar-gold: #DBD56E;
+  
+  --color-surface-base: #09090d;
+  --color-surface-raised: #121218;
+  --color-surface-glass: rgba(255, 255, 255, 0.04);
+  
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  background-color: #09090d;
+  color: #F2EFEA;
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% -10%, rgba(252, 119, 83, 0.12) 0%, transparent 60%),
+              radial-gradient(circle at 100% 100%, rgba(102, 215, 209, 0.07) 0%, transparent 50%),
+              #09090d;
+  min-height: 100vh;
+}
+
+/* Apple Liquid Glass Foundation */
+.glass-panel,
+.liquid-glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(36px) saturate(210%);
+  -webkit-backdrop-filter: blur(36px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.2),
+              0 24px 48px -12px rgba(0, 0, 0, 0.75);
+}
+
+.glass-card,
+.liquid-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+              0 8px 24px -4px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover,
+.liquid-card:hover {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border-color: rgba(102, 215, 209, 0.4);
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
+              0 16px 36px -6px rgba(0, 0, 0, 0.7),
+              0 0 20px -4px rgba(102, 215, 209, 0.2);
+}
+
+/* Modais estilo Apple visionOS / macOS Tahoe */
+.liquid-modal {
+  background: linear-gradient(145deg, rgba(30, 30, 42, 0.85) 0%, rgba(15, 15, 22, 0.95) 100%);
+  backdrop-filter: blur(48px) saturate(220%);
+  -webkit-backdrop-filter: blur(48px) saturate(220%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.25),
+              0 32px 80px -10px rgba(0, 0, 0, 0.9),
+              0 0 40px -10px rgba(252, 119, 83, 0.15);
+}
+
+/* Inputs de Vidro */
+.liquid-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-input:focus {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: #66D7D1;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4),
+              0 0 16px -2px rgba(102, 215, 209, 0.3);
+}
+
+/* Animações Apple-like */
+@keyframes appleSpring {
+  0% {
+    transform: scale(0.94) translateY(8px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-apple-spring {
+  animation: appleSpring 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
