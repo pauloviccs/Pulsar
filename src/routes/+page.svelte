@@ -176,15 +176,28 @@
             <!-- Modal do Usuário com a #tag (Exibição Premium) -->
             <TopProfileButton />
 
-            <!-- Ação Rápida: Adicionar Link -->
-            <button
-              onclick={() => isAddLinkModalOpen.set(true)}
-              class="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl liquid-glass hover:bg-white/[0.12] text-xs font-semibold text-[#F2EFEA] transition active:scale-95 cursor-pointer shadow-md border border-white/[0.1]"
-              title="{$t('search.addLink')}"
-            >
-              <Plus class="w-3.5 h-3.5 text-[#FC7753]" />
-              <span class="hidden xs:inline sm:inline">{$t('search.addLink')}</span>
-            </button>
+            <!-- Ações Rápidas: Adicionar Link YouTube & Spotify -->
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                onclick={() => isAddLinkModalOpen.set(true)}
+                class="flex items-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-2xl bg-[#FC7753]/15 hover:bg-[#FC7753]/25 border border-[#FC7753]/30 text-xs font-semibold text-[#FC7753] transition active:scale-95 cursor-pointer shadow-sm"
+                title="Importar do YouTube / YouTube Music"
+              >
+                <Play class="w-3.5 h-3.5 fill-current" />
+                <span class="hidden sm:inline">YouTube</span>
+              </button>
+
+              <button
+                type="button"
+                onclick={() => isAddLinkModalOpen.set(true)}
+                class="flex items-center gap-1.5 px-3 py-2 sm:py-2.5 rounded-2xl bg-green-500/15 hover:bg-green-500/25 border border-green-500/30 text-xs font-semibold text-green-400 transition active:scale-95 cursor-pointer shadow-sm"
+                title="Importar do Spotify"
+              >
+                <Disc3 class="w-3.5 h-3.5" />
+                <span class="hidden sm:inline">Spotify</span>
+              </button>
+            </div>
           </div>
         </header>
 

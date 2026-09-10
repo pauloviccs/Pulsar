@@ -147,6 +147,14 @@ export interface TranslationDictionary {
     pastePlaceholder: string;
     analyzeBtn: string;
     analyzing: string;
+    analyzeFailed: string;
+    tracksImported: string;
+    savedToSQLite: string;
+    spotifySearching: string;
+    spotifyHighConfidence: string;
+    spotifyLowConfidence: string;
+    spotifyNoMatch: string;
+    unknownPlatform: string;
     newPlaylistTitle: string;
     newPlaylistNamePlaceholder: string;
     createPlaylistBtn: string;

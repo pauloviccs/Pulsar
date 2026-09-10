@@ -1,6 +1,8 @@
 mod audio_engine;
 mod commands;
 mod db;
+mod link_resolver;
+mod spotify;
 mod taskbar;
 mod youtube;
 
@@ -135,6 +137,12 @@ pub fn run() {
             commands::set_minimize_to_tray,
             commands::update_taskbar_thumbnail,
             commands::drag_window,
+            // Multi-Platform (YouTube Music + Spotify)
+            commands::detect_link_platform,
+            commands::resolve_spotify_track,
+            commands::resolve_spotify_playlist,
+            commands::configure_spotify_credentials,
+            commands::get_spotify_credentials,
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao executar a aplicação Pulsar Tauri");

@@ -22,7 +22,8 @@
     Copy,
     KeyRound,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Disc3
   } from '@lucide/svelte';
   import { openUrl } from '@tauri-apps/plugin-opener';
   import { 
@@ -72,9 +73,47 @@
   let customApiSecret = $state(typeof window !== 'undefined' ? localStorage.getItem('pulsar_lastfm_custom_secret') || '' : '');
   let savedCustomKeysNotice = $state(false);
 
+  // Spotify Web API
+  let showAdvancedSpotify = $state(false);
+  let spotifyClientId = $state('');
+  let spotifyClientSecret = $state('');
+  let savedSpotifyNotice = $state(false);
+  let spotifyError = $state<string | null>(null);
+  let isSavingSpotify = $state(false);
+
   onMount(async () => {
     await updateCacheInfo();
+    await loadSpotifySettings();
   });
+
+  async function loadSpotifySettings() {
+    try {
+      const creds = await safeInvoke<{ client_id: string; client_secret: string; is_default: boolean }>('get_spotify_credentials');
+      if (creds && !creds.is_default) {
+        spotifyClientId = creds.client_id;
+        spotifyClientSecret = creds.client_secret;
+      }
+    } catch (e) {
+      console.error('Erro ao carregar credenciais Spotify:', e);
+    }
+  }
+
+  async function handleSaveSpotifyKeys() {
+    isSavingSpotify = true;
+    spotifyError = null;
+    try {
+      await safeInvoke('configure_spotify_credentials', {
+        clientId: spotifyClientId.trim(),
+        clientSecret: spotifyClientSecret.trim(),
+      });
+      savedSpotifyNotice = true;
+      setTimeout(() => { savedSpotifyNotice = false; }, 3000);
+    } catch (err) {
+      spotifyError = typeof err === 'string' ? err : 'Erro ao salvar credenciais';
+    } finally {
+      isSavingSpotify = false;
+    }
+  }
 
   async function updateCacheInfo() {
     try {
@@ -582,6 +621,101 @@
             <div class="p-3 rounded-xl bg-[#66D7D1]/15 border border-[#66D7D1]/30 flex items-center gap-2 text-xs text-[#66D7D1]">
               <CheckCircle2 class="w-4 h-4 shrink-0" />
               <span>{lastFmSuccess}</span>
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Integração Spotify Web API -->
+    <div class="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3.5">
+          <div class="p-2.5 rounded-2xl bg-green-500/20 text-green-400">
+            <Disc3 class="w-5 h-5" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-xs font-bold text-[#F2EFEA]">Spotify Web API</h3>
+              {#if spotifyClientId}
+                <span class="text-[9px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold border border-green-500/30">
+                  Configurado
+                </span>
+              {/if}
+            </div>
+            <p class="text-[11px] text-white/50">Permite importar e ler playlists, álbuns e faixas do Spotify</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onclick={() => showAdvancedSpotify = !showAdvancedSpotify}
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-white/80 transition cursor-pointer"
+        >
+          <KeyRound class="w-3.5 h-3.5 text-green-400" />
+          <span>{showAdvancedSpotify ? 'Recolher' : 'Configurar Chaves'}</span>
+          {#if showAdvancedSpotify}
+            <ChevronUp class="w-3.5 h-3.5" />
+          {:else}
+            <ChevronDown class="w-3.5 h-3.5" />
+          {/if}
+        </button>
+      </div>
+
+      {#if showAdvancedSpotify}
+        <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col gap-3.5 text-xs animate-[scale-up_0.15s_ease-out]">
+          <div class="text-[11px] text-white/60 leading-relaxed bg-black/20 p-3 rounded-xl border border-white/[0.04]">
+            <p>1. Acesse o <button type="button" onclick={() => openUrl('https://developer.spotify.com/dashboard')} class="text-green-400 hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer">Spotify Developer Dashboard <ExternalLink class="w-2.5 h-2.5" /></button> com qualquer conta do Spotify.</p>
+            <p class="pt-1">2. Clique em <b>Create App</b> (nome: Pulsar) e copie o <b>Client ID</b> e <b>Client Secret</b> em Basic Information.</p>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="spotify-client-id" class="text-[10px] uppercase font-bold text-white/40">Spotify Client ID</label>
+            <input
+              id="spotify-client-id"
+              type="text"
+              bind:value={spotifyClientId}
+              placeholder="Ex: 7a8b9c0d1e2f3a4b..."
+              class="w-full py-2 px-3 rounded-xl liquid-input font-mono text-xs text-[#F2EFEA] focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="spotify-client-secret" class="text-[10px] uppercase font-bold text-white/40">Spotify Client Secret</label>
+            <input
+              id="spotify-client-secret"
+              type="password"
+              bind:value={spotifyClientSecret}
+              placeholder="••••••••••••••••••••••••••••••••"
+              class="w-full py-2 px-3 rounded-xl liquid-input font-mono text-xs text-[#F2EFEA] focus:outline-none"
+            />
+          </div>
+
+          <div class="flex items-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onclick={handleSaveSpotifyKeys}
+              disabled={isSavingSpotify || !spotifyClientId.trim() || !spotifyClientSecret.trim()}
+              class="px-4 py-2 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 active:scale-95"
+            >
+              {#if isSavingSpotify}
+                <RefreshCw class="w-3.5 h-3.5 animate-spin" />
+                <span>Salvando...</span>
+              {:else}
+                <Check class="w-3.5 h-3.5" />
+                <span>Salvar Credenciais</span>
+              {/if}
+            </button>
+
+            {#if savedSpotifyNotice}
+              <span class="text-[11px] text-green-400 font-medium">✓ Salvo com sucesso no SQLite!</span>
+            {/if}
+          </div>
+
+          {#if spotifyError}
+            <div class="p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-xs text-red-400 flex items-center gap-2">
+              <AlertCircle class="w-4 h-4 shrink-0" />
+              <span>{spotifyError}</span>
             </div>
           {/if}
         </div>

@@ -1,7 +1,7 @@
 use crate::audio_engine::StreamState;
 use crate::db::{Database, PlaybackStateDTO, PlaylistDTO, TrackDTO};
 use crate::youtube::YouTubeSidecar;
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 #[tauri::command]
 pub async fn check_ytdlp() -> Result<String, String> {
@@ -296,4 +296,184 @@ pub fn update_taskbar_thumbnail(is_playing: bool, has_track: bool, is_favorite: 
     }
 }
 
+// ─── Comandos Multi-Plataforma (YouTube Music + Spotify) ────────────────
 
+#[tauri::command]
+pub fn detect_link_platform(url: String) -> Result<crate::link_resolver::LinkDetectionResult, String> {
+    Ok(crate::link_resolver::detect_link(url.trim()))
+}
+
+#[tauri::command]
+pub async fn resolve_spotify_track(
+    url: String,
+    db: State<'_, Database>,
+    stream_state: State<'_, StreamState>,
+) -> Result<TrackDTO, String> {
+    println!("[Pulsar] Resolvendo faixa do Spotify: {}", url);
+
+    let resolver = crate::spotify::SpotifyResolver::new(
+        db.get_setting("spotify_client_id")?,
+        db.get_setting("spotify_client_secret")?,
+    );
+
+    // 1. Extrair metadados do Spotify
+    let spotify_meta = resolver.resolve_track(&url).await?;
+
+    // 2. Buscar correspondente no YouTube
+    let resolved = crate::spotify::SpotifyResolver::search_youtube(&spotify_meta).await?;
+
+    if resolved.track.stream_url.is_empty() {
+        return Err(format!(
+            "Não foi possível encontrar '{}' no YouTube.",
+            spotify_meta.title
+        ));
+    }
+
+    // 3. Registrar stream no proxy e salvar no SQLite
+    stream_state.register_url(
+        resolved.track.youtube_video_id.clone(),
+        resolved.track.stream_url.clone(),
+    );
+    let dto = db.save_track(&resolved.track)?;
+
+    println!(
+        "[Pulsar] Faixa Spotify resolvida: {} → YouTube {} (confiança: {:?})",
+        spotify_meta.title, dto.youtube_video_id, resolved.confidence
+    );
+
+    Ok(dto)
+}
+
+#[derive(Clone, serde::Serialize)]
+struct SpotifyProgressPayload {
+    current: usize,
+    total: usize,
+    current_track_title: String,
+    confidence: String,
+}
+
+#[tauri::command]
+pub async fn resolve_spotify_playlist(
+    url: String,
+    db: State<'_, Database>,
+    stream_state: State<'_, StreamState>,
+    app: tauri::AppHandle,
+) -> Result<PlaylistDTO, String> {
+    println!("[Pulsar] Importando playlist/álbum do Spotify: {}", url);
+
+    let resolver = crate::spotify::SpotifyResolver::new(
+        db.get_setting("spotify_client_id")?,
+        db.get_setting("spotify_client_secret")?,
+    );
+
+    let detection = crate::link_resolver::detect_link(&url);
+
+    // Resolver playlist ou álbum
+    let (name, cover, spotify_tracks) = if detection.link_type == "album" {
+        resolver.resolve_album(&url).await?
+    } else {
+        resolver.resolve_playlist(&url).await?
+    };
+
+    if spotify_tracks.is_empty() {
+        return Err("Nenhuma faixa encontrada na playlist/álbum do Spotify.".to_string());
+    }
+
+    let total = spotify_tracks.len();
+    println!("[Pulsar] {} faixas detectadas no Spotify, iniciando busca no YouTube...", total);
+
+    // Criar playlist no SQLite
+    let pl = db.create_playlist(&name, "Importado do Spotify")?;
+
+    // Atualizar capa se disponível
+    if !cover.is_empty() {
+        let _ = db.update_playlist(&pl.id, &name, "Importado do Spotify", Some(&cover));
+    }
+
+    let mut saved_count = 0usize;
+
+    // Resolver cada faixa no YouTube e salvar
+    for (i, spotify_meta) in spotify_tracks.iter().enumerate() {
+        // Emitir progresso para o frontend
+        let confidence_str;
+        let resolved = crate::spotify::SpotifyResolver::search_youtube(spotify_meta).await;
+
+        match &resolved {
+            Ok(r) => {
+                confidence_str = match r.confidence {
+                    crate::spotify::MatchConfidence::High => "high",
+                    crate::spotify::MatchConfidence::Medium => "medium",
+                    crate::spotify::MatchConfidence::Low => "low",
+                    crate::spotify::MatchConfidence::NotFound => "not_found",
+                }.to_string();
+            }
+            Err(_) => {
+                confidence_str = "not_found".to_string();
+            }
+        }
+
+        let _ = app.emit("spotify-import-progress", SpotifyProgressPayload {
+            current: i + 1,
+            total,
+            current_track_title: spotify_meta.title.clone(),
+            confidence: confidence_str,
+        });
+
+        if let Ok(r) = resolved {
+            if !r.track.stream_url.is_empty() {
+                stream_state.register_url(
+                    r.track.youtube_video_id.clone(),
+                    r.track.stream_url.clone(),
+                );
+
+                if let Ok(saved_track) = db.save_track(&r.track) {
+                    let _ = db.add_track_to_playlist(&pl.id, &saved_track.id);
+                    saved_count += 1;
+                }
+            }
+        }
+    }
+
+    println!(
+        "[Pulsar] Playlist Spotify '{}' importada: {}/{} faixas resolvidas com sucesso!",
+        name, saved_count, total
+    );
+
+    let mut updated_pl = pl;
+    updated_pl.track_count = saved_count as i64;
+    updated_pl.is_imported_youtube_playlist = false; // É do Spotify
+
+    Ok(updated_pl)
+}
+
+#[derive(serde::Serialize)]
+pub struct SpotifyCredentials {
+    pub client_id: String,
+    pub client_secret: String,
+    pub is_default: bool,
+}
+
+#[tauri::command]
+pub fn configure_spotify_credentials(
+    client_id: String,
+    client_secret: String,
+    db: State<'_, Database>,
+) -> Result<(), String> {
+    db.save_setting("spotify_client_id", &client_id)?;
+    db.save_setting("spotify_client_secret", &client_secret)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_spotify_credentials(db: State<'_, Database>) -> Result<SpotifyCredentials, String> {
+    let client_id = db.get_setting("spotify_client_id")?;
+    let client_secret = db.get_setting("spotify_client_secret")?;
+
+    let is_default = client_id.is_none() && client_secret.is_none();
+
+    Ok(SpotifyCredentials {
+        client_id: client_id.unwrap_or_default(),
+        client_secret: client_secret.unwrap_or_default(),
+        is_default,
+    })
+}

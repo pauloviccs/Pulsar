@@ -13,7 +13,9 @@
     User,
     Users,
     MessageSquare,
-    Settings
+    Settings,
+    Play,
+    Disc3
   } from '@lucide/svelte';
   import { 
     activeView, 
@@ -64,14 +66,30 @@
       </div>
     </div>
 
-    <!-- Quick Action: Adicionar Link -->
-    <button
-      onclick={() => isAddLinkModalOpen.set(true)}
-      class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl bg-gradient-to-r from-[#FC7753] to-[#FC7753]/85 hover:from-[#FC7753]/95 hover:to-[#FC7753] text-[#F2EFEA] text-xs font-bold shadow-lg shadow-[#FC7753]/25 transition-all active:scale-[0.98] cursor-pointer"
-    >
-      <Link2 class="w-4 h-4" />
-      <span>{$t('sidebar.pasteLink')}</span>
-    </button>
+    <!-- Quick Action: Adicionar Link (YouTube vs Spotify) -->
+    <div class="grid grid-cols-2 gap-2">
+      <!-- Botão YouTube / YT Music -->
+      <button
+        type="button"
+        onclick={() => isAddLinkModalOpen.set(true)}
+        class="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl bg-gradient-to-br from-[#FC7753] to-[#e64c24] hover:brightness-110 text-white text-[11px] font-bold shadow-md shadow-[#FC7753]/25 transition-all active:scale-95 cursor-pointer group"
+        title="Colar link do YouTube ou YouTube Music"
+      >
+        <Play class="w-3.5 h-3.5 fill-current transition-transform group-hover:scale-110" />
+        <span class="truncate">YouTube</span>
+      </button>
+
+      <!-- Botão Spotify -->
+      <button
+        type="button"
+        onclick={() => isAddLinkModalOpen.set(true)}
+        class="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-2xl bg-gradient-to-br from-[#1DB954] to-[#128a3b] hover:brightness-110 text-[#09090D] text-[11px] font-extrabold shadow-md shadow-[#1DB954]/25 transition-all active:scale-95 cursor-pointer group"
+        title="Colar link do Spotify"
+      >
+        <Disc3 class="w-3.5 h-3.5 transition-transform group-hover:rotate-45" />
+        <span class="truncate">Spotify</span>
+      </button>
+    </div>
 
     <!-- Navegação Principal -->
     <div class="flex flex-col gap-1">

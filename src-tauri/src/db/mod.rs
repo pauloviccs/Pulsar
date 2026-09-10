@@ -129,6 +129,15 @@ impl Database {
         let _ = conn.execute("ALTER TABLE playlists ADD COLUMN source_youtube_playlist_id TEXT", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN audio_stream_cached BOOLEAN DEFAULT 0", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN last_played_at TIMESTAMP", []);
+        let _ = conn.execute("ALTER TABLE tracks ADD COLUMN source_platform TEXT DEFAULT 'youtube'", []);
+
+        // Tabela de configurações genérica (key-value) para credenciais e preferências
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );"
+        ).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -600,6 +609,32 @@ impl Database {
             }
         }
         Ok(tracks)
+    }
+    /// Salva uma configuração no banco de dados (key-value)
+    pub fn save_setting(&self, key: &str, value: &str) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    /// Recupera uma configuração do banco de dados
+    pub fn get_setting(&self, key: &str) -> Result<Option<String>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let result = conn.query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            params![key],
+            |row| row.get(0),
+        );
+
+        match result {
+            Ok(val) => Ok(Some(val)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
     }
 }
 

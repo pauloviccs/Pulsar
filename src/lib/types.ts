@@ -1,3 +1,19 @@
+export type SourcePlatform = 'youtube' | 'youtube_music' | 'spotify';
+export type ImportConfidence = 'high' | 'medium' | 'low' | 'not_found';
+
+export interface LinkDetection {
+  platform: SourcePlatform | 'unknown';
+  link_type: 'track' | 'playlist' | 'album' | 'radio' | 'unknown';
+  normalized_url: string;
+}
+
+export interface SpotifyImportProgress {
+  current: number;
+  total: number;
+  current_track_title: string;
+  confidence: ImportConfidence;
+}
+
 export interface Track {
   id: string;
   youtube_video_id: string;
@@ -11,6 +27,7 @@ export interface Track {
   audio_stream_cached?: boolean;
   added_at: string;
   stream_url?: string;
+  source_platform?: SourcePlatform;
 }
 
 export interface Playlist {
