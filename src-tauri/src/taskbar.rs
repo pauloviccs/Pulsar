@@ -28,8 +28,20 @@ pub mod windows_taskbar {
     static ICON_FAV_OFF_PNG: &[u8] = include_bytes!("../icons/taskbar/favorite_off.png");
     static ICON_FAV_ON_PNG: &[u8] = include_bytes!("../icons/taskbar/favorite_on.png");
 
+    #[derive(Clone)]
+    pub struct SendSyncTaskbar(pub ITaskbarList3);
+    unsafe impl Send for SendSyncTaskbar {}
+    unsafe impl Sync for SendSyncTaskbar {}
+
+    impl std::ops::Deref for SendSyncTaskbar {
+        type Target = ITaskbarList3;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
     struct TaskbarState {
-        taskbar_list: Option<ITaskbarList3>,
+        taskbar_list: Option<SendSyncTaskbar>,
         hwnd: isize,
         is_initialized: bool,
     }
@@ -76,7 +88,7 @@ pub mod windows_taskbar {
             let _ = SetWindowSubclass(hwnd, Some(subclass_proc), SUBCLASS_ID, 0);
 
             *TASKBAR_STATE.lock().unwrap() = Some(TaskbarState {
-                taskbar_list: Some(taskbar_list),
+                taskbar_list: Some(SendSyncTaskbar(taskbar_list)),
                 hwnd: hwnd_raw.0 as isize,
                 is_initialized: false,
             });
