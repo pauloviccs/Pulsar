@@ -7,8 +7,8 @@ pub mod windows_taskbar {
         CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
     };
     use windows::Win32::UI::Shell::{
-        DefSubclassProc, SetWindowSubclass, TaskbarList, ITaskbarList3, THBN_CLICKED,
-        THB_FLAGS, THB_ICON, THB_TOOLTIP, THBF_DISABLED, THBF_ENABLED, THUMBBUTTON,
+        DefSubclassProc, ITaskbarList3, SetWindowSubclass, TaskbarList, THBF_DISABLED,
+        THBF_ENABLED, THBN_CLICKED, THB_FLAGS, THB_ICON, THB_TOOLTIP, THUMBBUTTON,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         CreateIconFromResourceEx, HICON, LR_DEFAULTCOLOR, WM_COMMAND,
@@ -54,14 +54,7 @@ pub mod windows_taskbar {
 
     fn create_hicon_from_png(png_bytes: &[u8]) -> Option<HICON> {
         unsafe {
-            CreateIconFromResourceEx(
-                png_bytes,
-                BOOL(1),
-                0x00030000,
-                24,
-                24,
-                LR_DEFAULTCOLOR,
-            ).ok()
+            CreateIconFromResourceEx(png_bytes, BOOL(1), 0x00030000, 24, 24, LR_DEFAULTCOLOR).ok()
         }
     }
 
@@ -81,9 +74,12 @@ pub mod windows_taskbar {
 
         unsafe {
             let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-            let taskbar_list: ITaskbarList3 = CoCreateInstance(&TaskbarList, None, CLSCTX_INPROC_SERVER)
-                .map_err(|e| format!("Falha ao instanciar ITaskbarList3: {}", e))?;
-            taskbar_list.HrInit().map_err(|e| format!("HrInit falhou: {}", e))?;
+            let taskbar_list: ITaskbarList3 =
+                CoCreateInstance(&TaskbarList, None, CLSCTX_INPROC_SERVER)
+                    .map_err(|e| format!("Falha ao instanciar ITaskbarList3: {}", e))?;
+            taskbar_list
+                .HrInit()
+                .map_err(|e| format!("HrInit falhou: {}", e))?;
 
             let _ = SetWindowSubclass(hwnd, Some(subclass_proc), SUBCLASS_ID, 0);
 
@@ -98,7 +94,11 @@ pub mod windows_taskbar {
         Ok(())
     }
 
-    pub fn update_buttons(is_playing: bool, has_track: bool, is_favorite: bool) -> Result<(), String> {
+    pub fn update_buttons(
+        is_playing: bool,
+        has_track: bool,
+        is_favorite: bool,
+    ) -> Result<(), String> {
         let mut state_guard = TASKBAR_STATE.lock().unwrap();
         let state = match state_guard.as_mut() {
             Some(s) => s,
@@ -117,17 +117,23 @@ pub mod windows_taskbar {
                 create_hicon_from_png(ICON_FAV_ON_PNG)
             } else {
                 create_hicon_from_png(ICON_FAV_OFF_PNG)
-            }.unwrap_or_default();
+            }
+            .unwrap_or_default();
 
             let hicon_prev = create_hicon_from_png(ICON_PREV_PNG).unwrap_or_default();
             let hicon_play = if is_playing {
                 create_hicon_from_png(ICON_PAUSE_PNG)
             } else {
                 create_hicon_from_png(ICON_PLAY_PNG)
-            }.unwrap_or_default();
+            }
+            .unwrap_or_default();
             let hicon_next = create_hicon_from_png(ICON_NEXT_PNG).unwrap_or_default();
 
-            let disabled_flag = if has_track { THBF_ENABLED } else { THBF_DISABLED };
+            let disabled_flag = if has_track {
+                THBF_ENABLED
+            } else {
+                THBF_DISABLED
+            };
 
             let buttons = [
                 THUMBBUTTON {
@@ -135,7 +141,11 @@ pub mod windows_taskbar {
                     iId: ID_FAVORITE,
                     iBitmap: 0,
                     hIcon: hicon_fav,
-                    szTip: string_to_u16_arr(if is_favorite { "Remover dos Favoritos" } else { "Adicionar aos Favoritos" }),
+                    szTip: string_to_u16_arr(if is_favorite {
+                        "Remover dos Favoritos"
+                    } else {
+                        "Adicionar aos Favoritos"
+                    }),
                     dwFlags: disabled_flag,
                 },
                 THUMBBUTTON {
@@ -165,11 +175,13 @@ pub mod windows_taskbar {
             ];
 
             if !state.is_initialized {
-                taskbar.ThumbBarAddButtons(hwnd, &buttons)
+                taskbar
+                    .ThumbBarAddButtons(hwnd, &buttons)
                     .map_err(|e| format!("ThumbBarAddButtons falhou: {}", e))?;
                 state.is_initialized = true;
             } else {
-                taskbar.ThumbBarUpdateButtons(hwnd, &buttons)
+                taskbar
+                    .ThumbBarUpdateButtons(hwnd, &buttons)
                     .map_err(|e| format!("ThumbBarUpdateButtons falhou: {}", e))?;
             }
         }
