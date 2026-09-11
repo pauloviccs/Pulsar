@@ -225,7 +225,7 @@ impl SpotifyResolver {
         loop {
             let tracks_resp = client
                 .get(format!(
-                    "https://api.spotify.com/v1/playlists/{}/tracks?offset={}&limit={}&fields=items(track(id,name,artists,album,duration_ms,external_urls)),next",
+                    "https://api.spotify.com/v1/playlists/{}/tracks?offset={}&limit={}",
                     playlist_id, offset, limit
                 ))
                 .bearer_auth(&token)
@@ -366,18 +366,29 @@ impl SpotifyResolver {
         let result = YouTubeSidecar::extract_info(&search_url).await;
 
         match result {
-            Ok(track) => {
+            Ok(mut track) => {
                 // Scoring de confiança baseado na diferença de duração
                 let spotify_duration_s = meta.duration_ms / 1000;
                 let diff = (track.duration_seconds - spotify_duration_s).abs();
 
-                let confidence = if diff <= 10 {
+                let confidence = if diff <= 15 {
                     MatchConfidence::High
-                } else if diff <= 30 {
+                } else if diff <= 35 {
                     MatchConfidence::Medium
                 } else {
                     MatchConfidence::Low
                 };
+
+                // Preservar metadados limpos e oficiais do Spotify
+                if !meta.title.is_empty() {
+                    track.title = meta.title.clone();
+                }
+                if !meta.artist.is_empty() {
+                    track.artist_guess = meta.artist.clone();
+                }
+                if !meta.cover_url.is_empty() {
+                    track.thumbnail_url = meta.cover_url.clone();
+                }
 
                 Ok(SpotifyResolvedTrack {
                     track,

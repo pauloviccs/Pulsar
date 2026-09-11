@@ -322,18 +322,20 @@ pub async fn resolve_spotify_track(
     // 2. Buscar correspondente no YouTube
     let resolved = crate::spotify::SpotifyResolver::search_youtube(&spotify_meta).await?;
 
-    if resolved.track.stream_url.is_empty() {
+    if resolved.track.youtube_video_id.is_empty() {
         return Err(format!(
             "Não foi possível encontrar '{}' no YouTube.",
             spotify_meta.title
         ));
     }
 
-    // 3. Registrar stream no proxy e salvar no SQLite
-    stream_state.register_url(
-        resolved.track.youtube_video_id.clone(),
-        resolved.track.stream_url.clone(),
-    );
+    // 3. Registrar stream no proxy se disponível e salvar no SQLite
+    if !resolved.track.stream_url.is_empty() {
+        stream_state.register_url(
+            resolved.track.youtube_video_id.clone(),
+            resolved.track.stream_url.clone(),
+        );
+    }
     let dto = db.save_track(&resolved.track)?;
 
     println!(
@@ -420,11 +422,13 @@ pub async fn resolve_spotify_playlist(
         });
 
         if let Ok(r) = resolved {
-            if !r.track.stream_url.is_empty() {
-                stream_state.register_url(
-                    r.track.youtube_video_id.clone(),
-                    r.track.stream_url.clone(),
-                );
+            if !r.track.youtube_video_id.is_empty() {
+                if !r.track.stream_url.is_empty() {
+                    stream_state.register_url(
+                        r.track.youtube_video_id.clone(),
+                        r.track.stream_url.clone(),
+                    );
+                }
 
                 if let Ok(saved_track) = db.save_track(&r.track) {
                     let _ = db.add_track_to_playlist(&pl.id, &saved_track.id);

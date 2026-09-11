@@ -97,24 +97,36 @@ impl YouTubeSidecar {
         let val: serde_json::Value = serde_json::from_str(&json_str)
             .map_err(|e| format!("Falha ao decodificar JSON do yt-dlp: {}", e))?;
 
-        let youtube_video_id = val.get("id")
+        // Se for pesquisa (ytsearch1:...) ou objeto tipo playlist com entries,
+        // o item real do vídeo estará no primeiro elemento de 'entries'.
+        let target = if let Some(entries) = val.get("entries").and_then(|e| e.as_array()) {
+            entries.first().ok_or_else(|| "Nenhum resultado encontrado no YouTube para esta busca.".to_string())?
+        } else {
+            &val
+        };
+
+        let youtube_video_id = target.get("id")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown")
             .to_string();
 
-        let raw_title = val.get("title")
+        if youtube_video_id.is_empty() || youtube_video_id == "unknown" {
+            return Err("ID de vídeo do YouTube não encontrado.".to_string());
+        }
+
+        let raw_title = target.get("title")
             .and_then(|v| v.as_str())
             .unwrap_or("Música Sem Título")
             .to_string();
 
-        let channel_name = val.get("uploader")
-            .or_else(|| val.get("channel"))
+        let channel_name = target.get("uploader")
+            .or_else(|| target.get("channel"))
             .and_then(|v| v.as_str())
             .unwrap_or("Canal Desconhecido")
             .to_string();
 
-        let duration_seconds = val.get("duration")
-            .and_then(|v| v.as_i64())
+        let duration_seconds = target.get("duration")
+            .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))
             .unwrap_or(0);
 
         // Heurística de Artista: se o título tiver "Artista - Música"
@@ -124,20 +136,28 @@ impl YouTubeSidecar {
             (channel_name.clone(), raw_title.clone())
         };
 
-        // Thumbnail de melhor qualidade
-        let thumbnail_url = val.get("thumbnail")
+        // Thumbnail de melhor qualidade com fallback
+        let thumbnail_url = target.get("thumbnail")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
-        // URL direta do stream de áudio bruto
-        let stream_url = val.get("url")
+        let thumbnail_url = if thumbnail_url.is_empty() {
+            format!("https://i.ytimg.com/vi/{}/hqdefault.jpg", youtube_video_id)
+        } else {
+            thumbnail_url
+        };
+
+        // URL direta do stream de áudio bruto com fallback para get_direct_stream_url
+        let mut stream_url = target.get("url")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
         if stream_url.is_empty() {
-            return Err("Nenhum stream de áudio encontrado para este link.".to_string());
+            if let Ok(direct) = Self::get_direct_stream_url(&youtube_video_id).await {
+                stream_url = direct;
+            }
         }
 
         let id = uuid::Uuid::new_v4().to_string();
