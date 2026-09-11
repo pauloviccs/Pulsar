@@ -54,13 +54,33 @@ impl StreamState {
     }
 }
 
+/// Obtém o IP da interface de rede local ativa (LAN) usando o kernel routing table
+pub fn get_local_ip() -> String {
+    if let Ok(socket) = std::net::UdpSocket::bind("0.0.0.0:0") {
+        if socket.connect("8.8.8.8:80").is_ok() {
+            if let Ok(local_addr) = socket.local_addr() {
+                let ip = local_addr.ip();
+                if !ip.is_loopback() && !ip.is_unspecified() {
+                    return ip.to_string();
+                }
+            }
+        }
+    }
+    "127.0.0.1".to_string()
+}
+
+pub fn get_local_stream_base_url() -> String {
+    let ip = get_local_ip();
+    format!("http://{}:{}", ip, PROXY_PORT)
+}
+
 pub async fn start_proxy_server(state: StreamState) {
     let app = Router::new()
         .route("/stream/{video_id}", get(handle_stream))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let addr = format!("127.0.0.1:{}", PROXY_PORT);
+    let addr = format!("0.0.0.0:{}", PROXY_PORT);
     let listener = match tokio::net::TcpListener::bind(&addr).await {
         Ok(l) => l,
         Err(e) => {
@@ -69,7 +89,11 @@ pub async fn start_proxy_server(state: StreamState) {
         }
     };
 
-    println!("[Pulsar Proxy] Servidor local de streaming ouvindo em http://{}", addr);
+    let local_ip = get_local_ip();
+    println!(
+        "[Pulsar Proxy] Servidor local de streaming ouvindo em 0.0.0.0:{} (Acessível na LAN: http://{}:{})",
+        PROXY_PORT, local_ip, PROXY_PORT
+    );
 
     if let Err(e) = axum::serve(listener, app).await {
         eprintln!("[Pulsar Proxy] Erro no servidor de streaming: {}", e);

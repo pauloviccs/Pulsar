@@ -140,6 +140,27 @@ export interface TranslationDictionary {
     previous: string;
     next: string;
     favorite: string;
+    connect?: string;
+  };
+  connect?: {
+    title: string;
+    subtitle: string;
+    devices: string;
+    thisDevice: string;
+    systemDefault: string;
+    bluetoothDevices: string;
+    upnpDevices: string;
+    castDevices?: string;
+    noBluetooth: string;
+    noUpnp: string;
+    noCast?: string;
+    scanBtn: string;
+    scanning: string;
+    playingHere: string;
+    connecting: string;
+    connected: string;
+    fallbackNotice: string;
+    localNotice: string;
   };
   modals: {
     pasteLinkTitle: string;

@@ -132,7 +132,28 @@ export const ptBR: TranslationDictionary = {
     videoMode: 'Modo Vídeo',
     previous: 'Faixa anterior',
     next: 'Próxima faixa',
-    favorite: 'Favoritar'
+    favorite: 'Favoritar',
+    connect: 'Pulsar Connect (Saída de Áudio)'
+  },
+  connect: {
+    title: 'Pulsar Connect',
+    subtitle: 'Transmitir áudio para caixas de som, fones Bluetooth e rede local',
+    devices: 'Dispositivos de Saída',
+    thisDevice: 'Este Dispositivo',
+    systemDefault: 'Alto-falantes do Sistema (Padrão)',
+    bluetoothDevices: 'Speakers JBL, Fones & Bluetooth',
+    upnpDevices: 'Smart TVs & Receptores DLNA (LG, Samsung)',
+    castDevices: 'Google Home & Nest (Google Cast)',
+    noBluetooth: 'Nenhuma caixa de som JBL ou fone Bluetooth conectado no Windows',
+    noUpnp: 'Nenhuma Smart TV ou receptor DLNA detectado na rede local',
+    noCast: 'Nenhum dispositivo Google Home ou Nest encontrado na rede Wi-Fi',
+    scanBtn: 'Buscar Dispositivos',
+    scanning: 'Buscando...',
+    playingHere: 'Reproduzindo Aqui',
+    connecting: 'Conectando...',
+    connected: 'Conectado',
+    fallbackNotice: 'Conexão perdida com o dispositivo remoto. Retornando ao áudio local.',
+    localNotice: 'O áudio é transmitido com máxima fidelidade pela sua rede local sem compressão de nuvem.'
   },
   modals: {
     pasteLinkTitle: 'Importar Faixa ou Playlist',

@@ -14,7 +14,10 @@
     Video, 
     Heart, 
     Music,
-    PictureInPicture2
+    PictureInPicture2,
+    Radio,
+    Headphones,
+    Laptop
   } from '@lucide/svelte';
   import { 
     currentTrack, 
@@ -33,7 +36,12 @@
     queue
   } from '../stores/playerStore';
   import { favoriteTrackIds, libraryActions } from '../stores/libraryStore';
+  import { audioRouter } from '../audio/AudioRouter';
+  import PulsarConnectModal from './PulsarConnectModal.svelte';
   import { t } from '../i18n';
+
+  const activeDevice = audioRouter.activeDevice;
+  let isConnectModalOpen = $state(false);
 
   let isDragging = $state(false);
   let dragTime = $state(0);
@@ -218,6 +226,26 @@
       {/if}
     </button>
 
+    <!-- Pulsar Connect (Seletor de Saída de Áudio) -->
+    <button
+      onclick={() => isConnectModalOpen = true}
+      class="relative p-1.5 sm:p-2 rounded-lg transition cursor-pointer {$activeDevice.type !== 'local' ? 'bg-[#66D7D1]/15 text-[#66D7D1] shadow-[0_0_12px_rgba(102,215,209,0.25)]' : 'text-[#F2EFEA]/40 hover:text-[#F2EFEA] hover:bg-white/[0.04]'}"
+      title="{$t('player.connect')}"
+    >
+      {#if $activeDevice.type === 'bluetooth'}
+        <Headphones class="w-4 h-4" />
+      {:else if $activeDevice.type === 'upnp'}
+        <Radio class="w-4 h-4 animate-pulse" />
+      {:else}
+        <Radio class="w-4 h-4" />
+      {/if}
+
+      {#if $activeDevice.type !== 'local'}
+        <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#66D7D1] shadow-sm animate-ping"></span>
+        <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#66D7D1] shadow-sm"></span>
+      {/if}
+    </button>
+
     <!-- Controle de Volume (Oculto em telas estreitas para não espremer os controles de reprodução) -->
     <div class="hidden md:flex items-center gap-2 group">
       <button
@@ -262,3 +290,7 @@
     </button>
   </div>
 </div>
+
+<!-- Modal Seletor de Saída Liquid Glass (Pulsar Connect) -->
+<PulsarConnectModal bind:isOpen={isConnectModalOpen} />
+

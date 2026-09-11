@@ -132,7 +132,28 @@ export const en: TranslationDictionary = {
     videoMode: 'Video Mode',
     previous: 'Previous track',
     next: 'Next track',
-    favorite: 'Favorite'
+    favorite: 'Favorite',
+    connect: 'Pulsar Connect (Audio Output)'
+  },
+  connect: {
+    title: 'Pulsar Connect',
+    subtitle: 'Stream audio to local network speakers, Bluetooth headphones and DLNA receivers',
+    devices: 'Output Devices',
+    thisDevice: 'This Device',
+    systemDefault: 'System Speakers (Default)',
+    bluetoothDevices: 'JBL Speakers, Headphones & Bluetooth',
+    upnpDevices: 'Smart TVs & DLNA Receivers (LG, Samsung)',
+    castDevices: 'Google Home & Nest (Google Cast)',
+    noBluetooth: 'No JBL speaker or Bluetooth device connected in Windows',
+    noUpnp: 'No Smart TV or DLNA receiver detected on local network',
+    noCast: 'No Google Home or Nest device found on local Wi-Fi',
+    scanBtn: 'Scan Devices',
+    scanning: 'Scanning...',
+    playingHere: 'Playing Here',
+    connecting: 'Connecting...',
+    connected: 'Connected',
+    fallbackNotice: 'Connection lost to remote device. Returning to local audio.',
+    localNotice: 'Audio streams with bit-perfect fidelity directly over your local network.'
   },
   modals: {
     pasteLinkTitle: 'Import Track or Playlist',

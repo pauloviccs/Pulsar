@@ -1,14 +1,15 @@
 import type { Track } from '../../types';
 import type { AudioOutputTarget, AudioTargetState, AudioTargetType } from '../types';
 
-export class LocalOutputTarget implements AudioOutputTarget {
-  readonly id = 'local-system-default';
-  readonly name = 'Alto-falantes do Sistema (Padrão)';
-  readonly type: AudioTargetType = 'local';
+export class BluetoothOutputTarget implements AudioOutputTarget {
+  readonly id: string;
+  readonly name: string;
+  readonly type: AudioTargetType = 'bluetooth';
   readonly volumeSupported = true;
-  readonly approximateLatencyMs = 20;
+  readonly approximateLatencyMs = 120; // Latência média de compressão/buffer Bluetooth
 
-  private audioElement: HTMLAudioElement | null = null;
+  private deviceId: string;
+  private getAudioElement: () => HTMLAudioElement | null;
   private state: AudioTargetState = 'idle';
 
   private stateChangeListeners = new Set<(state: AudioTargetState) => void>();
@@ -18,14 +19,27 @@ export class LocalOutputTarget implements AudioOutputTarget {
 
   private cleanups: (() => void)[] = [];
 
-  attachAudioElement(el: HTMLAudioElement) {
-    this.detachAudioElement();
-    this.audioElement = el;
+  constructor(deviceId: string, name: string, getAudioElement: () => HTMLAudioElement | null) {
+    this.id = `bt-${deviceId}`;
+    this.deviceId = deviceId;
+    this.name = name || 'Dispositivo de Áudio Bluetooth';
+    this.getAudioElement = getAudioElement;
+  }
+
+  private setState(newState: AudioTargetState) {
+    if (this.state !== newState) {
+      this.state = newState;
+      this.stateChangeListeners.forEach(cb => cb(newState));
+    }
+  }
+
+  private attachListeners(el: HTMLAudioElement) {
+    this.detachListeners();
 
     const onTime = () => {
-      if (!this.audioElement || isNaN(this.audioElement.currentTime)) return;
-      const cur = this.audioElement.currentTime;
-      const dur = isNaN(this.audioElement.duration) ? 0 : this.audioElement.duration;
+      if (isNaN(el.currentTime)) return;
+      const cur = el.currentTime;
+      const dur = isNaN(el.duration) ? 0 : el.duration;
       this.timeUpdateListeners.forEach(cb => cb(cur, dur));
     };
 
@@ -49,20 +63,12 @@ export class LocalOutputTarget implements AudioOutputTarget {
     };
 
     const onError = () => {
-      const err = this.audioElement?.error?.message || 'Erro desconhecido na reprodução local';
+      const err = el.error?.message || 'Erro de reprodução no dispositivo Bluetooth';
       this.setState('error');
       this.errorListeners.forEach(cb => cb(err));
     };
 
-    const onLoadedMetadata = () => {
-      if (!this.audioElement || isNaN(this.audioElement.duration)) return;
-      const cur = isNaN(this.audioElement.currentTime) ? 0 : this.audioElement.currentTime;
-      const dur = this.audioElement.duration;
-      this.timeUpdateListeners.forEach(cb => cb(cur, dur));
-    };
-
     el.addEventListener('timeupdate', onTime);
-    el.addEventListener('loadedmetadata', onLoadedMetadata);
     el.addEventListener('playing', onPlaying);
     el.addEventListener('pause', onPause);
     el.addEventListener('waiting', onWaiting);
@@ -71,111 +77,113 @@ export class LocalOutputTarget implements AudioOutputTarget {
 
     this.cleanups.push(() => {
       el.removeEventListener('timeupdate', onTime);
-      el.removeEventListener('loadedmetadata', onLoadedMetadata);
       el.removeEventListener('playing', onPlaying);
       el.removeEventListener('pause', onPause);
       el.removeEventListener('waiting', onWaiting);
       el.removeEventListener('ended', onEnded);
       el.removeEventListener('error', onError);
     });
-
-    this.setState('idle');
   }
 
-  detachAudioElement() {
+  private detachListeners() {
     this.cleanups.forEach(fn => fn());
     this.cleanups = [];
-    this.audioElement = null;
-    this.setState('disconnected');
-  }
-
-  private setState(newState: AudioTargetState) {
-    if (this.state !== newState) {
-      this.state = newState;
-      this.stateChangeListeners.forEach(cb => cb(newState));
-    }
-  }
-
-  getAudioElement(): HTMLAudioElement | null {
-    return this.audioElement;
   }
 
   async connect(): Promise<void> {
-    if (this.audioElement && 'setSinkId' in this.audioElement) {
-      try {
-        await (this.audioElement as any).setSinkId('');
-      } catch (e) {
-        console.warn('[LocalOutputTarget] Falha ao resetar sinkId para o padrão:', e);
-      }
+    const el = this.getAudioElement();
+    if (!el) {
+      throw new Error('Elemento de áudio não inicializado.');
     }
-    if (this.state === 'disconnected') {
+
+    if (!('setSinkId' in el)) {
+      throw new Error('O navegador/WebView2 atual não suporta setSinkId (roteamento de dispositivo de áudio).');
+    }
+
+    try {
+      this.setState('connecting');
+      // Redireciona a saída do áudio para o sinkId específico
+      await (el as any).setSinkId(this.deviceId);
+      this.attachListeners(el);
       this.setState('idle');
+    } catch (e: any) {
+      this.setState('error');
+      throw new Error(`Falha ao rotear áudio para ${this.name}: ${e?.message || e}`);
     }
   }
 
   async disconnect(): Promise<void> {
-    if (this.audioElement) {
-      this.audioElement.pause();
+    this.detachListeners();
+    const el = this.getAudioElement();
+    if (el && 'setSinkId' in el) {
+      try {
+        await (el as any).setSinkId('');
+      } catch (e) {
+        console.warn('[BluetoothOutputTarget] Falha ao resetar sinkId para o padrão no disconnect:', e);
+      }
     }
     this.setState('disconnected');
   }
 
   async load(track: Track, streamUrl: string, startPositionSeconds: number = 0): Promise<void> {
-    if (!this.audioElement) {
-      console.warn('[LocalOutputTarget] audioElement não vinculado');
-      return;
-    }
+    const el = this.getAudioElement();
+    if (!el) return;
 
-    if (this.audioElement.src !== streamUrl) {
-      this.audioElement.src = streamUrl;
+    if (el.src !== streamUrl) {
+      el.src = streamUrl;
     }
 
     if (startPositionSeconds > 0) {
-      const applyPosition = () => {
-        if (this.audioElement) {
-          this.audioElement.currentTime = startPositionSeconds;
-        }
+      const applyPos = () => {
+        el.currentTime = startPositionSeconds;
       };
 
-      if (this.audioElement.readyState >= 1) {
-        applyPosition();
+      if (el.readyState >= 1) {
+        applyPos();
       } else {
-        this.audioElement.addEventListener('loadedmetadata', applyPosition, { once: true });
+        el.addEventListener('loadedmetadata', applyPos, { once: true });
       }
     }
   }
 
   async play(): Promise<void> {
-    if (!this.audioElement) return;
+    const el = this.getAudioElement();
+    if (!el) return;
     try {
-      await this.audioElement.play();
+      await el.play();
     } catch (e: any) {
-      // Ignora abortos de reprodução causados por pause rápido ou troca de faixa
       if (e?.name !== 'AbortError') {
-        console.warn('[LocalOutputTarget] Erro ao chamar play():', e);
+        console.warn(`[BluetoothOutputTarget] Erro ao chamar play() em ${this.name}:`, e);
       }
     }
   }
 
   async pause(): Promise<void> {
-    if (!this.audioElement) return;
-    this.audioElement.pause();
+    const el = this.getAudioElement();
+    if (el) {
+      el.pause();
+    }
   }
 
   async seek(positionSeconds: number): Promise<void> {
-    if (!this.audioElement || isNaN(positionSeconds)) return;
-    this.audioElement.currentTime = positionSeconds;
+    const el = this.getAudioElement();
+    if (el && !isNaN(positionSeconds)) {
+      el.currentTime = positionSeconds;
+    }
   }
 
   async setVolume(volume: number): Promise<void> {
-    if (!this.audioElement) return;
-    const clamped = Math.max(0, Math.min(1, volume));
-    this.audioElement.volume = clamped;
+    const el = this.getAudioElement();
+    if (el) {
+      el.volume = Math.max(0, Math.min(1, volume));
+    }
   }
 
   async setMuted(muted: boolean): Promise<void> {
-    if (!this.audioElement) return;
-    this.audioElement.muted = muted;
+    const el = this.getAudioElement();
+    if (el) {
+      el.muted = muted;
+    }
   }
 
   getState(): AudioTargetState {

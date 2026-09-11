@@ -1,7 +1,7 @@
 import { writable, get } from 'svelte/store';
 import { safeInvoke, safeListen } from '../api/tauri';
 
-export const APP_CURRENT_VERSION = '0.2.0';
+export const APP_CURRENT_VERSION = '0.2.2';
 export const DEFAULT_MANIFEST_URL = 'https://raw.githubusercontent.com/pauloviccs/Pulsar/main/latest.json';
 
 export interface UpdateManifest {

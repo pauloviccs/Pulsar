@@ -21,18 +21,37 @@
   import { safeInvoke, safeListen } from '../api/tauri';
   import { lastFmService } from '../services/lastfm';
   import { audioRouter } from '../audio/AudioRouter';
+  import { SystemAudioScanner } from '../audio/discovery/systemAudioScanner';
+  import { UpnpScanner } from '../audio/discovery/upnpScanner';
+  import { CastScanner } from '../audio/discovery/castScanner';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
 
   let audioElement: HTMLAudioElement;
   let scrobbledCurrentTrackId = $state<string | null>(null);
   let lastLoadedTrackId: string | null = null;
+  let systemScanner: SystemAudioScanner | null = null;
+  let upnpScanner: UpnpScanner | null = null;
+  let castScanner: CastScanner | null = null;
 
   // Escutar ações dos controles de mídia nativos da barra de tarefas do Windows
   onMount(() => {
     if (audioElement) {
       audioRouter.initLocalElement(audioElement);
     }
+
+    // Inicializar descoberta de saídas de áudio Bluetooth e rede local (Pulsar Connect)
+    systemScanner = new SystemAudioScanner(audioRouter);
+    systemScanner.start();
+    audioRouter.registerScanner(systemScanner);
+
+    upnpScanner = new UpnpScanner(audioRouter);
+    upnpScanner.start();
+    audioRouter.registerScanner(upnpScanner);
+
+    castScanner = new CastScanner(audioRouter);
+    castScanner.start();
+    audioRouter.registerScanner(castScanner);
 
     const unlistenTime = audioRouter.onTimeUpdate((curTime, dur) => {
       handleTimeUpdate(curTime, dur);
@@ -72,6 +91,9 @@
     });
 
     return () => {
+      if (systemScanner) systemScanner.stop();
+      if (upnpScanner) upnpScanner.stop();
+      if (castScanner) castScanner.stop();
       if (unlistenTaskbar) unlistenTaskbar();
       unlistenTime();
       unlistenEnded();

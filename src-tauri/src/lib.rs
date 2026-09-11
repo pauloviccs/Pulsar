@@ -1,10 +1,13 @@
+mod audio_devices;
 mod audio_engine;
+mod cast;
 mod commands;
 mod db;
 mod link_resolver;
 mod spotify;
 mod taskbar;
 mod updater;
+mod upnp;
 mod youtube;
 
 use audio_engine::{start_proxy_server, StreamState};
@@ -31,6 +34,7 @@ pub struct ImportState {
 pub fn run() {
     let db = Database::init().expect("Falha ao inicializar o banco de dados SQLite local");
     let stream_state = StreamState::new();
+    let cast_manager = cast::CastManager::new();
 
     // Iniciar o servidor proxy local de streaming em background
     let proxy_state = stream_state.clone();
@@ -51,6 +55,7 @@ pub fn run() {
         .manage(stream_state)
         .manage(tray_state)
         .manage(import_state)
+        .manage(cast_manager)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -155,6 +160,25 @@ pub fn run() {
             commands::configure_spotify_credentials,
             commands::get_spotify_credentials,
             commands::cancel_import,
+            // Pulsar Connect Audio Stream & UPnP/DLNA
+            commands::get_local_stream_base_url,
+            commands::upnp_discover_devices,
+            commands::upnp_set_uri_and_play,
+            commands::upnp_play,
+            commands::upnp_pause,
+            commands::upnp_stop,
+            commands::upnp_seek,
+            commands::upnp_set_volume,
+            commands::upnp_get_position_info,
+            // Windows System Audio & Bluetooth Endpoints
+            commands::get_system_audio_devices,
+            // Google Home & Google Cast (LAN Direct)
+            commands::cast_discover_devices,
+            commands::cast_load_and_play,
+            commands::cast_play,
+            commands::cast_pause,
+            commands::cast_stop,
+            commands::cast_set_volume,
             // Native Auto-Updater
             updater::fetch_update_manifest,
             updater::download_and_run_installer,

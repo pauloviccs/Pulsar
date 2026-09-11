@@ -509,3 +509,139 @@ pub fn cancel_import(import_state: State<'_, ImportState>) -> Result<(), String>
     Ok(())
 }
 
+#[tauri::command]
+pub fn get_local_stream_base_url() -> String {
+    crate::audio_engine::get_local_stream_base_url()
+}
+
+#[tauri::command]
+pub async fn upnp_discover_devices() -> Result<Vec<crate::upnp::UpnpDevice>, String> {
+    let service = crate::upnp::UpnpService::new();
+    service.discover_devices().await
+}
+
+#[tauri::command]
+pub async fn upnp_set_uri_and_play(
+    av_transport_url: String,
+    stream_url: String,
+    title: String,
+    artist: String,
+    duration_seconds: f64,
+) -> Result<(), String> {
+    let service = crate::upnp::UpnpService::new();
+    service
+        .set_uri_and_play(
+            &av_transport_url,
+            &stream_url,
+            &title,
+            &artist,
+            duration_seconds,
+        )
+        .await
+}
+
+#[tauri::command]
+pub async fn upnp_play(av_transport_url: String) -> Result<(), String> {
+    let service = crate::upnp::UpnpService::new();
+    service.play(&av_transport_url).await
+}
+
+#[tauri::command]
+pub async fn upnp_pause(av_transport_url: String) -> Result<(), String> {
+    let service = crate::upnp::UpnpService::new();
+    service.pause(&av_transport_url).await
+}
+
+#[tauri::command]
+pub async fn upnp_stop(av_transport_url: String) -> Result<(), String> {
+    let service = crate::upnp::UpnpService::new();
+    service.stop(&av_transport_url).await
+}
+
+#[tauri::command]
+pub async fn upnp_seek(av_transport_url: String, position_seconds: f64) -> Result<(), String> {
+    let service = crate::upnp::UpnpService::new();
+    service.seek(&av_transport_url, position_seconds).await
+}
+
+#[tauri::command]
+pub async fn upnp_set_volume(rendering_control_url: String, volume: u32) -> Result<(), String> {
+    let service = crate::upnp::UpnpService::new();
+    service.set_volume(&rendering_control_url, volume).await
+}
+
+#[tauri::command]
+pub async fn upnp_get_position_info(
+    av_transport_url: String,
+) -> Result<crate::upnp::UpnpPositionInfo, String> {
+    let service = crate::upnp::UpnpService::new();
+    service.get_position_info(&av_transport_url).await
+}
+
+// ==========================================
+// Windows System Audio & Bluetooth Endpoints
+// ==========================================
+
+#[tauri::command]
+pub fn get_system_audio_devices() -> Result<Vec<crate::audio_devices::SystemAudioDevice>, String> {
+    crate::audio_devices::get_system_audio_devices()
+}
+
+// ==========================================
+// Google Home & Google Cast (LAN Direct)
+// ==========================================
+
+#[tauri::command]
+pub async fn cast_discover_devices(
+    cast_manager: State<'_, crate::cast::CastManager>,
+) -> Result<Vec<crate::cast::CastDevice>, String> {
+    cast_manager.discover_devices().await
+}
+
+#[tauri::command]
+pub async fn cast_load_and_play(
+    ip: String,
+    port: u16,
+    stream_url: String,
+    title: String,
+    artist: String,
+    cast_manager: State<'_, crate::cast::CastManager>,
+) -> Result<(), String> {
+    cast_manager
+        .load_and_play(&ip, port, &stream_url, &title, &artist)
+        .await
+}
+
+#[tauri::command]
+pub async fn cast_play(
+    ip: String,
+    cast_manager: State<'_, crate::cast::CastManager>,
+) -> Result<(), String> {
+    cast_manager.play(&ip).await
+}
+
+#[tauri::command]
+pub async fn cast_pause(
+    ip: String,
+    cast_manager: State<'_, crate::cast::CastManager>,
+) -> Result<(), String> {
+    cast_manager.pause(&ip).await
+}
+
+#[tauri::command]
+pub async fn cast_stop(
+    ip: String,
+    cast_manager: State<'_, crate::cast::CastManager>,
+) -> Result<(), String> {
+    cast_manager.stop(&ip).await
+}
+
+#[tauri::command]
+pub async fn cast_set_volume(
+    ip: String,
+    volume: f64,
+    cast_manager: State<'_, crate::cast::CastManager>,
+) -> Result<(), String> {
+    cast_manager.set_volume(&ip, volume).await
+}
+

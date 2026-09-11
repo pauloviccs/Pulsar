@@ -3,7 +3,7 @@ import type { Track } from '../types';
 import type { AudioDevice, AudioOutputTarget, AudioTargetState } from './types';
 import { LocalOutputTarget } from './targets/LocalOutputTarget';
 
-class AudioRouter {
+export class AudioRouter {
   private localTarget = new LocalOutputTarget();
   private targets = new Map<string, AudioOutputTarget>();
   private activeTargetInstance: AudioOutputTarget = this.localTarget;
@@ -52,6 +52,25 @@ class AudioRouter {
 
   public initLocalElement(el: HTMLAudioElement) {
     this.localTarget.attachAudioElement(el);
+  }
+
+  public getAudioElement(): HTMLAudioElement | null {
+    return this.localTarget.getAudioElement();
+  }
+
+  private scanners = new Set<{ scan: () => Promise<void> }>();
+
+  public registerScanner(scanner: { scan: () => Promise<void> }) {
+    this.scanners.add(scanner);
+  }
+
+  public async scanAll(): Promise<void> {
+    this.connectStatus.set('discovering');
+    try {
+      await Promise.allSettled(Array.from(this.scanners).map(s => s.scan()));
+    } finally {
+      this.connectStatus.set('idle');
+    }
   }
 
   public registerTarget(target: AudioOutputTarget) {

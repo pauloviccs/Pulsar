@@ -1,8 +1,8 @@
 {
-  "version": "0.2.0",
-  "name": "Pulsar Sound & Sync v0.2.0",
-  "url": "https://github.com/pauloviccs/Pulsar/releases/download/v0.2.0/Pulsar_0.2.0_x64-setup.exe",
-  "notes": "### Bem-vindo ao Pulsar!\n\n- **Pulsar Connect:** Nova arquitetura de áudio desacoplada para fones, caixas Bluetooth e receivers UPnP na rede local.\n- **Cancelamento Transversal:** Cancele importações longas do Spotify e YouTube a qualquer instante sem travar o app.\n- **Auto-Updater Apple-Like:** Notificações e atualizações em 1 clique com progresso em tempo real e elevação UAC suave.",
-  "pub_date": "2026-09-11T12:00:00Z",
+  "version": "0.2.2",
+  "name": "Pulsar Connect Pro v0.2.2",
+  "url": "https://github.com/pauloviccs/Pulsar/releases/download/v0.2.2/Pulsar_0.2.2_x64-setup.exe",
+  "notes": "### Novidades do Pulsar v0.2.2!\n\n- **Suporte Total a Google Home & Nest:** Descoberta instantânea via mDNS e streaming de altíssima fidelidade com o protocolo Google Cast nativo.\n- **Controle Preciso de Smart TVs (LG WebOS & Samsung Tizen):** Correção completa da máquina de estados UPnP com relógio mestre local defensivo, Smart Pause e avanço automático da fila de reprodução.\n- **Speakers JBL & Bluetooth Direto:** Detecção de caixas de som da JBL e fones Bluetooth através dos Audio Endpoints do Windows, com nomes reais e status de pareamento.",
+  "pub_date": "2026-09-11T16:00:00Z",
   "mandatory": false
 }
