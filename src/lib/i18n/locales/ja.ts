@@ -152,7 +152,9 @@ export const ja: TranslationDictionary = {
     newPlaylistNamePlaceholder: 'プレイリスト名',
     createPlaylistBtn: '作成',
     editPlaylistTitle: '情報を編集',
-    deletePlaylistConfirm: 'このプレイリストを完全に削除してもよろしいですか？'
+    deletePlaylistConfirm: 'このプレイリストを完全に削除してもよろしいですか？',
+    cancelImport: 'インポートをキャンセル',
+    cancellingImport: 'インポートをキャンセル中...'
   },
   settings: {
     title: '設定',

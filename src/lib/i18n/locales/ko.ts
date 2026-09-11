@@ -152,7 +152,9 @@ export const ko: TranslationDictionary = {
     newPlaylistNamePlaceholder: '플레이리스트 이름',
     createPlaylistBtn: '플레이리스트 생성',
     editPlaylistTitle: '정보 편집',
-    deletePlaylistConfirm: '이 플레이리스트를 완전히 삭제하시겠습니까?'
+    deletePlaylistConfirm: '이 플레이리스트를 완전히 삭제하시겠습니까?',
+    cancelImport: '가져오기 취소',
+    cancellingImport: '가져오기 취소 중...'
   },
   settings: {
     title: '설정',

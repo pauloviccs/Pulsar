@@ -160,6 +160,8 @@ export interface TranslationDictionary {
     createPlaylistBtn: string;
     editPlaylistTitle: string;
     deletePlaylistConfirm: string;
+    cancelImport: string;
+    cancellingImport: string;
   };
   settings: {
     title: string;

@@ -15,6 +15,8 @@
   let linkDetection = $state<LinkDetection | null>(null);
   let spotifyProgress = $state<SpotifyImportProgress | null>(null);
   let importStats = $state<{ high: number; medium: number; low: number; notFound: number } | null>(null);
+  let isCancelling = $state<boolean>(false);
+  let wasCancelled = $state<boolean>(false);
 
   // Configuração rápida de credenciais Spotify
   let showSpotifyConfig = $state<boolean>(false);
@@ -110,6 +112,8 @@
   async function handleAnalyze() {
     if (!url.trim()) return;
     isResolving = true;
+    isCancelling = false;
+    wasCancelled = false;
     errorMessage = null;
     resolvedTrack = null;
     resolvedPlaylist = null;
@@ -218,6 +222,17 @@
     close();
   }
 
+  async function handleCancelImport() {
+    if (isCancelling) return;
+    isCancelling = true;
+    wasCancelled = true;
+    try {
+      await safeInvoke('cancel_import');
+    } catch (err) {
+      console.warn('[Pulsar] Erro ao disparar cancel_import:', err);
+    }
+  }
+
   function close() {
     isAddLinkModalOpen.set(false);
     url = '';
@@ -227,6 +242,8 @@
     linkDetection = null;
     spotifyProgress = null;
     importStats = null;
+    isCancelling = false;
+    wasCancelled = false;
   }
 </script>
 
@@ -405,6 +422,23 @@
               <span>{$t('modals.analyzeBtn')}</span>
             {/if}
           </button>
+
+          {#if isResolving}
+            <button
+              type="button"
+              onclick={handleCancelImport}
+              disabled={isCancelling}
+              class="w-full py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-500/40 text-xs font-semibold text-red-400 flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              {#if isCancelling}
+                <Loader2 class="w-3.5 h-3.5 animate-spin text-red-400" />
+                <span>{$t('modals.cancellingImport')}</span>
+              {:else}
+                <X class="w-3.5 h-3.5 text-red-400" />
+                <span>{$t('modals.cancelImport')}</span>
+              {/if}
+            </button>
+          {/if}
         </div>
 
         <!-- Barra de Progresso Spotify -->
@@ -478,7 +512,11 @@
             <div class="flex-1 min-w-0">
               <h4 class="text-xs font-semibold text-[#F2EFEA] truncate">{resolvedPlaylist.name}</h4>
               <p class="text-[11px] text-[#F2EFEA]/50 truncate">{resolvedPlaylist.track_count} {$t('modals.tracksImported')}</p>
-              <span class="text-[10px] font-mono text-[#66D7D1]">{$t('modals.savedToSQLite')}</span>
+              {#if wasCancelled}
+                <span class="text-[10px] font-mono text-amber-400 font-medium">Importação interrompida pelo usuário</span>
+              {:else}
+                <span class="text-[10px] font-mono text-[#66D7D1]">{$t('modals.savedToSQLite')}</span>
+              {/if}
             </div>
           </div>
 

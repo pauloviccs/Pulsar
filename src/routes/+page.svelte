@@ -38,6 +38,9 @@
   import SocialDrawer from '$lib/components/SocialDrawer.svelte';
   import DirectChatModal from '$lib/components/DirectChatModal.svelte';
   import SettingsView from '$lib/components/SettingsView.svelte';
+  import UpdateModal from '$lib/components/UpdateModal.svelte';
+  import UpdateToast from '$lib/components/UpdateToast.svelte';
+  import { updateActions } from '$lib/stores/updateStore';
 
   import { 
     allTracks, 
@@ -72,8 +75,15 @@
     libraryActions.initFromBackend();
     authActions.initAuth();
     const unsub = socialActions.subscribeToRealtime();
+
+    // Verificação de atualização suave em background após 3.5s
+    const updateTimer = setTimeout(() => {
+      updateActions.checkForUpdates(false);
+    }, 3500);
+
     return () => {
       unsub();
+      clearTimeout(updateTimer);
     };
   });
 
@@ -423,5 +433,7 @@
     <EditProfileModal />
     <SocialDrawer />
     <DirectChatModal />
+    <UpdateModal />
+    <UpdateToast />
   </div>
 {/if}

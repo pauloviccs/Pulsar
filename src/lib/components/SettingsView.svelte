@@ -35,6 +35,12 @@
     playerActions 
   } from '../stores/playerStore';
   import { currentProfile, authActions, isAuthModalOpen } from '../stores/authStore';
+  import { 
+    currentVersion, 
+    isCheckingUpdates, 
+    lastCheckTime, 
+    updateActions 
+  } from '../stores/updateStore';
   import { safeInvoke } from '../api/tauri';
   import { 
     currentLocale, 
@@ -770,6 +776,42 @@
         </button>
       </div>
     {/if}
+  </div>
+
+  <!-- SEÇÃO DE ATUALIZAÇÕES DO APLICATIVO -->
+  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.1] flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 rounded-2xl bg-[#66D7D1]/15 text-[#66D7D1] border border-[#66D7D1]/30">
+          <Sparkles class="w-5 h-5" />
+        </div>
+        <div>
+          <h2 class="text-sm font-bold text-[#F2EFEA]">Atualizações do Aplicativo</h2>
+          <p class="text-xs text-white/50">Mantenha o Pulsar sempre atualizado com as últimas correções e recursos.</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onclick={() => updateActions.checkForUpdates(true)}
+        disabled={$isCheckingUpdates}
+        class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#66D7D1]/10 hover:bg-[#66D7D1]/20 border border-[#66D7D1]/30 text-xs font-bold text-[#66D7D1] transition active:scale-95 disabled:opacity-50 cursor-pointer"
+      >
+        <RefreshCw class="w-3.5 h-3.5 {$isCheckingUpdates ? 'animate-spin' : ''}" />
+        <span>{$isCheckingUpdates ? 'Buscando...' : 'Verificar Atualizações'}</span>
+      </button>
+    </div>
+
+    <div class="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-white/50">Versão Instalada:</span>
+        <span class="font-mono font-bold text-[#F2EFEA]">v{$currentVersion}</span>
+      </div>
+
+      {#if $lastCheckTime}
+        <span class="text-white/40 text-[11px]">Última checagem: hoje às {$lastCheckTime}</span>
+      {/if}
+    </div>
   </div>
 </div>
 

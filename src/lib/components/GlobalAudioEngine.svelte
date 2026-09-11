@@ -20,15 +20,33 @@
   import { favoriteTrackIds, libraryActions } from '../stores/libraryStore';
   import { safeInvoke, safeListen } from '../api/tauri';
   import { lastFmService } from '../services/lastfm';
+  import { audioRouter } from '../audio/AudioRouter';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
 
   let audioElement: HTMLAudioElement;
   let scrobbledCurrentTrackId = $state<string | null>(null);
+  let lastLoadedTrackId: string | null = null;
 
   // Escutar ações dos controles de mídia nativos da barra de tarefas do Windows
   onMount(() => {
-    let unlisten: (() => void) | undefined;
+    if (audioElement) {
+      audioRouter.initLocalElement(audioElement);
+    }
+
+    const unlistenTime = audioRouter.onTimeUpdate((curTime, dur) => {
+      handleTimeUpdate(curTime, dur);
+    });
+
+    const unlistenEnded = audioRouter.onEnded(() => {
+      playerActions.next();
+    });
+
+    const unlistenState = audioRouter.onStateChange((state) => {
+      isBuffering.set(state === 'buffering');
+    });
+
+    let unlistenTaskbar: (() => void) | undefined;
 
     safeListen<string>('taskbar-action', (event) => {
       switch (event.payload) {
@@ -50,11 +68,14 @@
         }
       }
     }).then((u) => {
-      unlisten = u;
+      unlistenTaskbar = u;
     });
 
     return () => {
-      if (unlisten) unlisten();
+      if (unlistenTaskbar) unlistenTaskbar();
+      unlistenTime();
+      unlistenEnded();
+      unlistenState();
     };
   });
 
@@ -71,22 +92,28 @@
     }).catch(() => {});
   });
 
-  // Sincronizar faixa e stream URL com o elemento nativo de áudio
+  // Sincronizar faixa e stream URL com o AudioRouter
   $effect(() => {
-    if (!audioElement || !$currentTrack) return;
-    const targetUrl = $currentTrack.stream_url || `http://127.0.0.1:41235/stream/${$currentTrack.youtube_video_id}`;
-    if (audioElement.src !== targetUrl) {
-      audioElement.src = targetUrl;
+    if (!$currentTrack) return;
+    const track = $currentTrack;
+    const targetUrl = track.stream_url || `http://127.0.0.1:41235/stream/${track.youtube_video_id}`;
+
+    if (lastLoadedTrackId !== track.id) {
+      lastLoadedTrackId = track.id;
       scrobbledCurrentTrackId = null;
+
+      audioRouter.load(track, targetUrl);
+
       // Restaurar o volume nominal imediatamente para evitar faixa muda após crossfade
       const baseVol = $isMuted ? 0 : $volume;
       const normFactor = $audioNormalization ? 0.92 : 1.0;
-      audioElement.volume = Math.max(0, Math.min(1, baseVol * normFactor));
+      audioRouter.setVolume(Math.max(0, Math.min(1, baseVol * normFactor)));
+
       if ($isPlaying) {
-        audioElement.play().catch(e => console.warn('[GlobalAudioEngine] Play aguardando buffer:', e));
+        audioRouter.play();
         if ($lastFmEnabled) {
-          const artist = $currentTrack.artist || $currentTrack.artist_guess || $currentTrack.channel_name || 'Artista Desconhecido';
-          lastFmService.updateNowPlaying(artist, $currentTrack.title || 'Música Desconhecida');
+          const artist = track.artist || track.artist_guess || track.channel_name || 'Artista Desconhecido';
+          lastFmService.updateNowPlaying(artist, track.title || 'Música Desconhecida');
         }
       }
     }
@@ -94,33 +121,30 @@
 
   // Reagir a comandos externos de Seek (Scrubber do desktop, fullscreen ou mini-player)
   $effect(() => {
-    if ($seekRequest !== null && audioElement) {
+    if ($seekRequest !== null) {
       const targetTime = $seekRequest;
       seekRequest.set(null);
       if (!isNaN(targetTime)) {
-        audioElement.currentTime = targetTime;
+        audioRouter.seek(targetTime);
       }
     }
   });
 
   // Controle de Play / Pause
   $effect(() => {
-    if (!audioElement) return;
     if ($isPlaying) {
-      audioElement.play().catch(err => {
-        console.warn('[GlobalAudioEngine] Play interrompido ou aguardando:', err);
-      });
+      audioRouter.play();
     } else {
-      audioElement.pause();
+      audioRouter.pause();
     }
   });
 
   // Controle de Volume / Mudo / Normalização
   $effect(() => {
-    if (!audioElement) return;
     const baseVol = $isMuted ? 0 : $volume;
     const normFactor = $audioNormalization ? 0.92 : 1.0;
-    audioElement.volume = Math.max(0, Math.min(1, baseVol * normFactor));
+    audioRouter.setVolume(Math.max(0, Math.min(1, baseVol * normFactor)));
+    audioRouter.setMuted($isMuted);
   });
 
   // Registrar reprodução recente no SQLite ao iniciar faixa
@@ -156,11 +180,12 @@
     }, 1200);
   });
 
-  function onAudioTimeUpdate() {
-    if (!audioElement || isNaN(audioElement.currentTime)) return;
-    const curTime = audioElement.currentTime;
-    const dur = audioElement.duration;
+  function handleTimeUpdate(curTime: number, dur: number) {
+    if (isNaN(curTime)) return;
     currentTime.set(curTime);
+    if (dur > 0 && !isNaN(dur)) {
+      duration.set(dur);
+    }
 
     // Crossfade inteligente estilo Spotify com fade-in e fade-out garantidos
     const crossfade = $crossfadeSeconds;
@@ -173,7 +198,7 @@
       if (remaining <= crossfade && remaining > 0) {
         // Fade-out nos últimos segundos da música atual
         const factor = Math.max(0, remaining / crossfade);
-        audioElement.volume = targetNominalVolume * factor;
+        audioRouter.setVolume(targetNominalVolume * factor);
         if (remaining < 0.25) {
           playerActions.next();
         }
@@ -181,18 +206,14 @@
         // Fade-in suave no início da nova música
         const fadeInDuration = Math.min(crossfade, 2);
         const factor = Math.min(1, Math.max(0.1, curTime / fadeInDuration));
-        audioElement.volume = targetNominalVolume * factor;
+        audioRouter.setVolume(targetNominalVolume * factor);
       } else {
         // Fora das janelas de transição, garantir volume nominal
-        if (Math.abs(audioElement.volume - targetNominalVolume) > 0.02) {
-          audioElement.volume = targetNominalVolume;
-        }
+        audioRouter.setVolume(targetNominalVolume);
       }
     } else {
       // Se o crossfade estiver desligado, garantir volume nominal
-      if (Math.abs(audioElement.volume - targetNominalVolume) > 0.02) {
-        audioElement.volume = targetNominalVolume;
-      }
+      audioRouter.setVolume(targetNominalVolume);
     }
 
     // Integração Scrobbler Last.fm Oficial (após 50% ou 30s da música ouvida)
@@ -207,34 +228,11 @@
       }
     }
   }
-
-  function onAudioLoadedMetadata() {
-    if (audioElement && !isNaN(audioElement.duration) && audioElement.duration > 0) {
-      duration.set(audioElement.duration);
-    }
-  }
-
-  function onAudioWaiting() {
-    isBuffering.set(true);
-  }
-
-  function onAudioPlaying() {
-    isBuffering.set(false);
-  }
-
-  function onAudioEnded() {
-    playerActions.next();
-  }
 </script>
 
-<!-- Tag de áudio real do navegador persistente em nível de aplicativo -->
+<!-- Tag de áudio real do navegador persistente gerenciada pelo LocalOutputTarget -->
 <audio
   bind:this={audioElement}
-  ontimeupdate={onAudioTimeUpdate}
-  onloadedmetadata={onAudioLoadedMetadata}
-  onwaiting={onAudioWaiting}
-  onplaying={onAudioPlaying}
-  onended={onAudioEnded}
   preload="auto"
   class="hidden"
 ></audio>

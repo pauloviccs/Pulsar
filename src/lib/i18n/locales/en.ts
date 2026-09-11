@@ -152,7 +152,9 @@ export const en: TranslationDictionary = {
     newPlaylistNamePlaceholder: 'Playlist Name',
     createPlaylistBtn: 'Create Playlist',
     editPlaylistTitle: 'Edit Playlist Info',
-    deletePlaylistConfirm: 'Are you sure you want to permanently delete this playlist?'
+    deletePlaylistConfirm: 'Are you sure you want to permanently delete this playlist?',
+    cancelImport: 'Cancel Import',
+    cancellingImport: 'Cancelling import...'
   },
   settings: {
     title: 'Settings',

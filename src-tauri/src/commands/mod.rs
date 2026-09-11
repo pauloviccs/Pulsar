@@ -1,6 +1,8 @@
 use crate::audio_engine::StreamState;
 use crate::db::{Database, PlaybackStateDTO, PlaylistDTO, TrackDTO};
 use crate::youtube::YouTubeSidecar;
+use crate::ImportState;
+use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager, State};
 
 #[tauri::command]
@@ -43,7 +45,9 @@ pub async fn resolve_track(
 pub async fn resolve_playlist(
     url: String,
     db: State<'_, Database>,
+    import_state: State<'_, ImportState>,
 ) -> Result<PlaylistDTO, String> {
+    import_state.is_cancelled.store(false, Ordering::SeqCst);
     println!("[Pulsar] Extraindo playlist do YouTube: {}", url);
 
     let (playlist_title, tracks) = YouTubeSidecar::extract_playlist(&url).await?;
@@ -55,18 +59,24 @@ pub async fn resolve_playlist(
     // Criar a playlist no SQLite
     let pl = db.create_playlist(&playlist_title, "Playlist importada do YouTube")?;
 
+    let mut saved_count = 0usize;
     // Salvar cada faixa e associar à playlist
     for track in &tracks {
+        if import_state.is_cancelled.load(Ordering::SeqCst) {
+            println!("[Pulsar] Importação de playlist do YouTube cancelada após {} faixas", saved_count);
+            break;
+        }
         if let Ok(saved_track) = db.save_track(track) {
             let _ = db.add_track_to_playlist(&pl.id, &saved_track.id);
+            saved_count += 1;
         }
     }
 
-    println!("[Pulsar] Playlist '{}' importada com {} faixas!", playlist_title, tracks.len());
+    println!("[Pulsar] Playlist '{}' importada com {} faixas!", playlist_title, saved_count);
 
     // Retornar a playlist atualizada com contagem real
     let mut updated_pl = pl;
-    updated_pl.track_count = tracks.len() as i64;
+    updated_pl.track_count = saved_count as i64;
     updated_pl.is_imported_youtube_playlist = true;
 
     Ok(updated_pl)
@@ -359,8 +369,10 @@ pub async fn resolve_spotify_playlist(
     url: String,
     db: State<'_, Database>,
     stream_state: State<'_, StreamState>,
+    import_state: State<'_, ImportState>,
     app: tauri::AppHandle,
 ) -> Result<PlaylistDTO, String> {
+    import_state.is_cancelled.store(false, Ordering::SeqCst);
     println!("[Pulsar] Importando playlist/álbum do Spotify: {}", url);
 
     let resolver = crate::spotify::SpotifyResolver::new(
@@ -396,6 +408,14 @@ pub async fn resolve_spotify_playlist(
 
     // Resolver cada faixa no YouTube e salvar
     for (i, spotify_meta) in spotify_tracks.iter().enumerate() {
+        if import_state.is_cancelled.load(Ordering::SeqCst) {
+            println!(
+                "[Pulsar] Importação de playlist do Spotify cancelada pelo usuário após {}/{} faixas",
+                saved_count, total
+            );
+            break;
+        }
+
         // Emitir progresso para o frontend
         let confidence_str;
         let resolved = crate::spotify::SpotifyResolver::search_youtube(spotify_meta).await;
@@ -481,3 +501,11 @@ pub fn get_spotify_credentials(db: State<'_, Database>) -> Result<SpotifyCredent
         is_default,
     })
 }
+
+#[tauri::command]
+pub fn cancel_import(import_state: State<'_, ImportState>) -> Result<(), String> {
+    import_state.is_cancelled.store(true, Ordering::SeqCst);
+    println!("[Pulsar] Sinal de cancelamento de importação emitido!");
+    Ok(())
+}
+

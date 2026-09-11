@@ -4,6 +4,7 @@ mod db;
 mod link_resolver;
 mod spotify;
 mod taskbar;
+mod updater;
 mod youtube;
 
 use audio_engine::{start_proxy_server, StreamState};
@@ -21,6 +22,11 @@ pub struct TrayState {
     pub minimize_to_tray: Arc<AtomicBool>,
 }
 
+#[derive(Clone)]
+pub struct ImportState {
+    pub is_cancelled: Arc<AtomicBool>,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db = Database::init().expect("Falha ao inicializar o banco de dados SQLite local");
@@ -36,10 +42,15 @@ pub fn run() {
         minimize_to_tray: Arc::new(AtomicBool::new(true)),
     };
 
+    let import_state = ImportState {
+        is_cancelled: Arc::new(AtomicBool::new(false)),
+    };
+
     tauri::Builder::default()
         .manage(db)
         .manage(stream_state)
         .manage(tray_state)
+        .manage(import_state)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -143,6 +154,10 @@ pub fn run() {
             commands::resolve_spotify_playlist,
             commands::configure_spotify_credentials,
             commands::get_spotify_credentials,
+            commands::cancel_import,
+            // Native Auto-Updater
+            updater::fetch_update_manifest,
+            updater::download_and_run_installer,
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao executar a aplicação Pulsar Tauri");

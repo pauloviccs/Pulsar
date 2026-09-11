@@ -152,7 +152,9 @@ export const zhCN: TranslationDictionary = {
     newPlaylistNamePlaceholder: '歌单名称',
     createPlaylistBtn: '创建歌单',
     editPlaylistTitle: '编辑信息',
-    deletePlaylistConfirm: '您确定要永久删除此歌单吗？'
+    deletePlaylistConfirm: '您确定要永久删除此歌单吗？',
+    cancelImport: '取消导入',
+    cancellingImport: '正在取消导入...'
   },
   settings: {
     title: '设置',
