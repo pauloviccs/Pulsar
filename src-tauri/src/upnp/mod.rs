@@ -114,30 +114,31 @@ impl UpnpService {
 
         let multicast_addr: SocketAddr = "239.255.255.250:1900".parse().unwrap();
 
-        // Envia mensagem M-SEARCH para MediaRenderer
-        let search_msg = "M-SEARCH * HTTP/1.1\r\n\
-HOST: 239.255.255.250:1900\r\n\
-MAN: \"ssdp:discover\"\r\n\
-MX: 2\r\n\
-ST: urn:schemas-upnp-org:device:MediaRenderer:1\r\n\
-\r\n";
+        // Alvos de busca universais para máxima compatibilidade:
+        // LG webOS, Samsung Tizen, Sony Bravia, Roku, Fire TV, Philips, Sonos e caixas DLNA
+        let search_targets = [
+            "urn:schemas-upnp-org:device:MediaRenderer:1",
+            "urn:schemas-upnp-org:device:MediaRenderer:2",
+            "urn:schemas-upnp-org:service:AVTransport:1",
+            "urn:schemas-upnp-org:service:RenderingControl:1",
+            "upnp:rootdevice",
+            "urn:dial-multiscreen-org:service:dial:1",
+            "ssdp:all",
+        ];
 
-        let _ = socket.send_to(search_msg.as_bytes(), multicast_addr).await;
-
-        // Envia também uma busca genérica para compatibilidade máxima com receivers
-        let search_all = "M-SEARCH * HTTP/1.1\r\n\
-HOST: 239.255.255.250:1900\r\n\
-MAN: \"ssdp:discover\"\r\n\
-MX: 2\r\n\
-ST: ssdp:all\r\n\
-\r\n";
-        let _ = socket.send_to(search_all.as_bytes(), multicast_addr).await;
+        for target in search_targets {
+            let msg = format!(
+                "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: {}\r\n\r\n",
+                target
+            );
+            let _ = socket.send_to(msg.as_bytes(), multicast_addr).await;
+        }
 
         let mut locations = HashSet::new();
         let mut buf = [0u8; 4096];
 
-        // Escuta respostas por até 2.2 segundos
-        let deadline = tokio::time::Instant::now() + Duration::from_millis(2200);
+        // Escuta respostas por até 2.6 segundos para dar tempo a TVs mais lentas
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(2600);
 
         while tokio::time::Instant::now() < deadline {
             let remaining = deadline - tokio::time::Instant::now();
@@ -272,7 +273,7 @@ ST: ssdp:all\r\n\
             stream_url, didl_lite
         );
 
-        let res_set = self
+        let mut res_set = self
             .client
             .post(av_transport_url)
             .header("Content-Type", "text/xml; charset=\"utf-8\"")
@@ -280,18 +281,40 @@ ST: ssdp:all\r\n\
                 "SOAPAction",
                 "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"",
             )
-            .body(body_set_uri)
+            .body(body_set_uri.clone())
             .send()
             .await
             .map_err(|e| format!("Erro HTTP ao chamar SetAVTransportURI: {}", e))?;
 
         if !res_set.status().is_success() {
+            // Em caso de rejeição temporária (ex: 701 Transition not available durante troca de faixa na fila),
+            // aguarda desocupar buffer, envia stop e tenta uma segunda vez antes de falhar
+            let err_first = res_set.text().await.unwrap_or_default();
+            eprintln!("[UPnP] Primeira tentativa de SetAVTransportURI rejeitada: {}. Tentando retry com Stop...", err_first);
+            let _ = self.stop(av_transport_url).await;
+            tokio::time::sleep(Duration::from_millis(200)).await;
+
+            res_set = self
+                .client
+                .post(av_transport_url)
+                .header("Content-Type", "text/xml; charset=\"utf-8\"")
+                .header(
+                    "SOAPAction",
+                    "\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"",
+                )
+                .body(body_set_uri)
+                .send()
+                .await
+                .map_err(|e| format!("Erro HTTP na segunda tentativa de SetAVTransportURI: {}", e))?;
+        }
+
+        if !res_set.status().is_success() {
             let err_text = res_set.text().await.unwrap_or_default();
-            eprintln!("[UPnP] SetAVTransportURI rejeitado: {}", err_text);
+            eprintln!("[UPnP] SetAVTransportURI rejeitado definitivamente: {}", err_text);
             return Err(format!("UPnP SetAVTransportURI rejeitado: {}", err_text));
         }
 
-        tokio::time::sleep(Duration::from_millis(80)).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         // Após configurar a URI com sucesso, envia o comando Play
         self.play(av_transport_url).await
@@ -319,16 +342,34 @@ ST: ssdp:all\r\n\
             )
             .body(body_play)
             .send()
-            .await
-            .map_err(|e| format!("Erro HTTP ao chamar Play: {}", e))?;
+            .await;
 
-        if !res.status().is_success() {
-            let err_text = res.text().await.unwrap_or_default();
-            eprintln!("[UPnP] Play rejeitado: {}", err_text);
-            return Err(format!("UPnP Play rejeitado: {}", err_text));
+        match res {
+            Ok(r) if r.status().is_success() => Ok(()),
+            Ok(r) => {
+                let err_text = r.text().await.unwrap_or_default();
+                // Algumas TVs LG/Samsung já começam a tocar automaticamente após o SetURI.
+                // Se o erro for 701 ("Transition not available"), significa que ela já está transicionando ou tocando.
+                if err_text.contains("701") || err_text.to_lowercase().contains("transition") {
+                    println!("[UPnP] TV já está transicionando ou tocando automaticamente (701). Prosseguindo...");
+                    Ok(())
+                } else {
+                    eprintln!("[UPnP] Play rejeitado pela TV: {}", err_text);
+                    // Retenta uma vez com leve atraso
+                    tokio::time::sleep(Duration::from_millis(150)).await;
+                    let _ = self.client.post(av_transport_url)
+                        .header("Content-Type", "text/xml; charset=\"utf-8\"")
+                        .header("SOAPAction", "\"urn:schemas-upnp-org:service:AVTransport:1#Play\"")
+                        .body(body_play)
+                        .send().await;
+                    Ok(())
+                }
+            }
+            Err(e) => {
+                eprintln!("[UPnP] Erro de rede ao chamar Play: {}", e);
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 
     // Comando Pause com Fallback para Stop em Smart TVs
@@ -485,17 +526,18 @@ ST: ssdp:all\r\n\
             clamped
         );
 
-        let _ = self
-            .client
-            .post(rendering_control_url)
-            .header("Content-Type", "text/xml; charset=\"utf-8\"")
-            .header(
-                "SOAPAction",
-                "\"urn:schemas-upnp-org:service:RenderingControl:1#SetVolume\"",
-            )
-            .body(body_vol)
-            .send()
-            .await;
+        let _ = tokio::time::timeout(
+            Duration::from_millis(1500),
+            self.client
+                .post(rendering_control_url)
+                .header("Content-Type", "text/xml; charset=\"utf-8\"")
+                .header(
+                    "SOAPAction",
+                    "\"urn:schemas-upnp-org:service:RenderingControl:1#SetVolume\"",
+                )
+                .body(body_vol)
+                .send()
+        ).await;
 
         Ok(())
     }

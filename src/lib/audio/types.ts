@@ -16,6 +16,7 @@ export interface AudioDevice {
   name: string;
   type: AudioTargetType;
   isDefault?: boolean;
+  isConnected?: boolean;
   details?: string;
   volumeSupported: boolean;
   approximateLatencyMs: number;
@@ -25,6 +26,7 @@ export interface AudioOutputTarget {
   readonly id: string;
   readonly name: string;
   readonly type: AudioTargetType;
+  readonly isConnected?: boolean;
   readonly volumeSupported: boolean;
   readonly approximateLatencyMs: number;
 

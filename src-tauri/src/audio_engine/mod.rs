@@ -52,6 +52,12 @@ impl StreamState {
     pub fn get_url(&self, video_id: &str) -> Option<String> {
         self.active_urls.read().ok()?.get(video_id).cloned()
     }
+
+    pub fn clear_active_urls(&self) {
+        if let Ok(mut lock) = self.active_urls.write() {
+            lock.clear();
+        }
+    }
 }
 
 /// Obtém o IP da interface de rede local ativa (LAN) usando o kernel routing table
@@ -148,7 +154,7 @@ async fn handle_stream(
         }
     }
 
-    let upstream_res = match req.send().await {
+    let mut upstream_res = match req.send().await {
         Ok(res) => res,
         Err(e) => {
             return (
@@ -158,7 +164,29 @@ async fn handle_stream(
         }
     };
 
-    let status = upstream_res.status();
+    let mut status = upstream_res.status();
+
+    // Auto-Recovery: Se a URL expirou ou o YouTube retornou 403/410 devido a concorrência com o player de vídeo,
+    // re-resolvemos um stream direto novo e retentamos imediatamente para manter a Smart TV tocando!
+    if status == StatusCode::FORBIDDEN || status == StatusCode::GONE {
+        crate::logger::log_warn(&format!(
+            "[Pulsar Proxy] URL do YouTube retornou {} para {}. Re-resolvendo link direto...",
+            status, video_id
+        ));
+        if let Ok(new_url) = YouTubeSidecar::get_direct_stream_url(&video_id).await {
+            state.register_url(video_id.clone(), new_url.clone());
+            let mut retry_req = state.http_client.get(&new_url);
+            if let Some(range) = headers.get(header::RANGE) {
+                if let Ok(range_str) = range.to_str() {
+                    retry_req = retry_req.header("Range", range_str);
+                }
+            }
+            if let Ok(new_res) = retry_req.send().await {
+                status = new_res.status();
+                upstream_res = new_res;
+            }
+        }
+    }
     let mut response_headers = HeaderMap::new();
 
     // Repassar cabeçalhos vitais de áudio

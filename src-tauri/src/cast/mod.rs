@@ -28,15 +28,33 @@ pub struct CastMediaStatus {
 }
 
 pub struct CastManager {
-    // Gerenciador de conexões ativas por IP
-    active_sessions: Arc<Mutex<HashMap<String, CastSession>>>,
+    // Gerenciador de sessões ativas por IP
+    active_sessions: Arc<Mutex<HashMap<String, CastSessionHandle>>>,
     http_client: reqwest::Client,
 }
 
-struct CastSession {
-    transport_id: String,
-    media_session_id: Option<i64>,
-    tls_stream: tokio_native_tls::TlsStream<TcpStream>,
+enum CastCommand {
+    Pause {
+        reply: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    Play {
+        reply: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    Seek {
+        position_seconds: f64,
+        reply: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    SetVolume {
+        volume: f64,
+        reply: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    Stop {
+        reply: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+}
+
+struct CastSessionHandle {
+    cmd_tx: tokio::sync::mpsc::UnboundedSender<CastCommand>,
 }
 
 impl CastManager {
@@ -228,6 +246,10 @@ impl CastManager {
         title: &str,
         artist: &str,
     ) -> Result<(), String> {
+        // Encerra qualquer sessão anterior ativa para este dispositivo para liberar o canal
+        let _ = self.stop(ip).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
         let mut stream = self.connect_to_device(ip, port).await?;
 
         // 1. Mensagem de handshake: CONNECT para receiver-0
@@ -250,21 +272,24 @@ impl CastManager {
         )
         .await?;
 
-        // 3. Aguarda resposta com transportId do Media Receiver
+        // 3. Aguarda resposta com transportId e sessionId do Media Receiver
         let mut transport_id = "receiver-0".to_string();
-        let media_session_id = None;
+        let mut app_session_id: Option<String> = None;
 
-        let end_wait = tokio::time::Instant::now() + Duration::from_millis(3000);
+        let end_wait = tokio::time::Instant::now() + Duration::from_millis(3500);
         while tokio::time::Instant::now() < end_wait {
-            if let Ok(Ok(msg)) = timeout(Duration::from_millis(600), read_next_cast_payload(&mut stream)).await {
+            if let Ok(Ok(msg)) = timeout(Duration::from_millis(800), read_next_cast_payload(&mut stream)).await {
                 if let Ok(val) = serde_json::from_str::<serde_json::Value>(&msg) {
                     if let Some(apps) = val.get("status").and_then(|s| s.get("applications")).and_then(|a| a.as_array()) {
                         for app in apps {
                             if app.get("appId").and_then(|id| id.as_str()) == Some("CC1AD845") {
                                 if let Some(t_id) = app.get("transportId").and_then(|t| t.as_str()) {
                                     transport_id = t_id.to_string();
-                                    break;
                                 }
+                                if let Some(s_id) = app.get("sessionId").and_then(|s| s.as_str()) {
+                                    app_session_id = Some(s_id.to_string());
+                                }
+                                break;
                             }
                         }
                     }
@@ -285,14 +310,14 @@ impl CastManager {
         )
         .await?;
 
-        // 5. Envia comando LOAD com os dados da faixa
+        // 5. Envia comando LOAD com os dados da faixa (formato de áudio do proxy local)
         let load_payload = serde_json::json!({
             "type": "LOAD",
             "requestId": 2,
             "media": {
                 "contentId": stream_url,
                 "streamType": "BUFFERED",
-                "contentType": "audio/mp3",
+                "contentType": "audio/mp4",
                 "metadata": {
                     "metadataType": 3, // Music Track
                     "title": title,
@@ -313,111 +338,349 @@ impl CastManager {
         )
         .await?;
 
-        // 6. Armazena a sessão ativa para permitir Pause, Play, Stop e Volume
+        // 6. Criar canal de comandos assíncrono para o Worker de background
+        let (cmd_tx, mut cmd_rx) = tokio::sync::mpsc::unbounded_channel::<CastCommand>();
+        let ip_clone = ip.to_string();
+
+        // 7. Spawn do Worker de sessão dedicado com Heartbeat contínuo e leitura de status
+        tokio::spawn(async move {
+            let mut heartbeat_interval = tokio::time::interval(Duration::from_secs(4));
+            // O primeiro tick ocorre imediatamente, então descartamos o tick 0
+            heartbeat_interval.tick().await;
+
+            let mut cur_transport_id = transport_id;
+            let mut cur_app_session_id = app_session_id;
+            let mut cur_media_session_id: Option<i64> = None;
+            let mut request_id: u32 = 10;
+
+            println!("[GoogleCast Worker] Sessão iniciada para {} (transport: {})", ip_clone, cur_transport_id);
+
+            loop {
+                tokio::select! {
+                    _ = heartbeat_interval.tick() => {
+                        // Envia PING a cada 4 segundos para evitar que a Google Home derrube o socket TLS
+                        let ping_payload = r#"{"type":"PING"}"#;
+                        let _ = Self::send_cast_message(
+                            &mut stream,
+                            "sender-0",
+                            &cur_transport_id,
+                            "urn:x-cast:com.google.cast.tp.heartbeat",
+                            ping_payload,
+                        ).await;
+                    }
+
+                    read_res = read_next_cast_payload(&mut stream) => {
+                        match read_res {
+                            Ok(msg) => {
+                                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&msg) {
+                                    let msg_type = val.get("type").and_then(|t| t.as_str()).unwrap_or("");
+                                    match msg_type {
+                                        "PING" => {
+                                            let pong_payload = r#"{"type":"PONG"}"#;
+                                            let _ = Self::send_cast_message(
+                                                &mut stream,
+                                                "sender-0",
+                                                "receiver-0",
+                                                "urn:x-cast:com.google.cast.tp.heartbeat",
+                                                pong_payload,
+                                            ).await;
+                                            let _ = Self::send_cast_message(
+                                                &mut stream,
+                                                "sender-0",
+                                                &cur_transport_id,
+                                                "urn:x-cast:com.google.cast.tp.heartbeat",
+                                                pong_payload,
+                                            ).await;
+                                        }
+                                        "MEDIA_STATUS" => {
+                                            if let Some(statuses) = val.get("status").and_then(|s| s.as_array()) {
+                                                if let Some(first) = statuses.first() {
+                                                    if let Some(m_id) = first.get("mediaSessionId").and_then(|id| id.as_i64()) {
+                                                        if cur_media_session_id != Some(m_id) {
+                                                            println!("[GoogleCast Worker] mediaSessionId atualizado para: {}", m_id);
+                                                            cur_media_session_id = Some(m_id);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        "RECEIVER_STATUS" => {
+                                            if let Some(apps) = val.get("status").and_then(|s| s.get("applications")).and_then(|a| a.as_array()) {
+                                                for app in apps {
+                                                    if app.get("appId").and_then(|id| id.as_str()) == Some("CC1AD845") {
+                                                        if let Some(s_id) = app.get("sessionId").and_then(|s| s.as_str()) {
+                                                            cur_app_session_id = Some(s_id.to_string());
+                                                        }
+                                                        if let Some(t_id) = app.get("transportId").and_then(|t| t.as_str()) {
+                                                            cur_transport_id = t_id.to_string();
+                                                        }
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                println!("[GoogleCast Worker] Conexão encerrada ou erro na leitura ({}): {}", ip_clone, e);
+                                break;
+                            }
+                        }
+                    }
+
+                    Some(cmd) = cmd_rx.recv() => {
+                        request_id += 1;
+                        match cmd {
+                            CastCommand::Pause { reply } => {
+                                let m_id = cur_media_session_id.unwrap_or(1);
+                                let payload = serde_json::json!({
+                                    "type": "PAUSE",
+                                    "requestId": request_id,
+                                    "mediaSessionId": m_id
+                                }).to_string();
+
+                                let res = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    &cur_transport_id,
+                                    "urn:x-cast:com.google.cast.media",
+                                    &payload,
+                                ).await;
+                                println!("[GoogleCast Worker] PAUSE enviado para {} (mediaSessionId: {}, ok: {})", ip_clone, m_id, res.is_ok());
+                                let _ = reply.send(res);
+                            }
+                            CastCommand::Play { reply } => {
+                                let m_id = cur_media_session_id.unwrap_or(1);
+                                let payload = serde_json::json!({
+                                    "type": "PLAY",
+                                    "requestId": request_id,
+                                    "mediaSessionId": m_id
+                                }).to_string();
+
+                                let res = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    &cur_transport_id,
+                                    "urn:x-cast:com.google.cast.media",
+                                    &payload,
+                                ).await;
+                                println!("[GoogleCast Worker] PLAY enviado para {} (mediaSessionId: {}, ok: {})", ip_clone, m_id, res.is_ok());
+                                let _ = reply.send(res);
+                            }
+                            CastCommand::Seek { position_seconds, reply } => {
+                                let m_id = cur_media_session_id.unwrap_or(1);
+                                let pos = position_seconds.max(0.0);
+                                let payload = serde_json::json!({
+                                    "type": "SEEK",
+                                    "requestId": request_id,
+                                    "mediaSessionId": m_id,
+                                    "currentTime": pos
+                                }).to_string();
+
+                                let res = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    &cur_transport_id,
+                                    "urn:x-cast:com.google.cast.media",
+                                    &payload,
+                                ).await;
+                                println!("[GoogleCast Worker] SEEK enviado para {} em {:.1}s (mediaSessionId: {}, ok: {})", ip_clone, pos, m_id, res.is_ok());
+                                let _ = reply.send(res);
+                            }
+                            CastCommand::SetVolume { volume, reply } => {
+                                let clamped = volume.clamp(0.0, 1.0);
+                                let payload = serde_json::json!({
+                                    "type": "SET_VOLUME",
+                                    "requestId": request_id,
+                                    "volume": { "level": clamped }
+                                }).to_string();
+
+                                let res = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    "receiver-0",
+                                    "urn:x-cast:com.google.cast.receiver",
+                                    &payload,
+                                ).await;
+                                let _ = reply.send(res);
+                            }
+                            CastCommand::Stop { reply } => {
+                                let m_id = cur_media_session_id.unwrap_or(1);
+                                // 1. Parar a mídia ativa
+                                let media_stop = serde_json::json!({
+                                    "type": "STOP",
+                                    "requestId": request_id,
+                                    "mediaSessionId": m_id
+                                }).to_string();
+                                let _ = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    &cur_transport_id,
+                                    "urn:x-cast:com.google.cast.media",
+                                    &media_stop,
+                                ).await;
+
+                                // 2. Encerrar o aplicativo no receiver usando sessionId
+                                request_id += 1;
+                                let app_stop = if let Some(ref s_id) = cur_app_session_id {
+                                    serde_json::json!({
+                                        "type": "STOP",
+                                        "requestId": request_id,
+                                        "sessionId": s_id
+                                    }).to_string()
+                                } else {
+                                    serde_json::json!({
+                                        "type": "STOP",
+                                        "requestId": request_id
+                                    }).to_string()
+                                };
+
+                                let _ = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    "receiver-0",
+                                    "urn:x-cast:com.google.cast.receiver",
+                                    &app_stop,
+                                ).await;
+
+                                // 3. Fechar os canais de transporte
+                                let _ = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    &cur_transport_id,
+                                    "urn:x-cast:com.google.cast.tp.connection",
+                                    r#"{"type":"CLOSE"}"#,
+                                ).await;
+
+                                let _ = Self::send_cast_message(
+                                    &mut stream,
+                                    "sender-0",
+                                    "receiver-0",
+                                    "urn:x-cast:com.google.cast.tp.connection",
+                                    r#"{"type":"CLOSE"}"#,
+                                ).await;
+
+                                let _ = stream.shutdown().await;
+                                println!("[GoogleCast Worker] STOP executado com sucesso e socket encerrado em {}", ip_clone);
+                                let _ = reply.send(Ok(()));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 8. Salva o handle da sessão
         let mut sessions = self.active_sessions.lock().await;
-        sessions.insert(
-            ip.to_string(),
-            CastSession {
-                transport_id,
-                media_session_id,
-                tls_stream: stream,
-            },
-        );
+        sessions.insert(ip.to_string(), CastSessionHandle { cmd_tx });
 
-        println!("[GoogleCast] Mídia carregada com sucesso em {} ({})", ip, title);
-
+        println!("[GoogleCast] Mídia inicializada em {} ({}) com Worker assíncrono", ip, title);
         Ok(())
     }
 
     /// Pausa a reprodução no Google Cast
     pub async fn pause(&self, ip: &str) -> Result<(), String> {
-        let mut sessions = self.active_sessions.lock().await;
-        if let Some(session) = sessions.get_mut(ip) {
-            let payload = serde_json::json!({
-                "type": "PAUSE",
-                "requestId": 10,
-                "mediaSessionId": session.media_session_id.unwrap_or(1)
-            })
-            .to_string();
-
-            Self::send_cast_message(
-                &mut session.tls_stream,
-                "sender-0",
-                &session.transport_id,
-                "urn:x-cast:com.google.cast.media",
-                &payload,
-            )
-            .await?;
+        let sessions = self.active_sessions.lock().await;
+        if let Some(session) = sessions.get(ip) {
+            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
+            if session.cmd_tx.send(CastCommand::Pause { reply: reply_tx }).is_ok() {
+                if let Ok(res) = timeout(Duration::from_secs(2), reply_rx).await {
+                    return res.unwrap_or(Ok(()));
+                }
+            }
         }
         Ok(())
     }
 
     /// Retoma a reprodução no Google Cast
     pub async fn play(&self, ip: &str) -> Result<(), String> {
-        let mut sessions = self.active_sessions.lock().await;
-        if let Some(session) = sessions.get_mut(ip) {
-            let payload = serde_json::json!({
-                "type": "PLAY",
-                "requestId": 11,
-                "mediaSessionId": session.media_session_id.unwrap_or(1)
-            })
-            .to_string();
-
-            Self::send_cast_message(
-                &mut session.tls_stream,
-                "sender-0",
-                &session.transport_id,
-                "urn:x-cast:com.google.cast.media",
-                &payload,
-            )
-            .await?;
+        let sessions = self.active_sessions.lock().await;
+        if let Some(session) = sessions.get(ip) {
+            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
+            if session.cmd_tx.send(CastCommand::Play { reply: reply_tx }).is_ok() {
+                if let Ok(res) = timeout(Duration::from_secs(2), reply_rx).await {
+                    return res.unwrap_or(Ok(()));
+                }
+            }
         }
         Ok(())
     }
 
-    /// Interrompe a reprodução no Google Cast
-    pub async fn stop(&self, ip: &str) -> Result<(), String> {
-        let mut sessions = self.active_sessions.lock().await;
-        if let Some(mut session) = sessions.remove(ip) {
-            let payload = serde_json::json!({
-                "type": "STOP",
-                "requestId": 12,
-                "mediaSessionId": session.media_session_id.unwrap_or(1)
-            })
-            .to_string();
-
-            let _ = Self::send_cast_message(
-                &mut session.tls_stream,
-                "sender-0",
-                &session.transport_id,
-                "urn:x-cast:com.google.cast.media",
-                &payload,
-            )
-            .await;
+    /// Avança ou recua para uma posição específica em segundos no Google Cast
+    pub async fn seek(&self, ip: &str, position_seconds: f64) -> Result<(), String> {
+        let sessions = self.active_sessions.lock().await;
+        if let Some(session) = sessions.get(ip) {
+            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
+            if session.cmd_tx.send(CastCommand::Seek { position_seconds, reply: reply_tx }).is_ok() {
+                if let Ok(res) = timeout(Duration::from_secs(2), reply_rx).await {
+                    return res.unwrap_or(Ok(()));
+                }
+            }
         }
+        Ok(())
+    }
+
+    /// Interrompe completamente a reprodução, encerra o app Default Media Receiver e fecha o canal
+    pub async fn stop(&self, ip: &str) -> Result<(), String> {
+        let session_opt = {
+            let mut sessions = self.active_sessions.lock().await;
+            sessions.remove(ip)
+        };
+
+        if let Some(session) = session_opt {
+            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
+            if session.cmd_tx.send(CastCommand::Stop { reply: reply_tx }).is_ok() {
+                let _ = timeout(Duration::from_secs(2), reply_rx).await;
+            }
+        }
+
+        // Medida de proteção adicional: se a conexão já tiver sido perdida, envia um encerramento forçado direto
+        let ip_owned = ip.to_string();
+        tokio::spawn(async move {
+            if let Ok(stream) = TcpStream::connect(format!("{}:8009", ip_owned)).await {
+                let mut builder = native_tls::TlsConnector::builder();
+                builder.danger_accept_invalid_certs(true);
+                builder.danger_accept_invalid_hostnames(true);
+                if let Ok(connector) = builder.build() {
+                    let tokio_connector = tokio_native_tls::TlsConnector::from(connector);
+                    if let Ok(mut tls) = tokio_connector.connect(&ip_owned, stream).await {
+                        let _ = Self::send_cast_message(
+                            &mut tls,
+                            "sender-0",
+                            "receiver-0",
+                            "urn:x-cast:com.google.cast.tp.connection",
+                            r#"{"type":"CONNECT"}"#,
+                        ).await;
+                        let _ = Self::send_cast_message(
+                            &mut tls,
+                            "sender-0",
+                            "receiver-0",
+                            "urn:x-cast:com.google.cast.receiver",
+                            r#"{"type":"STOP","requestId":999}"#,
+                        ).await;
+                        let _ = tls.shutdown().await;
+                    }
+                }
+            }
+        });
+
         Ok(())
     }
 
     /// Ajusta o volume no Google Cast (0.0 a 1.0)
     pub async fn set_volume(&self, ip: &str, level: f64) -> Result<(), String> {
         let clamped = level.clamp(0.0, 1.0);
-        let mut sessions = self.active_sessions.lock().await;
-        if let Some(session) = sessions.get_mut(ip) {
-            let payload = serde_json::json!({
-                "type": "SET_VOLUME",
-                "requestId": 13,
-                "volume": { "level": clamped }
-            })
-            .to_string();
-
-            let _ = Self::send_cast_message(
-                &mut session.tls_stream,
-                "sender-0",
-                "receiver-0",
-                "urn:x-cast:com.google.cast.receiver",
-                &payload,
-            )
-            .await;
+        let sessions = self.active_sessions.lock().await;
+        if let Some(session) = sessions.get(ip) {
+            let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
+            if session.cmd_tx.send(CastCommand::SetVolume { volume: clamped, reply: reply_tx }).is_ok() {
+                if let Ok(res) = timeout(Duration::from_secs(2), reply_rx).await {
+                    return res.unwrap_or(Ok(()));
+                }
+            }
         }
         Ok(())
     }

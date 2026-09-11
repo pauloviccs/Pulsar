@@ -18,6 +18,8 @@ export class CastOutputTarget implements AudioOutputTarget {
   private localCurrentTime: number = 0;
   private isPaused: boolean = false;
   private timerInterval: any = null;
+  private volumeDebounceTimer: any = null;
+  private pendingVolumeValue: number | null = null;
 
   private stateChangeListeners = new Set<(state: AudioTargetState) => void>();
   private timeUpdateListeners = new Set<(currentTime: number, duration: number) => void>();
@@ -44,6 +46,7 @@ export class CastOutputTarget implements AudioOutputTarget {
   }
 
   async disconnect(): Promise<void> {
+    clearTimeout(this.volumeDebounceTimer);
     this.stopClock();
     try {
       await safeInvoke('cast_stop', { ip: this.ip });
@@ -120,24 +123,44 @@ export class CastOutputTarget implements AudioOutputTarget {
 
   async seek(positionSeconds: number): Promise<void> {
     if (isNaN(positionSeconds)) return;
-    this.localCurrentTime = Math.max(0, Math.min(this.nominalDuration || positionSeconds, positionSeconds));
-    this.timeUpdateListeners.forEach(cb => cb(this.localCurrentTime, this.nominalDuration));
-  }
+    const clamped = Math.max(0, Math.min(this.nominalDuration || positionSeconds, positionSeconds));
+    this.localCurrentTime = clamped;
+    this.timeUpdateListeners.forEach(cb => cb(clamped, this.nominalDuration));
 
-  async setVolume(volume: number): Promise<void> {
     try {
-      await safeInvoke('cast_set_volume', { ip: this.ip, volume: Math.max(0, Math.min(1, volume)) });
+      await safeInvoke('cast_seek', {
+        ip: this.ip,
+        positionSeconds: clamped,
+      });
     } catch (err) {
-      console.warn(`[CastOutputTarget] Erro ao ajustar volume em ${this.name}:`, err);
+      console.warn(`[CastOutputTarget] Erro no seek em ${this.name}:`, err);
     }
   }
 
+  async setVolume(volume: number): Promise<void> {
+    const clamped = Math.max(0, Math.min(1, volume));
+    this.pendingVolumeValue = clamped;
+    clearTimeout(this.volumeDebounceTimer);
+
+    this.volumeDebounceTimer = setTimeout(async () => {
+      if (this.pendingVolumeValue === null) return;
+      const targetVol = this.pendingVolumeValue;
+      this.pendingVolumeValue = null;
+      try {
+        await safeInvoke('cast_set_volume', { ip: this.ip, volume: targetVol });
+      } catch (err) {
+        console.warn(`[CastOutputTarget] Aviso isolado ao ajustar volume em ${this.name}:`, err);
+      }
+    }, 220);
+  }
+
   async setMuted(muted: boolean): Promise<void> {
+    clearTimeout(this.volumeDebounceTimer);
     try {
       const vol = muted ? 0.0 : 0.5;
       await safeInvoke('cast_set_volume', { ip: this.ip, volume: vol });
     } catch (err) {
-      console.warn(`[CastOutputTarget] Erro ao alterar mudo em ${this.name}:`, err);
+      console.warn(`[CastOutputTarget] Aviso isolado ao alterar mudo em ${this.name}:`, err);
     }
   }
 

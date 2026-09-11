@@ -115,15 +115,16 @@ export class SystemAudioScanner {
           const targetId = `bt-${natDev.id}`;
           currentFoundIds.add(targetId);
 
-          if (!this.knownDeviceIds.has(targetId)) {
-            const target = new BluetoothOutputTarget(
-              matchedSinkId || natDev.id,
-              natDev.name,
-              () => this.audioRouter.getAudioElement()
-            );
+          const target = new BluetoothOutputTarget(
+            matchedSinkId || natDev.id,
+            natDev.name,
+            () => this.audioRouter.getAudioElement(),
+            natDev.is_connected
+          );
 
-            this.knownDeviceIds.add(targetId);
-            this.audioRouter.registerTarget(target);
+          this.knownDeviceIds.add(targetId);
+          this.audioRouter.registerTarget(target);
+          if (!this.knownDeviceIds.has(targetId)) {
             console.log(`[SystemAudioScanner] Endpoint Windows/Bluetooth registrado: ${natDev.name} (${targetId})`);
           }
         }

@@ -26,6 +26,8 @@ export class UpnpOutputTarget implements AudioOutputTarget {
 
   private pollInterval: any = null;
   private isPollingActive = false;
+  private volumeDebounceTimer: any = null;
+  private pendingVolumeValue: number | null = null;
 
   private stateChangeListeners = new Set<(state: AudioTargetState) => void>();
   private timeUpdateListeners = new Set<(currentTime: number, duration: number) => void>();
@@ -63,6 +65,7 @@ export class UpnpOutputTarget implements AudioOutputTarget {
   }
 
   async disconnect(): Promise<void> {
+    clearTimeout(this.volumeDebounceTimer);
     this.stopPolling();
     try {
       await safeInvoke('upnp_stop', { avTransportUrl: this.avTransportUrl });
@@ -112,10 +115,8 @@ export class UpnpOutputTarget implements AudioOutputTarget {
       this.setState('playing');
       this.startPolling();
     } catch (err: any) {
+      console.warn(`[UpnpOutputTarget] Aviso ao enviar faixa para ${this.name}:`, err);
       this.setState('error');
-      const msg = `Falha ao reproduzir no UPnP (${this.name}): ${err?.message || err}`;
-      this.errorListeners.forEach(cb => cb(msg));
-      throw new Error(msg);
     }
   }
 
@@ -175,21 +176,31 @@ export class UpnpOutputTarget implements AudioOutputTarget {
     this.currentVolume = Math.max(0, Math.min(1, volume));
     if (!this.renderingControlUrl || this.isMuted) return;
 
-    try {
-      const vol100 = Math.round(this.currentVolume * 100);
-      await safeInvoke('upnp_set_volume', {
-        renderingControlUrl: this.renderingControlUrl,
-        volume: vol100,
-      });
-    } catch (err) {
-      console.warn(`[UpnpOutputTarget] Falha ao ajustar volume em ${this.name}:`, err);
-    }
+    this.pendingVolumeValue = this.currentVolume;
+    clearTimeout(this.volumeDebounceTimer);
+
+    // Debounce de 220ms para impedir enxurrada de requisições SOAP enquanto arrasta o slider
+    this.volumeDebounceTimer = setTimeout(async () => {
+      if (this.pendingVolumeValue === null || !this.renderingControlUrl) return;
+      const vol100 = Math.round(this.pendingVolumeValue * 100);
+      this.pendingVolumeValue = null;
+
+      try {
+        await safeInvoke('upnp_set_volume', {
+          renderingControlUrl: this.renderingControlUrl,
+          volume: vol100,
+        });
+      } catch (err) {
+        console.warn(`[UpnpOutputTarget] Aviso isolado ao ajustar volume em ${this.name}:`, err);
+      }
+    }, 220);
   }
 
   async setMuted(muted: boolean): Promise<void> {
     this.isMuted = muted;
     if (!this.renderingControlUrl) return;
 
+    clearTimeout(this.volumeDebounceTimer);
     try {
       const vol = muted ? 0 : Math.round(this.currentVolume * 100);
       await safeInvoke('upnp_set_volume', {
@@ -197,7 +208,7 @@ export class UpnpOutputTarget implements AudioOutputTarget {
         volume: vol,
       });
     } catch (err) {
-      console.warn(`[UpnpOutputTarget] Falha ao ajustar mudo em ${this.name}:`, err);
+      console.warn(`[UpnpOutputTarget] Aviso isolado ao ajustar mudo em ${this.name}:`, err);
     }
   }
 

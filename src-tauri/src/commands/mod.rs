@@ -587,6 +587,38 @@ pub fn get_system_audio_devices() -> Result<Vec<crate::audio_devices::SystemAudi
     crate::audio_devices::get_system_audio_devices()
 }
 
+#[tauri::command]
+pub fn open_bluetooth_settings() -> Result<(), String> {
+    crate::audio_devices::open_bluetooth_settings()
+}
+
+#[tauri::command]
+pub async fn connect_bluetooth_device(_device_name: String) -> Result<String, String> {
+    // Abre as configurações nativas de Bluetooth silenciosamente
+    crate::audio_devices::open_bluetooth_settings()?;
+    Ok("SETTINGS_OPENED".to_string())
+}
+
+// ==========================================
+// Centralized System Logs
+// ==========================================
+
+#[tauri::command]
+pub fn get_system_logs() -> Result<Vec<String>, String> {
+    Ok(crate::logger::get_logs())
+}
+
+#[tauri::command]
+pub fn open_logs_folder() -> Result<(), String> {
+    crate::logger::open_logs_directory()
+}
+
+#[tauri::command]
+pub fn write_client_log(level: String, message: String) -> Result<(), String> {
+    crate::logger::write_log(&level, &format!("[Client] {}", message));
+    Ok(())
+}
+
 // ==========================================
 // Google Home & Google Cast (LAN Direct)
 // ==========================================
@@ -632,7 +664,9 @@ pub async fn cast_pause(
 pub async fn cast_stop(
     ip: String,
     cast_manager: State<'_, crate::cast::CastManager>,
+    stream_state: State<'_, crate::audio_engine::StreamState>,
 ) -> Result<(), String> {
+    stream_state.clear_active_urls();
     cast_manager.stop(&ip).await
 }
 
@@ -644,4 +678,14 @@ pub async fn cast_set_volume(
 ) -> Result<(), String> {
     cast_manager.set_volume(&ip, volume).await
 }
+
+#[tauri::command]
+pub async fn cast_seek(
+    ip: String,
+    position_seconds: f64,
+    cast_manager: State<'_, crate::cast::CastManager>,
+) -> Result<(), String> {
+    cast_manager.seek(&ip, position_seconds).await
+}
+
 

@@ -93,6 +93,7 @@ export class AudioRouter {
       name: t.name,
       type: t.type,
       isDefault: t.id === this.localTarget.id,
+      isConnected: t.isConnected ?? true,
       volumeSupported: t.volumeSupported,
       approximateLatencyMs: t.approximateLatencyMs,
     }));
@@ -119,11 +120,11 @@ export class AudioRouter {
     });
 
     const cleanupError = target.onError(err => {
-      console.error(`[AudioRouter] Erro no sink ativo (${target.name}):`, err);
+      console.warn(`[AudioRouter] Alerta de transporte no sink ativo (${target.name}):`, err);
       this.errorCallbacks.forEach(cb => cb(err));
-      // Aciona o fallback se o erro ocorreu em um dispositivo remoto
-      if (target.id !== this.localTarget.id) {
-        this.fallbackToLocal(`Erro de streaming em ${target.name}: ${err}`);
+      // Aciona o fallback apenas se o erro for explicitamente fatal
+      if (target.id !== this.localTarget.id && (err.includes('FATAL_DISCONNECT') || err.includes('DEVICE_UNREACHABLE'))) {
+        this.fallbackToLocal(`Conexão encerrada com ${target.name}: ${err}`);
       }
     });
 
@@ -186,6 +187,54 @@ export class AudioRouter {
       await this.fallbackToLocal(`Falha ao conectar no dispositivo ${target.name}`);
       return false;
     }
+  }
+
+  public async disconnectActiveDevice(): Promise<boolean> {
+    if (this.activeTargetInstance.id === this.localTarget.id) {
+      return true; // Já está no dispositivo local
+    }
+
+    console.log(`[AudioRouter] Desconectando dispositivo ativo: ${this.activeTargetInstance.name}`);
+    this.connectStatus.set('connecting');
+
+    const wasPlaying = this.isPlayingState;
+    const switchPos = this.currentPosition;
+    const track = this.currentTrack;
+    const url = this.currentStreamUrl;
+
+    try {
+      await this.activeTargetInstance.pause();
+      await this.activeTargetInstance.disconnect();
+    } catch (e) {
+      console.warn(`[AudioRouter] Aviso ao desconectar ${this.activeTargetInstance.name}:`, e);
+    }
+
+    // Retorna para o sink local
+    this.activeTargetInstance = this.localTarget;
+    this.bindTargetListeners(this.localTarget);
+
+    this.activeDevice.set({
+      id: this.localTarget.id,
+      name: this.localTarget.name,
+      type: this.localTarget.type,
+      isDefault: true,
+      volumeSupported: this.localTarget.volumeSupported,
+      approximateLatencyMs: this.localTarget.approximateLatencyMs,
+    });
+
+    if (track && url) {
+      try {
+        await this.localTarget.load(track, url, switchPos);
+        if (wasPlaying) {
+          await this.localTarget.play();
+        }
+      } catch (err) {
+        console.error('[AudioRouter] Erro ao retomar no local após desconexão:', err);
+      }
+    }
+
+    this.connectStatus.set('idle');
+    return true;
   }
 
   private async fallbackToLocal(reason: string) {

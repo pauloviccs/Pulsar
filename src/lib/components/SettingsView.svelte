@@ -23,8 +23,11 @@
     KeyRound,
     ChevronDown,
     ChevronUp,
-    Disc3
+    Disc3,
+    Terminal,
+    FolderOpen
   } from '@lucide/svelte';
+  import LogsModal from './LogsModal.svelte';
   import { openUrl } from '@tauri-apps/plugin-opener';
   import { 
     crossfadeSeconds, 
@@ -60,6 +63,7 @@
   let cacheFiles = $state(0);
   let isClearingCache = $state(false);
   let cacheClearFeedback = $state<string | null>(null);
+  let isLogsModalOpen = $state(false);
 
   // Estado do Modal de Reinício de Idioma
   let showRestartModal = $state(false);
@@ -813,7 +817,46 @@
       {/if}
     </div>
   </div>
+
+  <!-- SEÇÃO DE DIAGNÓSTICO & LOGS DO SISTEMA -->
+  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.1] flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <Terminal class="w-5 h-5" />
+        </div>
+        <div>
+          <h2 class="text-sm font-bold text-[#F2EFEA]">Diagnóstico & Logs do Sistema</h2>
+          <p class="text-xs text-white/50">Histórico detalhado de áudio WASAPI, conexões Bluetooth, streaming e erros.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          onclick={() => isLogsModalOpen = true}
+          class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-bold text-amber-300 transition active:scale-95 cursor-pointer shadow-sm"
+        >
+          <Terminal class="w-3.5 h-3.5" />
+          <span>Ver Logs</span>
+        </button>
+
+        <button
+          type="button"
+          onclick={() => safeInvoke('open_logs_folder')}
+          class="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-semibold text-white/70 hover:text-white transition active:scale-95 cursor-pointer"
+          title="Abrir pasta pulsar.log no Windows Explorer"
+        >
+          <FolderOpen class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">Pasta</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Modal de Diagnóstico e Logs -->
+<LogsModal bind:isOpen={isLogsModalOpen} />
 
 <!-- MODAL DE REINICIALIZAÇÃO PARA IDIOMA -->
 {#if showRestartModal && newlySelectedLocale}

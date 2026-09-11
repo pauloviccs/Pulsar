@@ -66,6 +66,14 @@
     const target = e.target as HTMLInputElement;
     playerActions.setVolume(parseFloat(target.value));
   }
+
+  function handleToggleVideo() {
+    const nextVid = !$isVideoVisible;
+    isVideoVisible.set(nextVid);
+    if (nextVid && !$isNowPlayingOpen) {
+      isNowPlayingOpen.set(true);
+    }
+  }
 </script>
 
 <div class="h-20 w-full px-3 sm:px-6 flex items-center justify-between border-t border-white/[0.08] bg-[#16161d]/85 backdrop-blur-2xl text-[#F2EFEA] select-none z-40 relative">
@@ -205,7 +213,7 @@
   <div class="flex items-center justify-end gap-1.5 sm:gap-3 w-auto max-w-[32%] sm:w-1/4 shrink-0">
     <!-- Toggle Vídeo -->
     <button
-      onclick={() => playerActions.toggleVideo()}
+      onclick={handleToggleVideo}
       class="p-1.5 sm:p-2 rounded-lg transition cursor-pointer {$isVideoVisible ? 'bg-white/[0.08] text-[#FC7753]' : 'text-[#F2EFEA]/40 hover:text-[#F2EFEA] hover:bg-white/[0.04]'}"
       title="{$t('player.videoMode')}"
     >

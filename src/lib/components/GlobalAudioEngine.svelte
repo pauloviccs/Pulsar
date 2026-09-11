@@ -124,20 +124,26 @@
       lastLoadedTrackId = track.id;
       scrobbledCurrentTrackId = null;
 
-      audioRouter.load(track, targetUrl);
+      (async () => {
+        try {
+          await audioRouter.load(track, targetUrl);
 
-      // Restaurar o volume nominal imediatamente para evitar faixa muda após crossfade
-      const baseVol = $isMuted ? 0 : $volume;
-      const normFactor = $audioNormalization ? 0.92 : 1.0;
-      audioRouter.setVolume(Math.max(0, Math.min(1, baseVol * normFactor)));
+          // Restaurar o volume nominal de forma segura após o target confirmar a carga da faixa
+          const baseVol = get(isMuted) ? 0 : get(volume);
+          const normFactor = get(audioNormalization) ? 0.92 : 1.0;
+          await audioRouter.setVolume(Math.max(0, Math.min(1, baseVol * normFactor)));
 
-      if ($isPlaying) {
-        audioRouter.play();
-        if ($lastFmEnabled) {
-          const artist = track.artist || track.artist_guess || track.channel_name || 'Artista Desconhecido';
-          lastFmService.updateNowPlaying(artist, track.title || 'Música Desconhecida');
+          if (get(isPlaying)) {
+            await audioRouter.play();
+            if (get(lastFmEnabled)) {
+              const artist = track.artist || track.artist_guess || track.channel_name || 'Artista Desconhecido';
+              lastFmService.updateNowPlaying(artist, track.title || 'Música Desconhecida');
+            }
+          }
+        } catch (err) {
+          console.warn('[GlobalAudioEngine] Erro ao sincronizar faixa com o AudioRouter:', err);
         }
-      }
+      })();
     }
   });
 
@@ -230,12 +236,10 @@
         const factor = Math.min(1, Math.max(0.1, curTime / fadeInDuration));
         audioRouter.setVolume(targetNominalVolume * factor);
       } else {
-        // Fora das janelas de transição, garantir volume nominal
-        audioRouter.setVolume(targetNominalVolume);
+        // Fora das janelas de transição de crossfade, o volume nominal é mantido naturalmente
       }
     } else {
-      // Se o crossfade estiver desligado, garantir volume nominal
-      audioRouter.setVolume(targetNominalVolume);
+      // Se o crossfade estiver desligado, não envia comandos periódicos de volume
     }
 
     // Integração Scrobbler Last.fm Oficial (após 50% ou 30s da música ouvida)

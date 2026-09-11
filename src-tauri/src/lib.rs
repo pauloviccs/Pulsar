@@ -4,6 +4,7 @@ mod cast;
 mod commands;
 mod db;
 mod link_resolver;
+mod logger;
 mod spotify;
 mod taskbar;
 mod updater;
@@ -32,6 +33,9 @@ pub struct ImportState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Inicializa o sistema de logs persistentes em disco
+    logger::init_logger();
+
     let db = Database::init().expect("Falha ao inicializar o banco de dados SQLite local");
     let stream_state = StreamState::new();
     let cast_manager = cast::CastManager::new();
@@ -172,6 +176,12 @@ pub fn run() {
             commands::upnp_get_position_info,
             // Windows System Audio & Bluetooth Endpoints
             commands::get_system_audio_devices,
+            commands::connect_bluetooth_device,
+            commands::open_bluetooth_settings,
+            // Centralized System Logs
+            commands::get_system_logs,
+            commands::open_logs_folder,
+            commands::write_client_log,
             // Google Home & Google Cast (LAN Direct)
             commands::cast_discover_devices,
             commands::cast_load_and_play,
@@ -179,6 +189,7 @@ pub fn run() {
             commands::cast_pause,
             commands::cast_stop,
             commands::cast_set_volume,
+            commands::cast_seek,
             // Native Auto-Updater
             updater::fetch_update_manifest,
             updater::download_and_run_installer,

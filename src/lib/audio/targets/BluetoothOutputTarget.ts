@@ -5,6 +5,7 @@ export class BluetoothOutputTarget implements AudioOutputTarget {
   readonly id: string;
   readonly name: string;
   readonly type: AudioTargetType = 'bluetooth';
+  readonly isConnected: boolean;
   readonly volumeSupported = true;
   readonly approximateLatencyMs = 120; // Latência média de compressão/buffer Bluetooth
 
@@ -19,10 +20,11 @@ export class BluetoothOutputTarget implements AudioOutputTarget {
 
   private cleanups: (() => void)[] = [];
 
-  constructor(deviceId: string, name: string, getAudioElement: () => HTMLAudioElement | null) {
+  constructor(deviceId: string, name: string, getAudioElement: () => HTMLAudioElement | null, isConnected: boolean = true) {
     this.id = `bt-${deviceId}`;
     this.deviceId = deviceId;
     this.name = name || 'Dispositivo de Áudio Bluetooth';
+    this.isConnected = isConnected;
     this.getAudioElement = getAudioElement;
   }
 
@@ -97,19 +99,76 @@ export class BluetoothOutputTarget implements AudioOutputTarget {
     }
 
     if (!('setSinkId' in el)) {
-      throw new Error('O navegador/WebView2 atual não suporta setSinkId (roteamento de dispositivo de áudio).');
+      throw new Error('O WebView2 atual não suporta setSinkId (roteamento de dispositivo de áudio).');
     }
 
     try {
       this.setState('connecting');
-      // Redireciona a saída do áudio para o sinkId específico
-      await (el as any).setSinkId(this.deviceId);
+      console.log(`[BluetoothOutputTarget] Conectando áudio a "${this.name}"...`);
+
+      let resolvedSinkId = this.deviceId;
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+        try {
+          const htmlDevices = await navigator.mediaDevices.enumerateDevices();
+          const audioOutputs = htmlDevices.filter(d => d.kind === 'audiooutput' && d.label);
+
+          const modelName = this.extractModelName(this.name).toLowerCase();
+
+          const matched = audioOutputs.find(d => {
+            const label = d.label.toLowerCase();
+            return label.includes(modelName) || 
+                   modelName.includes(label.replace(/\s*\(.*?\)/g, '').trim()) ||
+                   (this.deviceId && d.deviceId === this.deviceId);
+          });
+
+          if (matched && matched.deviceId) {
+            resolvedSinkId = matched.deviceId;
+            console.log(`[BluetoothOutputTarget] SinkId resolvido com sucesso: "${matched.label}" (${resolvedSinkId})`);
+          } else {
+            console.log(`[BluetoothOutputTarget] Dispositivo "${this.name}" mapeado para saída ativa.`);
+          }
+        } catch (enumErr) {
+          console.warn('[BluetoothOutputTarget] Aviso ao enumerar MediaDevices:', enumErr);
+        }
+      }
+
+      // Redireciona a saída do elemento HTML5 de áudio
+      if (resolvedSinkId && resolvedSinkId !== 'default') {
+        await (el as any).setSinkId(resolvedSinkId);
+      } else {
+        await (el as any).setSinkId('');
+      }
+
       this.attachListeners(el);
       this.setState('idle');
+      console.log(`[BluetoothOutputTarget] Áudio roteado com sucesso para ${this.name}`);
     } catch (e: any) {
       this.setState('error');
-      throw new Error(`Falha ao rotear áudio para ${this.name}: ${e?.message || e}`);
+      const errorMsg = `Falha ao rotear áudio para ${this.name}: ${e?.message || e}`;
+      console.error(`[BluetoothOutputTarget] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
+  }
+
+  /**
+   * Extrai o nome limpo do modelo do dispositivo a partir do nome amigável do Windows.
+   * Ex: "Fones de ouvido (5- HAYLOU S30)" → "HAYLOU S30"
+   *     "Headset (HAYLOU S30 Hands-Free)" → "HAYLOU S30"
+   */
+  private extractModelName(fullName: string): string {
+    // Tenta extrair o conteúdo entre parênteses
+    const match = fullName.match(/\(([^)]+)\)/);
+    if (match) {
+      let inner = match[1];
+      // Remove prefixos numéricos do Windows como "5- " ou "2- "
+      inner = inner.replace(/^\d+-\s*/, '');
+      // Remove sufixos como "Hands-Free"
+      inner = inner.replace(/\s*Hands-Free\s*/i, '').trim();
+      if (inner.length > 0) {
+        return inner;
+      }
+    }
+    return fullName;
   }
 
   async disconnect(): Promise<void> {

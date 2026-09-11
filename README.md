@@ -11,7 +11,7 @@
 
   <p align="center">
     <a href="https://github.com/pauloviccs/Pulsar/releases">
-      <img src="https://img.shields.io/badge/Versão-v0.2.2-FC7753?style=for-the-badge&logo=windows&logoColor=white" alt="Versão v0.2.2" />
+      <img src="https://img.shields.io/badge/Versão-v0.2.5-FC7753?style=for-the-badge&logo=windows&logoColor=white" alt="Versão v0.2.5" />
     </a>
     <img src="https://img.shields.io/badge/Pulsar%20Connect-Cast%20%7C%20UPnP%20%7C%20BT-66D7D1?style=for-the-badge&logo=airplayvideo&logoColor=09090D" alt="Pulsar Connect" />
     <img src="https://img.shields.io/badge/Spotify-Web%20API-1DB954?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify Web API" />
@@ -61,21 +61,26 @@ Migre sua biblioteca em segundos sem perder nenhuma das suas faixas favoritas:
 
 ---
 
-### 📡 Pulsar Connect: Transmissão Sem Fio Multi-Dispositivo
+### 📡 Pulsar Connect: Transmissão Sem Fio Multi-Dispositivo & Universal
 Leve sua música para qualquer cômodo da sua casa ou escritório com uma central de transmissão unificada inspirada no ecossistema Apple AirPlay:
-* 📺 **Smart TVs & Receptores DLNA/UPnP (LG WebOS, Samsung Tizen):**
-  * Transmissão direta sem cabos através da rede Wi-Fi local.
-  * **Controle Total da Reprodução:** Play, Pause, Stop, Seek (barra de progresso) e Next com precisão cirúrgica no próprio desktop.
-  * **Relógio Mestre Defensivo (Local Master Clock):** Mesmo que a Smart TV demore para retornar a telemetria ou tenha oscilações de rede, a timeline do Pulsar continua fluida e o app sabe exatamente o segundo em que a faixa termina.
-  * **Avanço Automático de Playlist Anti-Erro 701:** Transições de música suaves e limpas, executando interrupção prévia de transporte com delay assíncrono para evitar engasgos do receptor WebOS.
+* 📺 **Smart TVs & Receptores DLNA/UPnP Universais (LG WebOS, Samsung Tizen, Sony Bravia, Roku, Fire TV):**
+  * Transmissão direta sem cabos através da rede Wi-Fi local escaneando múltiplos alvos SSDP (`MediaRenderer:1/2`, `AVTransport:1`, `RenderingControl:1`, `upnp:rootdevice`, `dial:1`, `ssdp:all`).
+  * **Controle de Volume com Debounce Inteligente (220ms):** Arraste o slider de volume livremente a 60fps sem sobrecarregar o microservidor HTTP da TV; a comunicação SOAP é consolidada e imune a travamentos.
+  * **Auto-Recovery do Proxy de Streaming:** Se a CDN do YouTube retornar HTTP 403 Forbidden ao abrir o clipe de vídeo, o backend em Rust re-resolve instantaneamente um link direto novo sem que a TV interrompa a música.
+  * **Transição Suave de Fila & Retry Anti-Erro 701:** A troca de músicas é serializada assincronamente com retentativa preventiva caso o receptor da TV ainda esteja em estado de transição.
+  * **Relógio Mestre Defensivo (Local Master Clock):** Mesmo que a Smart TV demore para retornar a telemetria ou tenha oscilações de rede, a timeline do Pulsar continua fluida e o app avança para a próxima faixa com precisão.
 * 📻 **Google Home & Nest Mini (Protocolo Google Cast Nativo):**
   * Descoberta automática de caixas inteligentes na LAN via socket mDNS (`UDP 224.0.0.251:5353`) escaneando serviços `_googlecast._tcp.local`.
   * Streaming direto de altíssima fidelidade com handshake seguro TLS na porta 8009, integração com a API Eureka (porta 8008) e Default Media Receiver.
-* 🔊 **Speakers JBL, Fones & Bluetooth (Windows CoreAudio API):**
-  * Integração nativa no Rust com os Audio Endpoints do Windows via COM (`IMMDeviceEnumerator`), permitindo identificar caixas de som da JBL (Flip, Charge, Boombox, Go) e fones pareados com nomes reais e ícones dedicados, sem restrições de permissão de microfone do navegador.
+* 🔊 **Descoberta Universal Bluetooth & Speakers (Drivers Nativos Windows):**
+  * Detecção baseada diretamente em hardware via propriedades do barramento PnP (`PKEY_Device_EnumeratorName`: `BTHENUM` e `BTHHFENUM`) e varredura do Registro do Windows (`BTHPORT`).
+  * Compatibilidade universal com fones e caixas de som de qualquer fabricante: **Haylou, Hi-Lo, Pro, JBL, Edifier, Sony, fones TWS genéricos** e periféricos de áudio sem fio.
+  * Silêncio absoluto de sistema: o painel nativo do Windows abre sem nenhuma janela de prompt/conhost piscando (`CREATE_NO_WINDOW = 0x08000000`).
+* 🩺 **Console de Diagnóstico & Logs Integrado:**
+  * Ícone dedicado de Terminal no cabeçalho do Pulsar Connect para inspecionar em tempo real o histórico persistente de conexão (`pulsar.log`), filtrar por severidade e copiar diagnósticos com um clique.
 * 🪟 **Modal Apple Liquid Glass em 4 Categorias:**
   1. 💻 **Este Computador** (Alto-falantes padrão do Windows)
-  2. 🔊 **Speakers JBL, Fones & Bluetooth** (Dispositivos sem fio pareados)
+  2. 🔊 **Fones & Speakers Bluetooth** (Detecção universal por hardware)
   3. 📻 **Google Home & Nest** (Caixas inteligentes Google Cast)
   4. 📺 **Smart TVs & Receptores DLNA** (Televisores e receivers de sala)
 
@@ -142,13 +147,46 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 > [!IMPORTANT]
 > **Toda nova versão oficial do instalador (.exe) é publicada diretamente na aba de [Releases do GitHub](https://github.com/pauloviccs/Pulsar/releases).**
 >
-> Basta acessar a página de lançamentos, baixar o executável [`Pulsar_0.2.2_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.2/Pulsar_0.2.2_x64-setup.exe), instalar no seu Windows em menos de 10 segundos e começar a ouvir!
+> Basta acessar a página de lançamentos, baixar o executável [`Pulsar_0.2.5_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.5/Pulsar_0.2.5_x64-setup.exe), instalar no seu Windows em menos de 10 segundos e começar a ouvir!
 
 ---
 
 ## 📝 Patch Notes: O Que Há de Novo
 
-### 🌟 Versão Atual: `v0.2.2` *(Pulsar Connect: LG TV, Google Home & JBL Bluetooth)*
+### 🌟 Versão Atual: `v0.2.5` *(Estabilidade Total de Smart TVs & Descoberta Universal)*
+
+* 📺 **Blindagem & Estabilização de Conexões com Smart TVs (LG WebOS, Samsung, Sony Bravia):**
+  * **Debounce de Volume (220ms):** Arrastar o controle deslizante de volume na barra do player agora amortece requisições em trânsito, acabando com a sobrecarga de chamadas SOAP que derrubava receptores de Smart TVs.
+  * **Fim do Spam de Volume no Player:** Removido o envio contínuo a cada segundo de telemetria de volume, deixando o canal de streaming leve e desimpedido.
+  * **Auto-Recovery Inteligente do Proxy Local:** Ao alternar para o modo vídeo, o proxy local em Rust detecta e recupera instantaneamente qualquer erro HTTP 403 Forbidden da CDN do YouTube, re-resolvendo o link direto em background sem que a Smart TV pare de tocar.
+  * **Transição Serializada de Fila & Retry Anti-Erro 701:** A troca rápida de músicas agora aguarda a conclusão da faixa anterior e aplica retentativa automática com backoff e stop preventivo caso a TV acuse transição de estado pendente.
+  * **Isolamento de Falhas no AudioRouter:** Alertas transitórios de transporte não acionam mais o fallback abrupto para o computador; a música continua tocando firme na TV.
+* 📡 **Descoberta Universal de Redes Wi-Fi & Receptores DLNA:**
+  * Varredura SSDP ampliada com broadcast multi-alvo cobrindo `MediaRenderer:1/2`, `AVTransport:1`, `RenderingControl:1`, `rootdevice`, `dial:1` e `ssdp:all`, integrando Smart TVs Samsung Tizen, Sony, LG, Roku, Fire TV e caixas de som Wi-Fi.
+* 🎧 **Detecção Universal de Bluetooth via Drivers Win32:**
+  * Reconhecimento aprofundado por hardware via barramento PnP (`PKEY_Device_EnumeratorName`: `BTHENUM` e `BTHHFENUM`) e chaves do Registro do Windows (`BTHPORT`).
+  * Suporte total a fones e caixas de som de todas as marcas: **Haylou, Hi-Lo, Pro, JBL, Edifier, Sony, fones TWS genéricos** e periféricos Bluetooth.
+* 📦 **Novos Pacotes Oficiais de Instalação Release v0.2.5:**
+  * Instalador NSIS ultra-leve: [`Pulsar_0.2.5_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.5/Pulsar_0.2.5_x64-setup.exe) (~21.3 MB).
+  * Pacote corporativo Windows Installer: `Pulsar_0.2.5_x64_en-US.msi` (~22.8 MB).
+
+---
+
+### `v0.2.4` *(Silenciamento de Janelas de Terminal & Console de Logs)*
+
+* 🩺 **Console de Logs & Diagnóstico Integrado:** Módulo Rust dedicado (`logger.rs`) com persistência em disco (`%APPDATA%/com.pulsar.app/logs/pulsar.log`), buffer circular e modal visual (`LogsModal.svelte`) com busca em tempo real, filtros de severidade e atalho para abrir o arquivo no Explorer.
+* 🪟 **Eliminação Completa de Janelas Pretas:** Chamadas de sistema para o painel de pareamento do Windows foram blindadas com a flag Win32 `CREATE_NO_WINDOW = 0x08000000`.
+* 🔊 **Filtro WASAPI de Alta Fidelidade:** Exibição exclusiva de dispositivos em estado ativo (`DEVICE_STATE_ACTIVE`) e higienização de nomes duplicados Hands-Free/Stereo.
+
+---
+
+### `v0.2.3` *(Correções de Transporte & Reconexão)*
+
+* ⏯️ **Ajustes de Transporte UPnP:** Refinamento no comando play/pause com mecanismo de fallback seek-based e sincronização dos botões da miniatura da barra de tarefas.
+
+---
+
+### `v0.2.2` *(Pulsar Connect: LG TV, Google Home & JBL Bluetooth)*
 
 * 📡 **Controle Total de Smart TVs (LG WebOS & Samsung Tizen):**
   * **Relógio Mestre Defensivo (Local Master Clock):** Timeline resiliente que avança perfeitamente mesmo com latência da TV.
@@ -221,9 +259,10 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 | **Perfis Sociais com Tags (#) e Status em Tempo Real** | ✅ Pronto | Social & Presença |
 | **Estúdio de Recorte 1:1 de Capas de Playlist** | ✅ Pronto | Personalização |
 | **Suporte Nativo a Monitores Verticais / Telas Retrato** | ✅ Pronto | UI / Responsividade |
-| **Pulsar Connect: Smart TVs (LG WebOS & Samsung Tizen)** | ✅ Pronto | Conectividade & Áudio |
+| **Pulsar Connect: Smart TVs & DLNA (Volume Debounced & Auto-Recovery)** | ✅ Pronto | Conectividade & Áudio |
 | **Pulsar Connect: Google Home & Nest (Google Cast V2)** | ✅ Pronto | Conectividade & Áudio |
-| **Pulsar Connect: Speakers JBL & Fones Bluetooth** | ✅ Pronto | Conectividade & Áudio |
+| **Pulsar Connect: Descoberta Universal Bluetooth & Wi-Fi (Win32 PnP)** | ✅ Pronto | Conectividade & Áudio |
+| **Console de Diagnóstico & Logs Integrado (Disco & UI)** | ✅ Pronto | Sistema & Diagnóstico |
 | **Sistema de Atualizações Automáticas (OTA Apple-Like)** | ✅ Pronto | Sistema & Lifecycle |
 | **Equalizador Paramétrico de 10 Bandas com Presets** | ⏳ Em Breve | Qualidade de Som |
 | **Letras Sincronizadas em Tempo Real (Estilo Karaokê)** | ⏳ Em Breve | Experiência Visual |
@@ -238,7 +277,7 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 O Pulsar foi projetado para quem valoriza arquitetura limpa e performance pura:
 
 * **Engine Desktop:** [Tauri v2](https://tauri.app/) (Rust 2021) — binário compilado nativo, seguro e incrivelmente leve.
-* **Pulsar Connect:** Protocolo Google Cast V2 com TLS via mDNS (`224.0.0.251:5353`), SOAP UPnP/DLNA AVTransport v1.0 e Windows CoreAudio API COM (`IMMDeviceEnumerator`).
+* **Pulsar Connect:** Protocolo Google Cast V2 com TLS via mDNS (`224.0.0.251:5353`), SOAP UPnP/DLNA AVTransport v1.0 com retentativa defensiva, proxy local Axum com Auto-Recovery anti-403 e drivers Win32 PnP (`BTHENUM`/`BTHHFENUM`) combinados à Windows CoreAudio API (`IMMDeviceEnumerator`).
 * **Camada de Interface:** [Svelte 5](https://svelte.dev/) com Runas reativas (`$state`, `$derived`, `$effect`).
 * **Design & Estilo:** [Tailwind CSS v4](https://tailwindcss.com/) com paleta calibrada Liquid Glass.
 * **APIs de Dados:** [Spotify Web API](https://developer.spotify.com/documentation/web-api) (Client Credentials) e extração de streaming via [yt-dlp](https://github.com/yt-dlp/yt-dlp).
