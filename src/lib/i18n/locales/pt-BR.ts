@@ -57,7 +57,16 @@ export const ptBR: TranslationDictionary = {
   },
   home: {
     featuredPlaylists: 'Playlists em Destaque',
-    featuredPlaylistsDesc: 'Coleções organizadas para foco e imersão'
+    featuredPlaylistsDesc: 'Coleções organizadas para foco e imersão',
+    pillsAll: 'Tudo',
+    pillsMusic: 'Música',
+    pillsCommunity: 'Comunidade',
+    quickAccess: 'Acesso Rápido',
+    likedSongs: 'Músicas Curtidas',
+    topPlayed: 'Mais Ouvidas por Você',
+    communityTrending: 'Em Alta na Comunidade',
+    communityTrendingDesc: 'Playlists mais ouvidas e seguidas criadas por outros usuários',
+    listenNow: 'Ouvir Agora'
   },
   trackList: {
     colNumber: '#',

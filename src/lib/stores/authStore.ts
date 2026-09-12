@@ -120,6 +120,11 @@ export const authActions = {
           followers_count: followersRes.count || 0,
           following_count: followingRes.count || 0
         });
+
+        // Disparar sincronização e hidratação das playlists/tracks do usuário a partir da nuvem
+        import('../services/syncEngine').then(({ syncEngine }) => {
+          syncEngine.hydrateFromCloud(userId);
+        });
       }
     } catch (err) {
       console.error('[Pulsar Auth] Falha ao processar perfil:', err);

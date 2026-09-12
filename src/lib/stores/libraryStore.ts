@@ -57,11 +57,15 @@ const INITIAL_PLAYLISTS: Playlist[] = [
 export const allTracks = writable<Track[]>(INITIAL_TRACKS);
 export const playlists = writable<Playlist[]>(INITIAL_PLAYLISTS);
 export const favoriteTrackIds = writable<Set<string>>(new Set(['t-1', 't-3']));
-export const activeView = writable<ActiveView>('library');
+export const activeView = writable<ActiveView>('home');
 export const selectedPlaylist = writable<Playlist | null>(null);
 export const selectedPlaylistTracks = writable<Track[]>([]);
 export const recentTracks = writable<Track[]>([]);
 export const searchQuery = writable<string>('');
+
+export const isSidebarCollapsed = writable<boolean>(
+  typeof window !== 'undefined' ? localStorage.getItem('pulsar_sidebar_collapsed') === 'true' : false
+);
 
 export const isAddLinkModalOpen = writable<boolean>(false);
 export const isNewPlaylistModalOpen = writable<boolean>(false);
@@ -164,6 +168,13 @@ export const libraryActions = {
   },
 
   async recordTrackPlayed(trackId: string) {
+    const trk = get(allTracks).find(t => t.id === trackId) || get(recentTracks).find(t => t.id === trackId);
+    if (trk) {
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushHistory(trk);
+      });
+    }
+
     try {
       await safeInvoke('record_track_played', { trackId });
       this.loadRecentTracks();
@@ -204,6 +215,14 @@ export const libraryActions = {
       });
     }
 
+    const isFav = get(favoriteTrackIds).has(trackId);
+    const trk = trackObj || get(allTracks).find(t => t.id === trackId);
+    if (trk) {
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushFavorite(trk.youtube_video_id, isFav);
+      });
+    }
+
     try {
       await safeInvoke('toggle_favorite', { trackId, track: trackObj || null });
     } catch (e) {
@@ -217,22 +236,10 @@ export const libraryActions = {
       const fullPlaylist: Playlist = { ...created, visibility };
       playlists.update(list => [fullPlaylist, ...list]);
 
-      // Sincronizar criação com Supabase se usuário estiver autenticado
-      const prof = get(currentProfile);
-      const supabase = getSupabase();
-      if (prof && !prof.id.startsWith('guest') && supabase) {
-        try {
-          await supabase.from('cloud_playlists').insert({
-            user_id: prof.id,
-            name,
-            description,
-            cover_image_url: fullPlaylist.cover_image,
-            visibility
-          });
-        } catch (err) {
-          console.warn('[Pulsar Cloud] Erro ao sincronizar playlist no Supabase:', err);
-        }
-      }
+      // Sincronizar com Supabase através do syncEngine
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushPlaylist(fullPlaylist);
+      });
 
       return fullPlaylist;
     } catch (e) {
@@ -249,6 +256,11 @@ export const libraryActions = {
         visibility
       };
       playlists.update(list => [fallback, ...list]);
+
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushPlaylist(fallback);
+      });
+
       return fallback;
     }
   },
@@ -285,6 +297,11 @@ export const libraryActions = {
         return curr;
       });
 
+      // Sincronizar atualização com Supabase
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushPlaylist(finalPlaylist);
+      });
+
       return finalPlaylist;
     } catch (e) {
       console.error('[Pulsar DB] Erro ao atualizar playlist no backend, aplicando fallback:', e);
@@ -295,6 +312,14 @@ export const libraryActions = {
       };
       playlists.update(list => list.map(p => p.id === id ? { ...p, ...fallbackUpdated } : p));
       selectedPlaylist.update(curr => curr && curr.id === id ? { ...curr, ...fallbackUpdated } : curr);
+
+      const targetPl = get(playlists).find(p => p.id === id);
+      if (targetPl) {
+        import('../services/syncEngine').then(({ syncEngine }) => {
+          syncEngine.pushPlaylist(targetPl);
+        });
+      }
+
       return fallbackUpdated as Playlist;
     }
   },
@@ -308,7 +333,13 @@ export const libraryActions = {
         }
         return p;
       }));
-      this.loadPlaylistTracks(playlistId);
+      await this.loadPlaylistTracks(playlistId);
+
+      // Sincronizar faixas atualizadas com a nuvem
+      const tracks = get(selectedPlaylistTracks);
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushPlaylistTracks(playlistId, tracks);
+      });
     } catch (e) {
       console.error('[Pulsar DB] Erro ao adicionar faixa à playlist:', e);
     }
@@ -324,6 +355,12 @@ export const libraryActions = {
         }
         return p;
       }));
+
+      // Sincronizar faixas atualizadas com a nuvem
+      const tracks = get(selectedPlaylistTracks);
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushPlaylistTracks(playlistId, tracks);
+      });
     } catch (e) {
       console.error('[Pulsar DB] Erro ao remover faixa da playlist:', e);
     }
@@ -333,6 +370,11 @@ export const libraryActions = {
     playlists.update(list => list.filter(p => p.id !== id));
     activeView.set('library');
     selectedPlaylist.set(null);
+
+    // Sincronizar exclusão com Supabase
+    import('../services/syncEngine').then(({ syncEngine }) => {
+      syncEngine.deletePlaylist(id);
+    });
 
     try {
       await safeInvoke('delete_playlist', { id });
@@ -347,6 +389,11 @@ export const libraryActions = {
       if (exists) return list;
       return [track, ...list];
     });
+
+    // Sincronizar nova faixa com a nuvem
+    import('../services/syncEngine').then(({ syncEngine }) => {
+      syncEngine.pushTrackToLibrary(track);
+    });
   },
 
   addPlaylist(pl: Playlist) {
@@ -355,5 +402,23 @@ export const libraryActions = {
       if (exists) return list;
       return [pl, ...list];
     });
+
+    // Sincronizar nova playlist com a nuvem
+    import('../services/syncEngine').then(({ syncEngine }) => {
+      syncEngine.pushPlaylist(pl);
+    });
+  },
+
+  toggleSidebarCollapse() {
+    isSidebarCollapsed.update(v => {
+      const next = !v;
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('pulsar_sidebar_collapsed', String(next));
+        } catch {}
+      }
+      return next;
+    });
   }
 };
+

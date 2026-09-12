@@ -132,6 +132,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_app_version,
             commands::check_ytdlp,
             commands::check_database,
             commands::resolve_track,
@@ -151,6 +152,9 @@ pub fn run() {
             commands::record_track_played,
             commands::get_recent_tracks,
             commands::update_playlist,
+            commands::upsert_playlist,
+            commands::save_track_direct,
+            commands::set_playlist_tracks,
             commands::toggle_mini_player,
             commands::get_cache_info,
             commands::clear_audio_cache,

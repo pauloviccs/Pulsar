@@ -1,7 +1,7 @@
 import { writable, get } from 'svelte/store';
 import { safeInvoke, safeListen } from '../api/tauri';
 
-export const APP_CURRENT_VERSION = '0.2.2';
+export const APP_CURRENT_VERSION = '0.2.6';
 export const DEFAULT_MANIFEST_URL = 'https://raw.githubusercontent.com/pauloviccs/Pulsar/main/latest.json';
 
 export interface UpdateManifest {
@@ -20,6 +20,16 @@ export interface UpdateProgressPayload {
 }
 
 export const currentVersion = writable<string>(APP_CURRENT_VERSION);
+
+// Consulta a versão real em tempo de execução via backend Rust do Tauri
+if (typeof window !== 'undefined') {
+  safeInvoke<string>('get_app_version').then(ver => {
+    if (ver) {
+      currentVersion.set(ver);
+    }
+  }).catch(() => {});
+}
+
 export const updateManifest = writable<UpdateManifest | null>(null);
 export const isCheckingUpdates = writable<boolean>(false);
 export const updateAvailable = writable<boolean>(false);
@@ -36,12 +46,13 @@ export const updateStatusMessage = writable<string>('');
 export const lastCheckTime = writable<string | null>(null);
 
 /**
- * Compara versões SemVer (ex: "0.2.0" > "0.1.0")
+ * Compara versões SemVer (ex: "0.2.5" > "0.2.2")
  */
-export function isNewerVersion(remoteVersion: string, currentVer: string = APP_CURRENT_VERSION): boolean {
-  if (!remoteVersion || !currentVer) return false;
+export function isNewerVersion(remoteVersion: string, currentVer?: string): boolean {
+  const activeVer = currentVer || get(currentVersion) || APP_CURRENT_VERSION;
+  if (!remoteVersion || !activeVer) return false;
   const r = String(remoteVersion).replace(/^v/i, '').trim().split('.').map(n => parseInt(n, 10) || 0);
-  const c = String(currentVer).replace(/^v/i, '').trim().split('.').map(n => parseInt(n, 10) || 0);
+  const c = String(activeVer).replace(/^v/i, '').trim().split('.').map(n => parseInt(n, 10) || 0);
 
   for (let i = 0; i < Math.max(r.length, c.length); i++) {
     const rPart = r[i] || 0;
@@ -69,7 +80,8 @@ export const updateActions = {
       }
 
       lastCheckTime.set(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      const hasUpdate = isNewerVersion(manifest.version, APP_CURRENT_VERSION);
+      const activeCurrentVer = get(currentVersion) || APP_CURRENT_VERSION;
+      const hasUpdate = isNewerVersion(manifest.version, activeCurrentVer);
 
       if (hasUpdate) {
         updateManifest.set(manifest);
@@ -85,6 +97,8 @@ export const updateActions = {
         return true;
       } else {
         updateAvailable.set(false);
+        isUpdateToastOpen.set(false);
+        isUpdateModalOpen.set(false);
         updateManifest.set(manifest);
         if (manual) {
           // Feedback opcional para checagem manual onde já está atualizado

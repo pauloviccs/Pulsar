@@ -33,6 +33,9 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>,
   }
 
   // Mocks amigáveis para manter o fluxo interativo no navegador
+  if (cmd === 'get_app_version') {
+    return '0.2.5' as unknown as T;
+  }
   if (cmd === 'get_library_tracks' || cmd === 'get_playlist_tracks' || cmd === 'get_recent_tracks' || cmd === 'get_favorite_tracks') {
     return ([] as unknown) as T;
   }
@@ -103,6 +106,18 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>,
       track_count: 0,
       total_duration_seconds: 0
     } as unknown) as T;
+  }
+  if (cmd === 'upsert_playlist') {
+    return (args?.playlist || {}) as T;
+  }
+  if (cmd === 'save_track_direct') {
+    return (args?.track || {}) as T;
+  }
+  if (cmd === 'set_playlist_tracks') {
+    return (null as unknown) as T;
+  }
+  if (cmd === 'get_app_version') {
+    return ('0.2.6' as unknown) as T;
   }
   if (cmd === 'toggle_mini_player') {
     return (null as unknown) as T;

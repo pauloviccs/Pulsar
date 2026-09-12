@@ -9,7 +9,9 @@
     ChevronDown, 
     Check, 
     Copy,
-    Circle
+    Circle,
+    Cloud,
+    RefreshCw
   } from '@lucide/svelte';
   import { 
     currentProfile, 
@@ -19,6 +21,7 @@
   } from '../stores/authStore';
   import { isSocialDrawerOpen, socialState } from '../stores/socialStore';
   import { libraryActions } from '../stores/libraryStore';
+  import { cloudSyncState, syncEngine } from '../services/syncEngine';
   import { t } from '../i18n';
   import type { PresenceStatus } from '../types';
 
@@ -122,6 +125,13 @@
         #{$currentProfile.tag}
       </span>
 
+      <!-- Indicador sutil de Sincronização em Nuvem -->
+      {#if $cloudSyncState === 'syncing'}
+        <RefreshCw class="w-3 h-3 text-[#DBD56E] animate-spin shrink-0" title="Sincronizando biblioteca com a nuvem..." />
+      {:else if $cloudSyncState === 'synced'}
+        <Cloud class="w-3 h-3 text-[#66D7D1] shrink-0" title="Nuvem sincronizada" />
+      {/if}
+
       <!-- Chevron Indicativo -->
       <ChevronDown 
         class="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-transform duration-200 {isOpen ? 'rotate-180' : ''}" 
@@ -177,6 +187,41 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Linha de Sincronização em Nuvem (Supabase Sync Bridge) -->
+        <div class="flex items-center justify-between p-2 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+          <div class="flex items-center gap-2">
+            <Cloud class="w-3.5 h-3.5 {$cloudSyncState === 'syncing' ? 'text-[#DBD56E] animate-pulse' : $cloudSyncState === 'synced' ? 'text-[#66D7D1]' : 'text-white/40'}" />
+            <div class="flex flex-col">
+              <span class="text-[10px] uppercase font-bold text-white/40">Nuvem Supabase</span>
+              <span class="text-[10px] text-white/80 font-medium">
+                {#if $cloudSyncState === 'syncing'}
+                  Sincronizando...
+                {:else if $cloudSyncState === 'synced'}
+                  Playlists & Faixas Salvas
+                {:else if $cloudSyncState === 'error'}
+                  Erro de Conexão
+                {:else}
+                  Conectado
+                {/if}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick={() => {
+              if ($currentProfile?.id) {
+                syncEngine.hydrateFromCloud($currentProfile.id);
+              }
+            }}
+            disabled={$cloudSyncState === 'syncing'}
+            class="px-2 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-[10px] font-bold text-white/70 hover:text-white transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+            title="Sincronizar agora"
+          >
+            <RefreshCw class="w-2.5 h-2.5 {$cloudSyncState === 'syncing' ? 'animate-spin' : ''}" />
+            <span>Sync</span>
+          </button>
         </div>
 
         <!-- Seletor Rápido de Presença (Online, Ausente, Ocupado, Invisível) -->

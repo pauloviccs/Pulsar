@@ -248,3 +248,136 @@ DO $$ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
+
+-- 8. FAIXAS DA BIBLIOTECA DO USUÁRIO (CLOUD LIBRARY TRACKS)
+CREATE TABLE IF NOT EXISTS public.user_library_tracks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    youtube_video_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    artist_guess TEXT DEFAULT '',
+    channel_name TEXT DEFAULT '',
+    duration_seconds INTEGER NOT NULL DEFAULT 0,
+    thumbnail_url TEXT DEFAULT '',
+    source_platform TEXT DEFAULT 'youtube',
+    added_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT unique_user_track UNIQUE (user_id, youtube_video_id)
+);
+
+ALTER TABLE public.user_library_tracks ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Usuários gerenciam suas próprias faixas da biblioteca" ON public.user_library_tracks;
+    CREATE POLICY "Usuários gerenciam suas próprias faixas da biblioteca"
+        ON public.user_library_tracks FOR ALL
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
+END $$;
+
+-- 9. FAVORITOS / MÚSICAS CURTIDAS DO USUÁRIO
+CREATE TABLE IF NOT EXISTS public.user_favorites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    youtube_video_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT unique_user_favorite UNIQUE (user_id, youtube_video_id)
+);
+
+ALTER TABLE public.user_favorites ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Usuários gerenciam seus próprios favoritos" ON public.user_favorites;
+    CREATE POLICY "Usuários gerenciam seus próprios favoritos"
+        ON public.user_favorites FOR ALL
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
+END $$;
+
+-- 10. HISTÓRICO DE REPRODUÇÃO DO USUÁRIO
+CREATE TABLE IF NOT EXISTS public.user_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    youtube_video_id TEXT NOT NULL,
+    played_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT unique_user_recent UNIQUE (user_id, youtube_video_id)
+);
+
+ALTER TABLE public.user_history ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Usuários gerenciam seu próprio histórico de reprodução" ON public.user_history;
+    CREATE POLICY "Usuários gerenciam seu próprio histórico de reprodução"
+        ON public.user_history FOR ALL
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
+END $$;
+
+-- 11. PREFERÊNCIAS E CONFIGURAÇÕES DO USUÁRIO
+CREATE TABLE IF NOT EXISTS public.user_settings (
+    user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+    volume REAL DEFAULT 1.0,
+    shuffle BOOLEAN DEFAULT false,
+    repeat_mode TEXT DEFAULT 'none',
+    locale TEXT DEFAULT 'pt-BR',
+    video_visible BOOLEAN DEFAULT false,
+    spotify_connected BOOLEAN DEFAULT false,
+    lastfm_username TEXT DEFAULT '',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Usuários gerenciam suas próprias configurações" ON public.user_settings;
+    CREATE POLICY "Usuários gerenciam suas próprias configurações"
+        ON public.user_settings FOR ALL
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
+END $$;
+
+-- 12. MÉTRICAS DE HOME DASHBOARD & COMUNIDADE
+ALTER TABLE public.cloud_playlists 
+    ADD COLUMN IF NOT EXISTS play_count INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS likes_count INTEGER DEFAULT 0;
+
+ALTER TABLE public.user_library_tracks 
+    ADD COLUMN IF NOT EXISTS play_count INTEGER DEFAULT 1;
+
+CREATE OR REPLACE FUNCTION public.get_community_trending_playlists(p_limit INT DEFAULT 12)
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    description TEXT,
+    cover_image_url TEXT,
+    track_count INT,
+    play_count INT,
+    likes_count INT,
+    created_at TIMESTAMPTZ,
+    owner_id UUID,
+    owner_username TEXT,
+    owner_display_name TEXT,
+    owner_avatar_url TEXT
+)
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+    SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.cover_image_url,
+        p.track_count,
+        COALESCE(p.play_count, 0) as play_count,
+        COALESCE(p.likes_count, 0) as likes_count,
+        p.created_at,
+        pr.id as owner_id,
+        pr.username as owner_username,
+        pr.display_name as owner_display_name,
+        pr.avatar_url as owner_avatar_url
+    FROM public.cloud_playlists p
+    LEFT JOIN public.profiles pr ON p.user_id = pr.id
+    WHERE p.visibility = 'public'
+    ORDER BY COALESCE(p.play_count, 0) DESC, COALESCE(p.likes_count, 0) DESC, p.created_at DESC
+    LIMIT p_limit;
+$$;
+

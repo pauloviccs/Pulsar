@@ -1,8 +1,8 @@
 {
-  "version": "0.2.5",
-  "name": "Pulsar Connect Pro v0.2.5",
-  "url": "https://www.dropbox.com/scl/fi/2828btnjowr9273lh9wd5/Pulsar_0.2.5_x64-setup.exe?rlkey=ecjmm6v4x8gikbqz4grq80hlk&st=jl4p4cvq&dl=1",
-  "notes": "### Novidades do Pulsar v0.2.5!\n\n- **Suporte Total a Google Home & Nest:** Descoberta instantânea via mDNS e streaming de altíssima fidelidade com o protocolo Google Cast nativo.\n- **Controle Preciso de Smart TVs (LG WebOS & Samsung Tizen):** Correção completa da máquina de estados UPnP com relógio mestre local defensivo, Smart Pause e avanço automático da fila de reprodução.\n- **Speakers JBL & Bluetooth Direto:** Detecção de caixas de som da JBL e fones Bluetooth através dos Audio Endpoints do Windows, com nomes reais e status de pareamento.",
-  "pub_date": "2026-09-11T16:00:00Z",
+  "version": "0.2.6",
+  "name": "Pulsar Connect Pro v0.2.6",
+  "url": "https://www.dropbox.com/scl/fi/2828btnjowr9273lh9wd5/Pulsar_0.2.6_x64-setup.exe?rlkey=ecjmm6v4x8gikbqz4grq80hlk&st=jl4p4cvq&dl=1",
+  "notes": "### Novidades do Pulsar v0.2.6!\n\n- **Nova Central Home Dashboard:** Tela inicial completa com Hero Banner, pílulas de filtro (Tudo, Música, Comunidade), Grid Rápido 2x4 com play em 1 clique e trilhos horizontais.\n- **Sidebar Retrátil Liquid Glass:** Modo compacto (72px) com mini-capas quadradas de playlists e tooltips, liberando espaço para o dashboard.\n- **Ponte Supabase Cloud Sync:** Playlists, faixas, favoritos, histórico e configurações sincronizados em nuvem entre múltiplos computadores.",
+  "pub_date": "2026-09-11T21:45:00Z",
   "mandatory": false
 }

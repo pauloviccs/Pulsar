@@ -57,7 +57,16 @@ export const en: TranslationDictionary = {
   },
   home: {
     featuredPlaylists: 'Featured Playlists',
-    featuredPlaylistsDesc: 'Curated collections for focus and immersion'
+    featuredPlaylistsDesc: 'Curated collections for focus and immersion',
+    pillsAll: 'All',
+    pillsMusic: 'Music',
+    pillsCommunity: 'Community',
+    quickAccess: 'Quick Access',
+    likedSongs: 'Liked Songs',
+    topPlayed: 'Your Top Mixes',
+    communityTrending: 'Trending in Community',
+    communityTrendingDesc: 'Top played and followed playlists from other creators',
+    listenNow: 'Listen Now'
   },
   trackList: {
     colNumber: '#',

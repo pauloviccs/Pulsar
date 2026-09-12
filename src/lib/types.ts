@@ -124,5 +124,42 @@ export interface ChatMessage {
   created_at: string;
 }
 
-export type ActiveView = 'library' | 'recent' | 'playlists' | 'playlist-detail' | 'favorites' | 'profile' | 'social-search' | 'settings';
+export type ActiveView = 'home' | 'library' | 'recent' | 'playlists' | 'playlist-detail' | 'favorites' | 'profile' | 'social-search' | 'settings';
+
+export interface UserSettings {
+  volume: number;
+  shuffle: boolean;
+  repeat_mode: RepeatMode;
+  locale: string;
+  video_visible: boolean;
+  spotify_connected?: boolean;
+  lastfm_username?: string;
+}
+
+export type CloudSyncState = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
+
+export interface CommunityTrendingPlaylist {
+  id: string;
+  name: string;
+  description: string;
+  cover_image_url: string;
+  track_count: number;
+  play_count: number;
+  likes_count: number;
+  created_at: string;
+  owner_id?: string;
+  owner_username?: string;
+  owner_display_name?: string;
+  owner_avatar_url?: string;
+}
+
+export interface QuickAccessItem {
+  id: string;
+  type: 'liked' | 'playlist' | 'track';
+  title: string;
+  subtitle?: string;
+  cover_image: string;
+  track_count?: number;
+  data: any;
+}
 

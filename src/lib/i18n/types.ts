@@ -65,6 +65,15 @@ export interface TranslationDictionary {
   home: {
     featuredPlaylists: string;
     featuredPlaylistsDesc: string;
+    pillsAll?: string;
+    pillsMusic?: string;
+    pillsCommunity?: string;
+    quickAccess?: string;
+    likedSongs?: string;
+    topPlayed?: string;
+    communityTrending?: string;
+    communityTrendingDesc?: string;
+    listenNow?: string;
   };
   trackList: {
     colNumber: string;

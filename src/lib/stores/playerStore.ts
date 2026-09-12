@@ -155,6 +155,9 @@ export const playerActions = {
     const clamped = Math.max(0, Math.min(1, vol));
     volume.set(clamped);
     if (clamped > 0) isMuted.set(false);
+    import('../services/syncEngine').then(({ syncEngine }) => {
+      syncEngine.pushSettingsDebounced({ volume: clamped });
+    });
   },
 
   toggleMute() {
@@ -162,14 +165,26 @@ export const playerActions = {
   },
 
   toggleShuffle() {
-    shuffle.update(s => !s);
+    shuffle.update(s => {
+      const next = !s;
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushSettingsDebounced({ shuffle: next });
+      });
+      return next;
+    });
   },
 
   cycleRepeat() {
     repeatMode.update(r => {
-      if (r === 'none') return 'all';
-      if (r === 'all') return 'one';
-      return 'none';
+      let next: RepeatMode = 'none';
+      if (r === 'none') next = 'all';
+      else if (r === 'all') next = 'one';
+      else next = 'none';
+
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushSettingsDebounced({ repeat_mode: next });
+      });
+      return next;
     });
   },
 
@@ -182,7 +197,13 @@ export const playerActions = {
   },
 
   toggleVideo() {
-    isVideoVisible.update(v => !v);
+    isVideoVisible.update(v => {
+      const next = !v;
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushSettingsDebounced({ video_visible: next });
+      });
+      return next;
+    });
   },
 
   async toggleMiniPlayer(enable?: boolean, videoMode?: boolean) {

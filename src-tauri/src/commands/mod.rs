@@ -11,6 +11,11 @@ pub async fn check_ytdlp() -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn get_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+#[tauri::command]
 pub fn check_database(db: State<'_, Database>) -> Result<String, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let count: i64 = conn
@@ -134,6 +139,21 @@ pub fn get_favorites(db: State<'_, Database>) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub fn get_favorite_tracks(db: State<'_, Database>) -> Result<Vec<TrackDTO>, String> {
     db.get_favorite_tracks()
+}
+
+#[tauri::command]
+pub fn upsert_playlist(playlist: PlaylistDTO, db: State<'_, Database>) -> Result<PlaylistDTO, String> {
+    db.upsert_playlist(&playlist)
+}
+
+#[tauri::command]
+pub fn save_track_direct(track: TrackDTO, db: State<'_, Database>) -> Result<TrackDTO, String> {
+    db.save_track_dto(&track)
+}
+
+#[tauri::command]
+pub fn set_playlist_tracks(playlist_id: String, track_ids: Vec<String>, db: State<'_, Database>) -> Result<(), String> {
+    db.set_playlist_tracks(&playlist_id, &track_ids)
 }
 
 #[tauri::command]

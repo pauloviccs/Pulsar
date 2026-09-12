@@ -19,6 +19,7 @@
   } from '@lucide/svelte';
 
   import Sidebar from '$lib/components/Sidebar.svelte';
+  import HomeDashboard from '$lib/components/HomeDashboard.svelte';
   import TopProfileButton from '$lib/components/TopProfileButton.svelte';
   import BottomPlayerBar from '$lib/components/BottomPlayerBar.svelte';
   import TrackList from '$lib/components/TrackList.svelte';
@@ -213,7 +214,39 @@
 
         <!-- View Area Principal com padding responsivo -->
         <div class="p-4 sm:p-6 md:p-8 flex flex-col gap-6 sm:gap-8">
-          {#if $activeView === 'library' && !$selectedPlaylist}
+          {#if $activeView === 'home' && !$selectedPlaylist}
+            {#if searchInput}
+              <!-- Resultados da busca quando na Home -->
+              <section class="flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-base font-bold text-[#F2EFEA]">
+                      {$t('search.resultsFor', { query: searchInput })}
+                    </h3>
+                    <p class="text-xs text-[#F2EFEA]/40">{$t('search.tracksAvailable', { count: $filteredTracks.length })}</p>
+                  </div>
+
+                  {#if $filteredTracks.length > 0}
+                    <button
+                      onclick={() => playAllPlaylist($filteredTracks)}
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl liquid-glass hover:bg-white/[0.1] text-xs font-medium transition cursor-pointer"
+                    >
+                      <Play class="w-3.5 h-3.5 fill-current text-[#66D7D1]" />
+                      <span>{$t('search.playAll')}</span>
+                    </button>
+                  {/if}
+                </div>
+
+                <div class="liquid-glass rounded-3xl p-3 border border-white/[0.1]">
+                  <TrackList tracks={$filteredTracks} />
+                </div>
+              </section>
+            {:else}
+              <!-- Central Principal / Home Dashboard -->
+              <HomeDashboard />
+            {/if}
+
+          {:else if $activeView === 'library' && !$selectedPlaylist}
             <!-- Modal Slider / Carrossel de Destaques e Mais Ouvidas -->
             {#if !searchInput}
               <HeroSlider />

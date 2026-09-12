@@ -11,7 +11,7 @@
 
   <p align="center">
     <a href="https://github.com/pauloviccs/Pulsar/releases">
-      <img src="https://img.shields.io/badge/Versão-v0.2.5-FC7753?style=for-the-badge&logo=windows&logoColor=white" alt="Versão v0.2.5" />
+      <img src="https://img.shields.io/badge/Versão-v0.2.6-FC7753?style=for-the-badge&logo=windows&logoColor=white" alt="Versão v0.2.6" />
     </a>
     <img src="https://img.shields.io/badge/Pulsar%20Connect-Cast%20%7C%20UPnP%20%7C%20BT-66D7D1?style=for-the-badge&logo=airplayvideo&logoColor=09090D" alt="Pulsar Connect" />
     <img src="https://img.shields.io/badge/Spotify-Web%20API-1DB954?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify Web API" />
@@ -147,13 +147,35 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 > [!IMPORTANT]
 > **Toda nova versão oficial do instalador (.exe) é publicada diretamente na aba de [Releases do GitHub](https://github.com/pauloviccs/Pulsar/releases).**
 >
-> Basta acessar a página de lançamentos, baixar o executável [`Pulsar_0.2.5_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.5/Pulsar_0.2.5_x64-setup.exe), instalar no seu Windows em menos de 10 segundos e começar a ouvir!
+> Basta acessar a página de lançamentos, baixar o executável [`Pulsar_0.2.6_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.6/Pulsar_0.2.6_x64-setup.exe), instalar no seu Windows em menos de 10 segundos e começar a ouvir!
 
 ---
 
 ## 📝 Patch Notes: O Que Há de Novo
 
-### 🌟 Versão Atual: `v0.2.5` *(Estabilidade Total de Smart TVs & Descoberta Universal)*
+### 🌟 Versão Atual: `v0.2.6` *(Central Home Dashboard & Sidebar Retrátil Liquid Glass)*
+
+* 🏠 **Nova Central Home Dashboard (Página Inicial):**
+  * **Hero Banner Monumental:** Capa em alta definição com iluminação difusa reativa, badge dinâmica (*PLAYLIST EM ALTA / DESTAQUE*) e botão primário de ação rápida **"Ouvir Agora"** com 1 clique + suporte ao modo aleatório (*Shuffle*).
+  * **Pílulas de Filtro Instantâneas:** Sub-header ágil com `Tudo`, `Música` e `Comunidade`, adaptando o feed sem recarregar a tela.
+  * **Grid Rápido 2x4 (Quick Access):** 8 cartões retangulares no topo (com o cartão exclusivo *"Músicas Curtidas"* em gradiente violeta/ciano e suas playlists mais ouvidas) com botão de Play circular verde-esmeralda/ciano flutuante no hover.
+  * **Trilhos Horizontais de Descoberta:** Seções em carrossel para *"Mais Ouvidas por Você"* e *"Em Alta na Comunidade"* (com dados de criadores e plays do Supabase).
+* 🗂️ **Sidebar Retrátil Liquid Glass (Fim da Rigidez da Barra Lateral):**
+  * **Botão `[|]` de Alternância:** Alterne com 1 clique entre o **Modo Expandido (260px)** e o **Modo Compacto (72px)**.
+  * **Modo Compacto:** Transforma a barra lateral em uma elegante coluna vertical com as **mini-capas quadradas** das suas playlists com tooltips flutuantes (inspirado no Spotify), liberando quase 200 pixels para o dashboard respirar em qualquer monitor.
+  * **Novo Atalho "Início":** Navegue instantaneamente para a Central Home a partir de qualquer visualização.
+* ☁️ **Sincronização em Nuvem Supabase Completa (Multi-Dispositivo):**
+  * Sincronização em tempo real de playlists, faixas salvas na biblioteca, favoritos, histórico recente e configurações de áudio/player via `syncEngine.ts`.
+  * Novas métricas públicas de `play_count` e `likes_count` com a RPC `get_community_trending_playlists`.
+* 🔄 **Correção da Checagem de Versão Dinâmica:**
+  * O motor Rust agora consulta a versão real do executável em runtime via comando `get_app_version`, eliminando o bug que travava o aplicativo em `v0.2.2` e disparava toasts indevidos.
+* 📦 **Novos Pacotes Oficiais de Instalação Release v0.2.6:**
+  * Instalador NSIS ultra-leve: [`Pulsar_0.2.6_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.6/Pulsar_0.2.6_x64-setup.exe) (~21.4 MB).
+  * Pacote corporativo Windows Installer: `Pulsar_0.2.6_x64_en-US.msi` (~22.9 MB).
+
+---
+
+### `v0.2.5` *(Estabilidade Total de Smart TVs & Descoberta Universal)*
 
 * 📺 **Blindagem & Estabilização de Conexões com Smart TVs (LG WebOS, Samsung, Sony Bravia):**
   * **Debounce de Volume (220ms):** Arrastar o controle deslizante de volume na barra do player agora amortece requisições em trânsito, acabando com a sobrecarga de chamadas SOAP que derrubava receptores de Smart TVs.

@@ -414,6 +414,79 @@ impl Database {
         Ok(pl)
     }
 
+    /// Insere ou atualiza uma playlist vinda da nuvem ou local
+    pub fn upsert_playlist(&self, pl: &PlaylistDTO) -> Result<PlaylistDTO, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO playlists (id, name, description, cover_image_path, created_at, is_imported_youtube_playlist)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                description = excluded.description,
+                cover_image_path = excluded.cover_image_path,
+                is_imported_youtube_playlist = excluded.is_imported_youtube_playlist",
+            params![
+                pl.id,
+                pl.name,
+                pl.description,
+                pl.cover_image,
+                pl.created_at,
+                pl.is_imported_youtube_playlist
+            ],
+        ).map_err(|e| e.to_string())?;
+        Ok(pl.clone())
+    }
+
+    /// Salva diretamente um TrackDTO vindo da nuvem (ou importador)
+    pub fn save_track_dto(&self, track: &TrackDTO) -> Result<TrackDTO, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO tracks (id, youtube_video_id, title, artist_guess, channel_name, duration_seconds, thumbnail_path)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(youtube_video_id) DO UPDATE SET
+                title = excluded.title,
+                artist_guess = excluded.artist_guess,
+                channel_name = excluded.channel_name,
+                duration_seconds = excluded.duration_seconds,
+                thumbnail_path = excluded.thumbnail_path",
+            params![
+                track.id,
+                track.youtube_video_id,
+                track.title,
+                track.artist_guess,
+                track.channel_name,
+                track.duration_seconds,
+                track.thumbnail_url
+            ],
+        ).map_err(|e| e.to_string())?;
+
+        let actual_id: String = conn.query_row(
+            "SELECT id FROM tracks WHERE youtube_video_id = ?1",
+            params![track.youtube_video_id],
+            |row| row.get(0),
+        ).unwrap_or_else(|_| track.id.clone());
+
+        let mut res = track.clone();
+        res.id = actual_id;
+        Ok(res)
+    }
+
+    /// Substitui todas as faixas de uma playlist com ordenação
+    pub fn set_playlist_tracks(&self, playlist_id: &str, track_ids: &[String]) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM playlist_tracks WHERE playlist_id = ?1", params![playlist_id])
+            .map_err(|e| e.to_string())?;
+
+        let mut stmt = conn.prepare(
+            "INSERT OR REPLACE INTO playlist_tracks (playlist_id, track_id, position) VALUES (?1, ?2, ?3)"
+        ).map_err(|e| e.to_string())?;
+
+        for (i, tid) in track_ids.iter().enumerate() {
+            let _ = stmt.execute(params![playlist_id, tid, i as i64]);
+        }
+        Ok(())
+    }
+
     /// Alterna estado de favorito de uma faixa garantindo integridade
     pub fn toggle_favorite(&self, track_id: &str, track: Option<&TrackDTO>) -> Result<bool, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
