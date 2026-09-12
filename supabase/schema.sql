@@ -381,3 +381,17 @@ AS $$
     LIMIT p_limit;
 $$;
 
+-- 13. RPC PARA INCREMENTO ATÔMICO DE REPRODUÇÃO DE PLAYLIST
+CREATE OR REPLACE FUNCTION public.increment_playlist_play(playlist_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    UPDATE public.cloud_playlists
+    SET play_count = COALESCE(play_count, 0) + 1
+    WHERE id = playlist_id;
+END;
+$$;
+
+
