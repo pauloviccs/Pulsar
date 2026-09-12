@@ -1,5 +1,5 @@
 {
-  "version": "0.2.6-b",
+  "version": "0.2.6.1",
   "name": "Pulsar Connect Pro v0.2.6.b",
   "url": "https://www.dropbox.com/scl/fi/vke566zu1f7ebgldc4llm/Pulsar_0.2.6-b_x64-setup.exe?rlkey=q9l30oi5brhegglrl0mj9ebrn&st=mzvp20sq&dl=1",
   "notes": "### Novidades do Pulsar v0.2.6.b!\n\n- **Sincronização Nuvem Blindada no Supabase:** Normalização de identificadores para UUID v4 padrão nas tabelas `cloud_playlists`, `cloud_playlist_tracks` e `user_library_tracks`.\n- **Sincronização Total de Playlists, Álbuns e Faixas:** Todas as listas de reprodução e faixas salvas pelo usuário agora sobem e descem em tempo real no Supabase.\n- **Playlists da Comunidade 100% Interativas:** Playlists públicas em alta no Supabase carregam faixas da nuvem e tocam em 1 clique, com contagem de reproduções em tempo real.\n- **Starter Seed & Fresh Install Resiliente:** Eliminação definitiva de erros de play silencioso em instalações novas com faixas iniciais e fallback transparente para nuvem.",
