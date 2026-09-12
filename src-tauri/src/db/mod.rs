@@ -6,17 +6,28 @@ use std::sync::Mutex;
 
 use crate::youtube::TrackMetadata;
 
+fn default_volume() -> f64 {
+    1.0
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrackDTO {
     pub id: String,
     pub youtube_video_id: String,
     pub title: String,
+    #[serde(default)]
     pub artist_guess: String,
+    #[serde(default)]
     pub channel_name: String,
+    #[serde(default)]
     pub duration_seconds: i64,
+    #[serde(default)]
     pub thumbnail_url: String,
+    #[serde(default)]
     pub audio_stream_cached: bool,
+    #[serde(default)]
     pub added_at: String,
+    #[serde(default)]
     pub stream_url: String,
 }
 
@@ -24,22 +35,35 @@ pub struct TrackDTO {
 pub struct PlaylistDTO {
     pub id: String,
     pub name: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
     pub cover_image: String,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub is_imported_youtube_playlist: bool,
+    #[serde(default)]
     pub track_count: i64,
+    #[serde(default)]
     pub total_duration_seconds: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlaybackStateDTO {
+    #[serde(default)]
     pub current_track_id: Option<String>,
+    #[serde(default)]
     pub current_playlist_id: Option<String>,
+    #[serde(default)]
     pub position_seconds: f64,
+    #[serde(default = "default_volume")]
     pub volume: f64,
+    #[serde(default)]
     pub shuffle: bool,
+    #[serde(default)]
     pub repeat_mode: String,
+    #[serde(default)]
     pub video_visible: bool,
 }
 
@@ -138,6 +162,54 @@ impl Database {
                 value TEXT NOT NULL
             );"
         ).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+
+        // Migração para converter IDs de playlists legados ("pl-UUID") para UUID canônico (36 caracteres)
+        let _ = conn.execute("PRAGMA foreign_keys = OFF;", []);
+        let _ = conn.execute(
+            "UPDATE playlists SET id = SUBSTR(id, 4) WHERE id LIKE 'pl-%' AND length(id) = 39;",
+            [],
+        );
+        let _ = conn.execute(
+            "UPDATE playlist_tracks SET playlist_id = SUBSTR(playlist_id, 4) WHERE playlist_id LIKE 'pl-%' AND length(playlist_id) = 39;",
+            [],
+        );
+        let _ = conn.execute("PRAGMA foreign_keys = ON;", []);
+
+        // Seed inicial da playlist padrão com tracks reais caso o banco SQLite esteja vazio (instalação nova)
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM playlists", [], |row| row.get(0)).unwrap_or(0);
+        if count == 0 {
+            let default_pl_id = "a0000000-0000-4000-8000-000000000001";
+            let default_cover = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80";
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO playlists (id, name, description, cover_image_path, is_imported_youtube_playlist)
+                 VALUES (?1, ?2, ?3, ?4, 1)",
+                params![
+                    default_pl_id,
+                    "Vibe Coding & Focus",
+                    "Batidas imersivas e lo-fi para programar no fluxo contínuo sem anúncios.",
+                    default_cover
+                ],
+            );
+
+            let tracks_to_seed = [
+                ("b0000000-0000-4000-8000-000000000001", "jfKfPfyJRdk", "Lofi Hip Hop Radio - Beats to Relax/Study to", "Lofi Girl", "Lofi Girl", 245, "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80"),
+                ("b0000000-0000-4000-8000-000000000002", "5qap5aO4i9A", "Midnight City (Synthwave Drive)", "Neon Sunset", "RetroWaves FM", 284, "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&auto=format&fit=crop&q=80"),
+                ("b0000000-0000-4000-8000-000000000003", "DWcJFNfaw9C", "Deep Focus Ambient Sessions", "Aura Sound", "Mind & Code", 360, "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80"),
+            ];
+
+            for (pos, (t_id, v_id, title, artist, ch, dur, thumb)) in tracks_to_seed.iter().enumerate() {
+                let _ = conn.execute(
+                    "INSERT OR IGNORE INTO tracks (id, youtube_video_id, title, artist_guess, channel_name, duration_seconds, thumbnail_path)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    params![t_id, v_id, title, artist, ch, dur, thumb],
+                );
+                let _ = conn.execute(
+                    "INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position)
+                     VALUES (?1, ?2, ?3)",
+                    params![default_pl_id, t_id, pos as i64],
+                );
+            }
+        }
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -336,7 +408,7 @@ impl Database {
     /// Cria uma nova playlist
     pub fn create_playlist(&self, name: &str, description: &str) -> Result<PlaylistDTO, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        let id = format!("pl-{}", uuid::Uuid::new_v4());
+        let id = uuid::Uuid::new_v4().to_string();
         let default_cover = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
 
         conn.execute(
@@ -584,6 +656,24 @@ impl Database {
     /// Salva o estado de reprodução atual (Singleton)
     pub fn save_playback_state(&self, state: &PlaybackStateDTO) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+
+        // Se current_track_id foi passado, verificar se a faixa realmente existe em tracks local
+        let safe_track_id = match &state.current_track_id {
+            Some(tid) if !tid.is_empty() => {
+                let exists: bool = conn.query_row(
+                    "SELECT 1 FROM tracks WHERE id = ?1",
+                    params![tid],
+                    |_| Ok(true)
+                ).unwrap_or(false);
+                if exists {
+                    Some(tid.clone())
+                } else {
+                    None
+                }
+            },
+            _ => None,
+        };
+
         conn.execute(
             "UPDATE playback_state SET
                 current_track_id = ?1,
@@ -595,7 +685,7 @@ impl Database {
                 video_visible = ?7
              WHERE singleton_id = 1",
             params![
-                state.current_track_id,
+                safe_track_id,
                 state.current_playlist_id,
                 state.position_seconds,
                 state.volume,

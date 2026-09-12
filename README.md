@@ -2,8 +2,9 @@
 
   <img src="assets/pulsar-logo.png" width="180" alt="Pulsar Logo" style="border-radius: 36px; box-shadow: 0 20px 50px rgba(252, 119, 83, 0.3);" />
 
-  # Pulsar
-  ### *A Nova Dimensão do Streaming de Música no Seu Desktop.*
+# Pulsar
+
+### *A Nova Dimensão do Streaming de Música no Seu Desktop.*
 
   <p align="center">
     <strong>Ultra-leve. Sem anúncios. Estética Apple Liquid Glass forjada em Rust e Svelte 5.</strong>
@@ -51,7 +52,9 @@ Se você ama música no computador, provavelmente já passou por isso:
 ## ✨ Superpoderes do Aplicativo
 
 ### 🟢 Importação Universal: Spotify, YouTube & YouTube Music
+
 Migre sua biblioteca em segundos sem perder nenhuma das suas faixas favoritas:
+
 * **Suporte Completo a Links:** Cole links diretos de faixas avulsas, álbuns e **playlists inteiras** do Spotify (`open.spotify.com`), YouTube padrão e YouTube Music (`music.youtube.com`).
 * **Casamento Acústico Inteligente por Duração:** O motor em Rust se conecta à API oficial do Spotify para extrair os metadados ricos (capas em HD, multi-artistas, ISRC e duração exata em milissegundos). Em seguida, busca o áudio correspondente no YouTube via `yt-dlp` e calcula um índice de confiança acústica (`HIGH`, `MEDIUM`, `LOW`), garantindo a reprodução exata da versão correta da faixa sem anúncios.
 * **Botões Rápidos Temáticos:** Identificação visual imediata tanto na barra lateral quanto no topo da tela inicial:
@@ -62,7 +65,9 @@ Migre sua biblioteca em segundos sem perder nenhuma das suas faixas favoritas:
 ---
 
 ### 📡 Pulsar Connect: Transmissão Sem Fio Multi-Dispositivo & Universal
+
 Leve sua música para qualquer cômodo da sua casa ou escritório com uma central de transmissão unificada inspirada no ecossistema Apple AirPlay:
+
 * 📺 **Smart TVs & Receptores DLNA/UPnP Universais (LG WebOS, Samsung Tizen, Sony Bravia, Roku, Fire TV):**
   * Transmissão direta sem cabos através da rede Wi-Fi local escaneando múltiplos alvos SSDP (`MediaRenderer:1/2`, `AVTransport:1`, `RenderingControl:1`, `upnp:rootdevice`, `dial:1`, `ssdp:all`).
   * **Controle de Volume com Debounce Inteligente (220ms):** Arraste o slider de volume livremente a 60fps sem sobrecarregar o microservidor HTTP da TV; a comunicação SOAP é consolidada e imune a travamentos.
@@ -87,7 +92,9 @@ Leve sua música para qualquer cômodo da sua casa ou escritório com uma centra
 ---
 
 ### 🔄 Sistema de Atualização Automática Elegante (OTA Apple-Like)
+
 Mantenha seu Pulsar sempre na última versão sem dor de cabeça:
+
 * **Detecção Silenciosa e Segura:** O app verifica releases através de um manifesto descentralizado `latest.json`, aceitando links diretos de qualquer servidor de distribuição rápida.
 * **Modal de Atualização Seamless:** Interface translúcida com animações fluidas, exibindo as novidades da versão formatadas, cálculo dinâmico de progresso e barra de download elegante.
 * **Instalação com Um Clique:** Conclua o download do executável oficial e atualize seu software sem precisar abrir páginas da web ou substituir arquivos manualmente.
@@ -95,7 +102,9 @@ Mantenha seu Pulsar sempre na última versão sem dor de cabeça:
 ---
 
 ### 🪟 Mini Player Flutuante Apple Liquid Glass (visionOS Experience)
+
 Precisa de foco total no seu trabalho ou jogo sem abrir mão da sua trilha sonora?
+
 * **Translucidez Dinâmica Multicamada:** Superfície de vidro escuro com desfoque profundo (`backdrop-blur-3xl`) que absorve as cores do seu wallpaper e da capa da música.
 * **Luz Especular Superior:** Reflexo de luz físico na borda chanfrada superior, reproduzindo a sensação tátil de uma lente de vidro real.
 * **Ambient Capa Glow:** A arte do álbum projeta uma aura luminosa e difusa por trás do vidro em tempo real.
@@ -105,13 +114,16 @@ Precisa de foco total no seu trabalho ou jogo sem abrir mão da sua trilha sonor
 ---
 
 ### 🎛️ Controles Nativos na Barra de Tarefas do Windows
+
 Você não precisa parar o que está fazendo nem minimizar sua tela cheia para trocar de música:
+
 * Ao passar o mouse sobre o ícone do Pulsar na barra de tarefas do Windows, surge uma **miniatura interativa** (estilo Spotify).
 * Controle instantâneo com botões nativos: **[Favoritar]**, **[Faixa Anterior]**, **[Play/Pause]** e **[Próxima Faixa]**, desenhados com ícones nítidos em alta definição via API Win32 `ITaskbarList3`.
 
 ---
 
 ### 🎵 Last.fm Scrobbler Integrado e Inteligente
+
 * Conecte sua conta do **Last.fm** nativamente em segundos com fluxo OAuth no navegador padrão via `@tauri-apps/plugin-opener`.
 * O motor do Pulsar rastreia sua reprodução em tempo real com **Now Playing dinâmico** e efetua o **Scrobble automático** ao atingir 50% ou 4 minutos da faixa.
 * Algoritmo inteligente de extração com fallback em cascata que identifica artistas e títulos mesmo em faixas raras sem metadados convencionais.
@@ -119,6 +131,7 @@ Você não precisa parar o que está fazendo nem minimizar sua tela cheia para t
 ---
 
 ### 📺 Modo Duplo Sincronizado: Som Cristalino ou Clipe Oficial
+
 * Escolha como você quer curtir:
   * **Modo Áudio:** Som de alta fidelidade via proxy local Axum (41235) com suporte a HTTP 206 Range (seeking instantâneo) e sem desperdício de dados.
   * **Modo Vídeo 16:9:** O clipe oficial roda sincronizado em alta definição sem travamentos, telas pretas ou recarregamentos súbitos ao pausar e avançar.
@@ -126,7 +139,9 @@ Você não precisa parar o que está fazendo nem minimizar sua tela cheia para t
 ---
 
 ### 👥 Pulsar Social & Presença em Tempo Real
+
 A música fica muito melhor compartilhada:
+
 * **Perfis com TAG Única:** Crie seu perfil e receba uma tag alfanumérica exclusiva (ex: `@seu_nome#7X9A`).
 * **Status "Ouvindo Agora":** Seus amigos sabem exatamente o que está tocando no seu player em tempo real.
 * **Direct Chat Estilo iMessage:** Converse instantaneamente e compartilhe músicas que seus amigos podem dar Play direto da conversa.
@@ -135,6 +150,7 @@ A música fica muito melhor compartilhada:
 ---
 
 ### 📱 Blindagem Total para Monitores Pivotados e Telas Verticais
+
 * Usa um segundo monitor na vertical (9:16) para programar, codar ou ler chats?
 * O Pulsar conta com uma malha de layout responsiva onde **nenhum modal vaza**, nenhum botão de confirmação fica escondido e as capas se ajustam harmonicamente à altura da sua janela.
 
@@ -147,7 +163,6 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 > [!IMPORTANT]
 > **Toda nova versão oficial do instalador (.exe) é publicada diretamente na aba de [Releases do GitHub](https://github.com/pauloviccs/Pulsar/releases).**
 >
-> Basta acessar a página de lançamentos, baixar o executável [`Pulsar_0.2.6_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.6/Pulsar_0.2.6_x64-setup.exe), instalar no seu Windows em menos de 10 segundos e começar a ouvir!
 
 ---
 
@@ -169,9 +184,6 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
   * Novas métricas públicas de `play_count` e `likes_count` com a RPC `get_community_trending_playlists`.
 * 🔄 **Correção da Checagem de Versão Dinâmica:**
   * O motor Rust agora consulta a versão real do executável em runtime via comando `get_app_version`, eliminando o bug que travava o aplicativo em `v0.2.2` e disparava toasts indevidos.
-* 📦 **Novos Pacotes Oficiais de Instalação Release v0.2.6:**
-  * Instalador NSIS ultra-leve: [`Pulsar_0.2.6_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.6/Pulsar_0.2.6_x64-setup.exe) (~21.4 MB).
-  * Pacote corporativo Windows Installer: `Pulsar_0.2.6_x64_en-US.msi` (~22.9 MB).
 
 ---
 
@@ -188,9 +200,6 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 * 🎧 **Detecção Universal de Bluetooth via Drivers Win32:**
   * Reconhecimento aprofundado por hardware via barramento PnP (`PKEY_Device_EnumeratorName`: `BTHENUM` e `BTHHFENUM`) e chaves do Registro do Windows (`BTHPORT`).
   * Suporte total a fones e caixas de som de todas as marcas: **Haylou, Hi-Lo, Pro, JBL, Edifier, Sony, fones TWS genéricos** e periféricos Bluetooth.
-* 📦 **Novos Pacotes Oficiais de Instalação Release v0.2.5:**
-  * Instalador NSIS ultra-leve: [`Pulsar_0.2.5_x64-setup.exe`](https://github.com/pauloviccs/Pulsar/releases/download/v0.2.5/Pulsar_0.2.5_x64-setup.exe) (~21.3 MB).
-  * Pacote corporativo Windows Installer: `Pulsar_0.2.5_x64_en-US.msi` (~22.8 MB).
 
 ---
 
@@ -271,7 +280,7 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 ## 🗺️ Roadmap de Funcionalidades
 
 | Recurso / Funcionalidade | Status | Categoria |
-|---|:---:|---|
+| --- | :---: | --- |
 | **Streaming & Busca Instantânea sem Anúncios** | ✅ Pronto | Áudio & Core |
 | **Importação Rápida Spotify, YouTube & YT Music** | ✅ Pronto | Biblioteca & Importação |
 | **Casamento Acústico por Duração & Metadados** | ✅ Pronto | Engine de Áudio |

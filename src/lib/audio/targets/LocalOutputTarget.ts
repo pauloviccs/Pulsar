@@ -49,9 +49,24 @@ export class LocalOutputTarget implements AudioOutputTarget {
     };
 
     const onError = () => {
-      const err = this.audioElement?.error?.message || 'Erro desconhecido na reprodução local';
+      // Ignora erro se não há src atribuído ou se o erro for apenas interrupção de troca (código 1)
+      if (!this.audioElement?.src || this.audioElement.error?.code === 1) {
+        return;
+      }
+      const mediaErr = this.audioElement.error;
+      let errDetail = 'Erro desconhecido na reprodução local';
+      if (mediaErr) {
+        switch (mediaErr.code) {
+          case 2: errDetail = 'Erro de rede ao carregar o fluxo de áudio'; break;
+          case 3: errDetail = 'Falha na decodificação do codec de áudio'; break;
+          case 4: errDetail = 'URL de áudio indisponível ou expirada'; break;
+        }
+        if (mediaErr.message) {
+          errDetail += ` (${mediaErr.message})`;
+        }
+      }
       this.setState('error');
-      this.errorListeners.forEach(cb => cb(err));
+      this.errorListeners.forEach(cb => cb(errDetail));
     };
 
     const onLoadedMetadata = () => {
@@ -150,10 +165,11 @@ export class LocalOutputTarget implements AudioOutputTarget {
     try {
       await this.audioElement.play();
     } catch (e: any) {
-      // Ignora abortos de reprodução causados por pause rápido ou troca de faixa
-      if (e?.name !== 'AbortError') {
-        console.warn('[LocalOutputTarget] Erro ao chamar play():', e);
+      // Ignora abortos normais causados por nova carga, pause rápido ou política de autoplay
+      if (e?.name === 'AbortError' || e?.name === 'NotAllowedError') {
+        return;
       }
+      console.warn('[LocalOutputTarget] Erro ao chamar play():', e?.message || e);
     }
   }
 

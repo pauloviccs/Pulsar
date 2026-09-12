@@ -161,6 +161,7 @@
     } else {
       const track = await safeInvoke<Track>('resolve_track', { url: targetUrl });
       resolvedTrack = track;
+      libraryActions.addTrack(track);
     }
   }
 
@@ -168,6 +169,7 @@
     if (linkType === 'track') {
       const track = await safeInvoke<Track>('resolve_spotify_track', { url: targetUrl });
       resolvedTrack = track;
+      libraryActions.addTrack(track);
     } else {
       // Playlist ou álbum — escutar progresso
       const stats = { high: 0, medium: 0, low: 0, notFound: 0 };

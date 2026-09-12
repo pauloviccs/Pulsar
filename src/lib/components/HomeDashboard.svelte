@@ -23,6 +23,7 @@
     libraryActions 
   } from '../stores/libraryStore';
   import { playerActions, isPlaying, currentTrack } from '../stores/playerStore';
+  import { isSocialDrawerOpen } from '../stores/socialStore';
   import { syncEngine } from '../services/syncEngine';
   import { t } from '../i18n';
   import type { Track, Playlist, CommunityTrendingPlaylist, QuickAccessItem } from '../types';
@@ -43,6 +44,35 @@
       isLoadingCommunity = false;
     }
   });
+
+  async function handlePlayCommunityPlaylist(cp: CommunityTrendingPlaylist, e?: MouseEvent) {
+    if (e) e.stopPropagation();
+    try {
+      const tracks = await syncEngine.fetchPlaylistTracks(cp.id);
+      if (tracks && tracks.length > 0) {
+        playerActions.playTrack(tracks[0], tracks);
+        syncEngine.incrementPlaylistPlay(cp.id);
+        cp.play_count = (cp.play_count || 0) + 1;
+      }
+    } catch (err) {
+      console.error('[Pulsar] Erro ao reproduzir playlist da comunidade:', err);
+    }
+  }
+
+  async function handleOpenCommunityPlaylist(cp: CommunityTrendingPlaylist) {
+    const pl: Playlist = {
+      id: cp.id,
+      name: cp.name,
+      description: cp.description || '',
+      cover_image: cp.cover_image_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80',
+      created_at: cp.created_at || new Date().toISOString(),
+      is_imported_youtube_playlist: false,
+      track_count: cp.track_count || 0,
+      total_duration_seconds: 0,
+      visibility: 'public'
+    };
+    await libraryActions.setActiveView('playlist-detail', pl);
+  }
 
   // Músicas favoritas
   let favoriteTracksList = $derived(
@@ -149,7 +179,10 @@
       const pl = item.data as Playlist;
       try {
         const { safeInvoke } = await import('../api/tauri');
-        const tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id });
+        let tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id });
+        if (!tracks || tracks.length === 0) {
+          tracks = await syncEngine.fetchPlaylistTracks(pl.id);
+        }
         if (tracks && tracks.length > 0) {
           playerActions.playTrack(tracks[0], tracks);
           syncEngine.incrementPlaylistPlay(pl.id);
@@ -181,7 +214,10 @@
       const pl = heroItem.data as Playlist;
       try {
         const { safeInvoke } = await import('../api/tauri');
-        const tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id });
+        let tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id });
+        if (!tracks || tracks.length === 0) {
+          tracks = await syncEngine.fetchPlaylistTracks(pl.id);
+        }
         if (tracks && tracks.length > 0) {
           playerActions.playTrack(tracks[0], tracks);
           syncEngine.incrementPlaylistPlay(pl.id);
@@ -371,7 +407,10 @@
                   e.stopPropagation();
                   try {
                     const { safeInvoke } = await import('../api/tauri');
-                    const tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id });
+                    let tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id });
+                    if (!tracks || tracks.length === 0) {
+                      tracks = await syncEngine.fetchPlaylistTracks(pl.id);
+                    }
                     if (tracks && tracks.length > 0) {
                       playerActions.playTrack(tracks[0], tracks);
                       syncEngine.incrementPlaylistPlay(pl.id);
@@ -439,14 +478,27 @@
       {:else}
         <div class="flex gap-4 overflow-x-auto pb-3 custom-scrollbar">
           {#each communityPlaylists as cp (cp.id)}
-            <div class="group/cp flex flex-col gap-3 p-3.5 rounded-3xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 w-44 sm:w-48 shrink-0 backdrop-blur-md">
-              <!-- Capa da Playlist da Comunidade -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div 
+              onclick={() => handleOpenCommunityPlaylist(cp)}
+              class="group/cp flex flex-col gap-3 p-3.5 rounded-3xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 w-44 sm:w-48 shrink-0 cursor-pointer backdrop-blur-md"
+            >
+              <!-- Capa da Playlist da Comunidade com Botão Play -->
               <div class="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/[0.08]">
                 <img
                   src={cp.cover_image_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
                   alt={cp.name}
                   class="w-full h-full object-cover transition-transform duration-500 group-hover/cp:scale-105"
                 />
+                <button
+                  type="button"
+                  onclick={(e) => handlePlayCommunityPlaylist(cp, e)}
+                  class="absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-[#09090D] flex items-center justify-center shadow-xl shadow-black/60 opacity-0 translate-y-2 group-hover/cp:opacity-100 group-hover/cp:translate-y-0 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                  title="Tocar Playlist da Comunidade"
+                >
+                  <Play class="w-4 h-4 fill-current ml-0.5" />
+                </button>
               </div>
 
               <!-- Info & Criador -->
@@ -470,6 +522,27 @@
               </div>
             </div>
           {/each}
+        </div>
+      {/if}
+
+      {#if activePill === 'community'}
+        <div class="mt-4 p-5 rounded-3xl bg-gradient-to-r from-[#66D7D1]/10 via-white/[0.02] to-[#66D7D1]/5 border border-[#66D7D1]/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#66D7D1]/20 border border-[#66D7D1]/30 flex items-center justify-center shrink-0">
+              <Users class="w-5 h-5 text-[#66D7D1]" />
+            </div>
+            <div>
+              <h3 class="text-xs sm:text-sm font-bold text-[#F2EFEA]">Rede Social Pulsar & Amigos</h3>
+              <p class="text-[11px] sm:text-xs text-white/50">Veja o que seus amigos estão ouvindo em tempo real e compartilhe faixas.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick={() => isSocialDrawerOpen.set(true)}
+            class="px-4 py-2 rounded-xl bg-[#66D7D1] hover:brightness-110 text-[#09090D] text-xs font-black transition-all shadow-md shadow-[#66D7D1]/20 active:scale-95 cursor-pointer shrink-0"
+          >
+            Abrir Painel Social
+          </button>
         </div>
       {/if}
     </section>

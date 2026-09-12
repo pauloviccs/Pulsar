@@ -132,11 +132,20 @@ export class BluetoothOutputTarget implements AudioOutputTarget {
         }
       }
 
-      // Redireciona a saída do elemento HTML5 de áudio
-      if (resolvedSinkId && resolvedSinkId !== 'default') {
-        await (el as any).setSinkId(resolvedSinkId);
-      } else {
-        await (el as any).setSinkId('');
+      // Redireciona a saída do elemento HTML5 de áudio com fallback resiliente para o WebView2
+      if (typeof (el as any).setSinkId === 'function') {
+        try {
+          if (resolvedSinkId && resolvedSinkId !== 'default') {
+            await (el as any).setSinkId(resolvedSinkId);
+          } else {
+            await (el as any).setSinkId('');
+          }
+        } catch (sinkErr: any) {
+          console.warn(`[BluetoothOutputTarget] setSinkId('${resolvedSinkId}') indisponível no WebView2 (${sinkErr?.message || sinkErr}), utilizando saída padrão do sistema.`);
+          try {
+            await (el as any).setSinkId('');
+          } catch {}
+        }
       }
 
       this.attachListeners(el);
@@ -211,9 +220,10 @@ export class BluetoothOutputTarget implements AudioOutputTarget {
     try {
       await el.play();
     } catch (e: any) {
-      if (e?.name !== 'AbortError') {
-        console.warn(`[BluetoothOutputTarget] Erro ao chamar play() em ${this.name}:`, e);
+      if (e?.name === 'AbortError' || e?.name === 'NotAllowedError') {
+        return;
       }
+      console.warn(`[BluetoothOutputTarget] Erro ao chamar play() em ${this.name}:`, e?.message || e);
     }
   }
 

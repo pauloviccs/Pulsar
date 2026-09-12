@@ -1,8 +1,8 @@
 {
-  "version": "0.2.6",
-  "name": "Pulsar Connect Pro v0.2.6",
-  "url": "https://www.dropbox.com/scl/fi/2828btnjowr9273lh9wd5/Pulsar_0.2.6_x64-setup.exe?rlkey=ecjmm6v4x8gikbqz4grq80hlk&st=jl4p4cvq&dl=1",
-  "notes": "### Novidades do Pulsar v0.2.6!\n\n- **Nova Central Home Dashboard:** Tela inicial completa com Hero Banner, pílulas de filtro (Tudo, Música, Comunidade), Grid Rápido 2x4 com play em 1 clique e trilhos horizontais.\n- **Sidebar Retrátil Liquid Glass:** Modo compacto (72px) com mini-capas quadradas de playlists e tooltips, liberando espaço para o dashboard.\n- **Ponte Supabase Cloud Sync:** Playlists, faixas, favoritos, histórico e configurações sincronizados em nuvem entre múltiplos computadores.",
-  "pub_date": "2026-09-11T21:45:00Z",
+  "version": "0.2.6-b",
+  "name": "Pulsar Connect Pro v0.2.6.b",
+  "url": "https://www.dropbox.com/scl/fi/vke566zu1f7ebgldc4llm/Pulsar_0.2.6-b_x64-setup.exe?rlkey=q9l30oi5brhegglrl0mj9ebrn&st=mzvp20sq&dl=1",
+  "notes": "### Novidades do Pulsar v0.2.6.b!\n\n- **Sincronização Nuvem Blindada no Supabase:** Normalização de identificadores para UUID v4 padrão nas tabelas `cloud_playlists`, `cloud_playlist_tracks` e `user_library_tracks`.\n- **Sincronização Total de Playlists, Álbuns e Faixas:** Todas as listas de reprodução e faixas salvas pelo usuário agora sobem e descem em tempo real no Supabase.\n- **Playlists da Comunidade 100% Interativas:** Playlists públicas em alta no Supabase carregam faixas da nuvem e tocam em 1 clique, com contagem de reproduções em tempo real.\n- **Starter Seed & Fresh Install Resiliente:** Eliminação definitiva de erros de play silencioso em instalações novas com faixas iniciais e fallback transparente para nuvem.",
+  "pub_date": "2026-09-12T02:00:00Z",
   "mandatory": false
 }

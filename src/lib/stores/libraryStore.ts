@@ -6,7 +6,7 @@ import type { Track, Playlist, ActiveView, PlaylistVisibility } from '../types';
 
 const INITIAL_TRACKS: Track[] = [
   {
-    id: 't-1',
+    id: 'b0000000-0000-4000-8000-000000000001',
     youtube_video_id: 'jfKfPfyJRdk',
     title: 'Lofi Hip Hop Radio - Beats to Relax/Study to',
     artist_guess: 'Lofi Girl',
@@ -17,7 +17,7 @@ const INITIAL_TRACKS: Track[] = [
     stream_url: 'http://127.0.0.1:41235/stream/jfKfPfyJRdk'
   },
   {
-    id: 't-2',
+    id: 'b0000000-0000-4000-8000-000000000002',
     youtube_video_id: '5qap5aO4i9A',
     title: 'Midnight City (Synthwave Drive)',
     artist_guess: 'Neon Sunset',
@@ -28,7 +28,7 @@ const INITIAL_TRACKS: Track[] = [
     stream_url: 'http://127.0.0.1:41235/stream/5qap5aO4i9A'
   },
   {
-    id: 't-3',
+    id: 'b0000000-0000-4000-8000-000000000003',
     youtube_video_id: 'DWcJFNfaw9C',
     title: 'Deep Focus Ambient Sessions',
     artist_guess: 'Aura Sound',
@@ -42,7 +42,7 @@ const INITIAL_TRACKS: Track[] = [
 
 const INITIAL_PLAYLISTS: Playlist[] = [
   {
-    id: 'p-1',
+    id: 'a0000000-0000-4000-8000-000000000001',
     name: 'Vibe Coding & Focus',
     description: 'Batidas imersivas para programar no fluxo contínuo sem distrações.',
     cover_image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
@@ -50,13 +50,14 @@ const INITIAL_PLAYLISTS: Playlist[] = [
     is_imported_youtube_playlist: true,
     source_youtube_playlist_id: 'PL-flow-01',
     track_count: 3,
-    total_duration_seconds: 889
+    total_duration_seconds: 889,
+    visibility: 'public'
   }
 ];
 
 export const allTracks = writable<Track[]>(INITIAL_TRACKS);
 export const playlists = writable<Playlist[]>(INITIAL_PLAYLISTS);
-export const favoriteTrackIds = writable<Set<string>>(new Set(['t-1', 't-3']));
+export const favoriteTrackIds = writable<Set<string>>(new Set(['b0000000-0000-4000-8000-000000000001']));
 export const activeView = writable<ActiveView>('home');
 export const selectedPlaylist = writable<Playlist | null>(null);
 export const selectedPlaylistTracks = writable<Track[]>([]);
@@ -149,10 +150,23 @@ export const libraryActions = {
   async loadPlaylistTracks(playlistId: string) {
     try {
       const tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId });
-      selectedPlaylistTracks.set(tracks || []);
+      if (tracks && tracks.length > 0) {
+        selectedPlaylistTracks.set(tracks);
+      } else {
+        // Se o SQLite não tem faixas (ex: playlist pública da comunidade), busca do Supabase
+        const { syncEngine } = await import('../services/syncEngine');
+        const cloudTracks = await syncEngine.fetchPlaylistTracks(playlistId);
+        selectedPlaylistTracks.set(cloudTracks || []);
+      }
     } catch (e) {
-      console.error('[Pulsar DB] Erro ao carregar faixas da playlist:', e);
-      selectedPlaylistTracks.set([]);
+      console.error('[Pulsar DB] Erro ao carregar faixas da playlist local, tentando nuvem:', e);
+      try {
+        const { syncEngine } = await import('../services/syncEngine');
+        const cloudTracks = await syncEngine.fetchPlaylistTracks(playlistId);
+        selectedPlaylistTracks.set(cloudTracks || []);
+      } catch {
+        selectedPlaylistTracks.set([]);
+      }
     }
   },
 
@@ -205,7 +219,6 @@ export const libraryActions = {
       return next;
     });
 
-    // Se o objeto da faixa foi fornecido, garantir que ela conste em allTracks para a tela de Favoritos
     if (trackObj) {
       allTracks.update(current => {
         if (!current.some(t => t.id === trackObj.id)) {
@@ -236,7 +249,6 @@ export const libraryActions = {
       const fullPlaylist: Playlist = { ...created, visibility };
       playlists.update(list => [fullPlaylist, ...list]);
 
-      // Sincronizar com Supabase através do syncEngine
       import('../services/syncEngine').then(({ syncEngine }) => {
         syncEngine.pushPlaylist(fullPlaylist);
       });
@@ -245,7 +257,7 @@ export const libraryActions = {
     } catch (e) {
       console.error('[Pulsar DB] Erro ao criar playlist no backend:', e);
       const fallback: Playlist = {
-        id: `p-${Date.now()}`,
+        id: crypto.randomUUID(),
         name,
         description,
         cover_image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80',
@@ -266,7 +278,6 @@ export const libraryActions = {
   },
 
   async updatePlaylist(id: string, name: string, description: string, coverImage?: string, visibility?: PlaylistVisibility) {
-    // Persistência imediata local em dev / cache do cliente
     if (coverImage) {
       try {
         localStorage.setItem(`pulsar_cover_${id}`, coverImage);
@@ -297,7 +308,6 @@ export const libraryActions = {
         return curr;
       });
 
-      // Sincronizar atualização com Supabase
       import('../services/syncEngine').then(({ syncEngine }) => {
         syncEngine.pushPlaylist(finalPlaylist);
       });
@@ -333,13 +343,14 @@ export const libraryActions = {
         }
         return p;
       }));
-      await this.loadPlaylistTracks(playlistId);
-
-      // Sincronizar faixas atualizadas com a nuvem
-      const tracks = get(selectedPlaylistTracks);
-      import('../services/syncEngine').then(({ syncEngine }) => {
-        syncEngine.pushPlaylistTracks(playlistId, tracks);
-      });
+      
+      const updatedTracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId });
+      if (updatedTracks) {
+        selectedPlaylistTracks.set(updatedTracks);
+        import('../services/syncEngine').then(({ syncEngine }) => {
+          syncEngine.pushPlaylistTracks(playlistId, updatedTracks);
+        });
+      }
     } catch (e) {
       console.error('[Pulsar DB] Erro ao adicionar faixa à playlist:', e);
     }
@@ -348,7 +359,6 @@ export const libraryActions = {
   async removeTrackFromPlaylist(playlistId: string, trackId: string) {
     try {
       await safeInvoke('remove_track_from_playlist', { playlistId, trackId });
-      selectedPlaylistTracks.update(list => list.filter(t => t.id !== trackId));
       playlists.update(list => list.map(p => {
         if (p.id === playlistId) {
           return { ...p, track_count: Math.max(0, p.track_count - 1) };
@@ -356,11 +366,13 @@ export const libraryActions = {
         return p;
       }));
 
-      // Sincronizar faixas atualizadas com a nuvem
-      const tracks = get(selectedPlaylistTracks);
-      import('../services/syncEngine').then(({ syncEngine }) => {
-        syncEngine.pushPlaylistTracks(playlistId, tracks);
-      });
+      const updatedTracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId });
+      if (updatedTracks) {
+        selectedPlaylistTracks.set(updatedTracks);
+        import('../services/syncEngine').then(({ syncEngine }) => {
+          syncEngine.pushPlaylistTracks(playlistId, updatedTracks);
+        });
+      }
     } catch (e) {
       console.error('[Pulsar DB] Erro ao remover faixa da playlist:', e);
     }
@@ -371,7 +383,6 @@ export const libraryActions = {
     activeView.set('library');
     selectedPlaylist.set(null);
 
-    // Sincronizar exclusão com Supabase
     import('../services/syncEngine').then(({ syncEngine }) => {
       syncEngine.deletePlaylist(id);
     });
@@ -390,23 +401,42 @@ export const libraryActions = {
       return [track, ...list];
     });
 
-    // Sincronizar nova faixa com a nuvem
     import('../services/syncEngine').then(({ syncEngine }) => {
       syncEngine.pushTrackToLibrary(track);
     });
   },
 
-  addPlaylist(pl: Playlist) {
+  async addPlaylist(pl: Playlist) {
     playlists.update(list => {
       const exists = list.some(p => p.id === pl.id);
       if (exists) return list;
       return [pl, ...list];
     });
 
-    // Sincronizar nova playlist com a nuvem
-    import('../services/syncEngine').then(({ syncEngine }) => {
-      syncEngine.pushPlaylist(pl);
-    });
+    try {
+      const tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id });
+      if (tracks && tracks.length > 0) {
+        allTracks.update(curr => {
+          const map = new Map(curr.map(t => [t.youtube_video_id, t]));
+          for (const t of tracks) {
+            map.set(t.youtube_video_id, t);
+          }
+          return Array.from(map.values());
+        });
+      }
+
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushPlaylist(pl);
+        if (tracks && tracks.length > 0) {
+          syncEngine.pushPlaylistTracks(pl.id, tracks);
+          syncEngine.pushTracksToLibraryBatch(tracks);
+        }
+      });
+    } catch (e) {
+      import('../services/syncEngine').then(({ syncEngine }) => {
+        syncEngine.pushPlaylist(pl);
+      });
+    }
   },
 
   toggleSidebarCollapse() {
@@ -421,4 +451,3 @@ export const libraryActions = {
     });
   }
 };
-

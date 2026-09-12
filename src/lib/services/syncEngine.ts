@@ -21,6 +21,25 @@ export const syncErrorMessage = writable<string | null>(null);
 
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Converte qualquer ID legado (ex: 'pl-uuid', 'p-1', timestamp) em um UUID canônico válido para o Supabase (PostgreSQL)
+ */
+export function toCanonicalUuid(id: string): string {
+  if (!id) return crypto.randomUUID();
+  let clean = id.trim();
+  if (clean.startsWith('pl-')) {
+    clean = clean.substring(3);
+  }
+  if (clean === 'p-1') {
+    return 'a0000000-0000-4000-8000-000000000001';
+  }
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(clean)) {
+    return clean.toLowerCase();
+  }
+  return crypto.randomUUID();
+}
+
 function isGuestUser(userId?: string): boolean {
   if (!userId) return true;
   return userId.startsWith('guest') || userId === 'guest-local-user';
@@ -28,7 +47,8 @@ function isGuestUser(userId?: string): boolean {
 
 export const syncEngine = {
   /**
-   * Puxa todos os dados do Supabase para o usuário logado e hidrata o SQLite local e as stores reativas
+   * Puxa todos os dados do Supabase para o usuário logado e hidrata o SQLite local e as stores reativas.
+   * Se houver dados locais não presentes na nuvem, efetua sincronização bidirecional.
    */
   async hydrateFromCloud(userId: string) {
     if (isGuestUser(userId)) {
@@ -112,9 +132,9 @@ export const syncEngine = {
       // ==============================================================================
 
       // A. Hidratação de Playlists
-      if (plList.length > 0) {
-        const hydratedPlaylists: Playlist[] = [];
+      const hydratedPlaylists: Playlist[] = [];
 
+      if (plList.length > 0) {
         for (const cp of plList) {
           const tracksForPl = cloudTracksByPlaylist[cp.id] || [];
           const totalDuration = tracksForPl.reduce((acc, t) => acc + (t.duration_seconds || 0), 0);
@@ -164,19 +184,27 @@ export const syncEngine = {
 
           hydratedPlaylists.push(playlistObj);
         }
+      }
 
-        playlists.set(hydratedPlaylists);
-      } else {
-        // Se a nuvem não tem playlists, mas o local tem playlists criadas offline, sincroniza para a nuvem
-        const localPlaylists = get(playlists);
-        if (localPlaylists && localPlaylists.length > 0) {
-          console.log('[Pulsar SyncEngine] Enviando playlists locais pré-existentes para a nuvem...');
-          for (const lp of localPlaylists) {
-            if (lp.id !== 'p-1') { // Não sincroniza o mock inicial se for padrão
-              await this.pushPlaylist(lp);
-            }
+      // Sincronizar playlists locais não presentes na nuvem (bidirecional)
+      const cloudPlIdSet = new Set(plList.map(p => toCanonicalUuid(p.id)));
+      const localPlaylists = get(playlists);
+      for (const lp of localPlaylists) {
+        const canonicalLpId = toCanonicalUuid(lp.id);
+        if (!cloudPlIdSet.has(canonicalLpId)) {
+          console.log(`[Pulsar SyncEngine] Enviando playlist local não sincronizada '${lp.name}' para a nuvem...`);
+          lp.id = canonicalLpId;
+          await this.pushPlaylist(lp);
+          const tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: lp.id }).catch(() => []);
+          if (tracks && tracks.length > 0) {
+            await this.pushPlaylistTracks(canonicalLpId, tracks);
           }
+          hydratedPlaylists.push(lp);
         }
+      }
+
+      if (hydratedPlaylists.length > 0) {
+        playlists.set(hydratedPlaylists);
       }
 
       // B. Hidratação de Faixas da Biblioteca (allTracks)
@@ -189,6 +217,7 @@ export const syncEngine = {
           channel_name: t.channel_name || '',
           duration_seconds: t.duration_seconds,
           thumbnail_url: t.thumbnail_url || '',
+          audio_stream_cached: false,
           added_at: t.added_at ? t.added_at.split('T')[0] : new Date().toISOString().split('T')[0],
           stream_url: `http://127.0.0.1:41235/stream/${t.youtube_video_id}`,
           source_platform: t.source_platform || 'youtube'
@@ -207,17 +236,21 @@ export const syncEngine = {
         });
       }
 
+      // Garantir que faixas locais existentes também sejam enviadas para a nuvem
+      const localTracks = get(allTracks);
+      if (localTracks && localTracks.length > 0) {
+        await this.pushTracksToLibraryBatch(localTracks);
+      }
+
       // C. Hidratação de Favoritos
       if (cloudFavorites && cloudFavorites.length > 0) {
         const favVideoIds = new Set(cloudFavorites.map(f => f.youtube_video_id));
         
-        // Mapear para IDs locais se necessário
         const currentTracks = get(allTracks);
         const favIdSet = new Set<string>();
         for (const t of currentTracks) {
           if (favVideoIds.has(t.youtube_video_id)) {
             favIdSet.add(t.id);
-            // Sincroniza no SQLite local
             await safeInvoke('toggle_favorite', { trackId: t.id, track: t }).catch(() => {});
           }
         }
@@ -259,6 +292,34 @@ export const syncEngine = {
   },
 
   /**
+   * Força a sincronização de todas as playlists, faixas e configurações locais para o Supabase
+   */
+  async syncAllLocalToCloud(): Promise<void> {
+    const prof = get(currentProfile);
+    if (!prof || isGuestUser(prof.id)) return;
+
+    try {
+      console.log('[Pulsar SyncEngine] Sincronizando toda a biblioteca local para a nuvem...');
+      const localPlaylists = get(playlists);
+      for (const pl of localPlaylists) {
+        await this.pushPlaylist(pl);
+        const tracks = await safeInvoke<Track[]>('get_playlist_tracks', { playlistId: pl.id }).catch(() => []);
+        if (tracks && tracks.length > 0) {
+          await this.pushPlaylistTracks(pl.id, tracks);
+        }
+      }
+
+      const localTracks = get(allTracks);
+      if (localTracks && localTracks.length > 0) {
+        await this.pushTracksToLibraryBatch(localTracks);
+      }
+      console.log('[Pulsar SyncEngine] ✅ Sincronização completa local -> nuvem concluída!');
+    } catch (e) {
+      console.warn('[Pulsar SyncEngine] Erro ao sincronizar local para nuvem:', e);
+    }
+  },
+
+  /**
    * Envia ou atualiza uma playlist na nuvem
    */
   async pushPlaylist(playlist: Playlist) {
@@ -268,9 +329,12 @@ export const syncEngine = {
     const supabase = getSupabase();
     if (!supabase) return;
 
+    const canonicalId = toCanonicalUuid(playlist.id);
+    playlist.id = canonicalId;
+
     try {
       const payload = {
-        id: playlist.id,
+        id: canonicalId,
         user_id: prof.id,
         name: playlist.name,
         description: playlist.description || '',
@@ -288,7 +352,7 @@ export const syncEngine = {
         .upsert(payload, { onConflict: 'id' });
 
       if (error) throw error;
-      console.log(`[Pulsar SyncEngine] Playlist '${playlist.name}' salva no Supabase.`);
+      console.log(`[Pulsar SyncEngine] Playlist '${playlist.name}' salva no Supabase (ID: ${canonicalId}).`);
     } catch (err) {
       console.warn('[Pulsar SyncEngine] Erro ao salvar playlist no Supabase:', err);
     }
@@ -304,15 +368,17 @@ export const syncEngine = {
     const supabase = getSupabase();
     if (!supabase) return;
 
+    const canonicalId = toCanonicalUuid(playlistId);
+
     try {
       const { error } = await supabase
         .from('cloud_playlists')
         .delete()
-        .eq('id', playlistId)
+        .eq('id', canonicalId)
         .eq('user_id', prof.id);
 
       if (error) throw error;
-      console.log(`[Pulsar SyncEngine] Playlist '${playlistId}' removida do Supabase.`);
+      console.log(`[Pulsar SyncEngine] Playlist '${canonicalId}' removida do Supabase.`);
     } catch (err) {
       console.warn('[Pulsar SyncEngine] Erro ao remover playlist do Supabase:', err);
     }
@@ -328,17 +394,19 @@ export const syncEngine = {
     const supabase = getSupabase();
     if (!supabase) return;
 
+    const canonicalPlId = toCanonicalUuid(playlistId);
+
     try {
       // 1. Limpar faixas antigas da playlist
       await supabase
         .from('cloud_playlist_tracks')
         .delete()
-        .eq('playlist_id', playlistId);
+        .eq('playlist_id', canonicalPlId);
 
       // 2. Inserir lote com posições corretas
-      if (tracks.length > 0) {
+      if (tracks && tracks.length > 0) {
         const rows = tracks.map((t, index) => ({
-          playlist_id: playlistId,
+          playlist_id: canonicalPlId,
           youtube_video_id: t.youtube_video_id,
           title: t.title,
           artist: t.artist_guess || t.artist || '',
@@ -356,7 +424,7 @@ export const syncEngine = {
         if (error) throw error;
       }
 
-      // 3. Atualizar track_count na tabela principal da playlist
+      // 3. Atualizar track_count e total_duration_seconds na tabela principal da playlist
       await supabase
         .from('cloud_playlists')
         .update({
@@ -364,42 +432,92 @@ export const syncEngine = {
           total_duration_seconds: tracks.reduce((acc, t) => acc + (t.duration_seconds || 0), 0),
           updated_at: new Date().toISOString()
         })
-        .eq('id', playlistId);
+        .eq('id', canonicalPlId);
 
-      console.log(`[Pulsar SyncEngine] ${tracks.length} faixas sincronizadas para a playlist ${playlistId}.`);
+      // 4. Também sincronizar cada faixa na biblioteca pessoal (user_library_tracks)
+      await this.pushTracksToLibraryBatch(tracks);
+
+      console.log(`[Pulsar SyncEngine] ${tracks.length} faixas sincronizadas para a playlist ${canonicalPlId}.`);
     } catch (err) {
       console.warn('[Pulsar SyncEngine] Erro ao sincronizar faixas da playlist no Supabase:', err);
     }
   },
 
   /**
-   * Sincroniza uma faixa na biblioteca do usuário
+   * Sincroniza uma única faixa na biblioteca do usuário
    */
   async pushTrackToLibrary(track: Track) {
+    await this.pushTracksToLibraryBatch([track]);
+  },
+
+  /**
+   * Salva faixas em lote na biblioteca do usuário (user_library_tracks)
+   */
+  async pushTracksToLibraryBatch(tracks: Track[]) {
     const prof = get(currentProfile);
-    if (!prof || isGuestUser(prof.id)) return;
+    if (!prof || isGuestUser(prof.id) || !tracks || tracks.length === 0) return;
 
     const supabase = getSupabase();
     if (!supabase) return;
 
     try {
+      const rows = tracks.map(track => ({
+        user_id: prof.id,
+        youtube_video_id: track.youtube_video_id,
+        title: track.title,
+        artist_guess: track.artist_guess || track.artist || '',
+        channel_name: track.channel_name || '',
+        duration_seconds: track.duration_seconds || 0,
+        thumbnail_url: track.thumbnail_url || track.thumbnail || '',
+        source_platform: track.source_platform || 'youtube',
+        added_at: new Date().toISOString()
+      }));
+
       const { error } = await supabase
         .from('user_library_tracks')
-        .upsert({
-          user_id: prof.id,
-          youtube_video_id: track.youtube_video_id,
-          title: track.title,
-          artist_guess: track.artist_guess || track.artist || '',
-          channel_name: track.channel_name || '',
-          duration_seconds: track.duration_seconds || 0,
-          thumbnail_url: track.thumbnail_url || track.thumbnail || '',
-          source_platform: track.source_platform || 'youtube',
-          added_at: new Date().toISOString()
-        }, { onConflict: 'user_id,youtube_video_id' });
+        .upsert(rows, { onConflict: 'user_id,youtube_video_id' });
 
       if (error) throw error;
+      console.log(`[Pulsar SyncEngine] ${rows.length} faixas salvas em user_library_tracks.`);
     } catch (err) {
-      console.warn('[Pulsar SyncEngine] Erro ao salvar faixa na biblioteca em nuvem:', err);
+      console.warn('[Pulsar SyncEngine] Erro ao salvar faixas em lote na biblioteca em nuvem:', err);
+    }
+  },
+
+  /**
+   * Busca as faixas de qualquer playlist na nuvem (inclusive playlists públicas da comunidade)
+   */
+  async fetchPlaylistTracks(playlistId: string): Promise<Track[]> {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
+    const canonicalPlId = toCanonicalUuid(playlistId);
+
+    try {
+      const { data, error } = await supabase
+        .from('cloud_playlist_tracks')
+        .select('*')
+        .eq('playlist_id', canonicalPlId)
+        .order('position', { ascending: true });
+
+      if (error) throw error;
+      if (!data) return [];
+
+      return data.map(t => ({
+        id: t.id || `t-${t.youtube_video_id}`,
+        youtube_video_id: t.youtube_video_id,
+        title: t.title,
+        artist_guess: t.artist || '',
+        channel_name: t.channel_name || '',
+        duration_seconds: t.duration_seconds || 0,
+        thumbnail_url: t.thumbnail_url || '',
+        added_at: t.added_at ? t.added_at.split('T')[0] : new Date().toISOString().split('T')[0],
+        stream_url: `http://127.0.0.1:41235/stream/${t.youtube_video_id}`,
+        source_platform: (t.source_platform as any) || 'youtube'
+      }));
+    } catch (err) {
+      console.warn(`[Pulsar SyncEngine] Erro ao buscar faixas da playlist ${canonicalPlId}:`, err);
+      return [];
     }
   },
 
@@ -530,11 +648,10 @@ export const syncEngine = {
     try {
       const supabase = getSupabase();
       if (!supabase) return;
-      await supabase.rpc('increment_playlist_play', { p_playlist_id: playlistId });
+      const canonicalId = toCanonicalUuid(playlistId);
+      await supabase.rpc('increment_playlist_play', { p_playlist_id: canonicalId });
     } catch (e) {
       // Ignora erro defensivo de estatística
     }
   }
 };
-
-

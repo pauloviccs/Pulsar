@@ -117,7 +117,7 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>,
     return (null as unknown) as T;
   }
   if (cmd === 'get_app_version') {
-    return ('0.2.6' as unknown) as T;
+    return ('0.2.6-b' as unknown) as T;
   }
   if (cmd === 'toggle_mini_player') {
     return (null as unknown) as T;
