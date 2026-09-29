@@ -16,6 +16,7 @@ export const repeatMode = writable<RepeatMode>('none');
 
 export const queue = writable<Track[]>([]);
 export const queueIndex = writable<number>(-1);
+export const activePlaylistId = writable<string | null>(null);
 
 export const isNowPlayingOpen = writable<boolean>(false);
 export const isQueueOpen = writable<boolean>(false);
@@ -56,13 +57,26 @@ export function formatTime(seconds: number): string {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
+function notifyTrackAndPlaylistPlay(track: Track, playlistId?: string | null) {
+  import('./libraryStore').then(({ libraryActions }) => {
+    libraryActions.recordTrackPlayed(track.id);
+    if (playlistId) {
+      libraryActions.recordPlaylistPlay(playlistId);
+    }
+  }).catch(() => {});
+}
+
 // Player Actions
 export const playerActions = {
-  playTrack(track: Track, tracksQueue?: Track[]) {
+  playTrack(track: Track, tracksQueue?: Track[], playlistId?: string) {
     currentTrack.set(track);
     currentTime.set(0);
     duration.set(track.duration_seconds);
     isPlaying.set(true);
+
+    if (playlistId !== undefined) {
+      activePlaylistId.set(playlistId);
+    }
 
     if (tracksQueue && tracksQueue.length > 0) {
       queue.set(tracksQueue);
@@ -78,6 +92,8 @@ export const playerActions = {
         queueIndex.set(idx);
       }
     }
+
+    notifyTrackAndPlaylistPlay(track, playlistId ?? get(activePlaylistId));
   },
 
   togglePlay() {
@@ -122,6 +138,7 @@ export const playerActions = {
       currentTime.set(0);
       duration.set(nextTrack.duration_seconds);
       isPlaying.set(true);
+      notifyTrackAndPlaylistPlay(nextTrack, get(activePlaylistId));
     }
   },
 
@@ -148,6 +165,7 @@ export const playerActions = {
       currentTime.set(0);
       duration.set(prevTrack.duration_seconds);
       isPlaying.set(true);
+      notifyTrackAndPlaylistPlay(prevTrack, get(activePlaylistId));
     }
   },
 

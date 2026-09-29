@@ -42,6 +42,11 @@ export interface Playlist {
   total_duration_seconds: number;
   visibility?: PlaylistVisibility;
   user_id?: string;
+  owner_name?: string;
+  owner_username?: string;
+  is_followed?: boolean;
+  play_count?: number;
+  owner_avatar_url?: string;
 }
 
 export type RepeatMode = 'none' | 'one' | 'all';

@@ -156,9 +156,9 @@ function md5(string: string): string {
   return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase();
 }
 
-// Configurações e Chaves Oficiais do App Pulsar para Last.fm (VICCS_PulsarPlayer)
-const DEFAULT_API_KEY = '94b31a524883e32f92eb88142d3e3546';
-const DEFAULT_API_SECRET = 'e594d227fd58d24ddbafeb25c0bbcfe9';
+// Configurações do App Pulsar para Last.fm (Carregadas via variáveis de ambiente seguras)
+const DEFAULT_API_KEY = (import.meta.env.VITE_LASTFM_API_KEY as string) || '';
+const DEFAULT_API_SECRET = (import.meta.env.VITE_LASTFM_API_SECRET as string) || '';
 const LASTFM_API_URL = 'https://ws.audioscrobbler.com/2.0/';
 
 export const lastFmConnected = writable<boolean>(false);

@@ -102,7 +102,7 @@
   }
 </script>
 
-<div class="w-full rounded-2xl liquid-glass border border-white/[0.12] p-3.5 flex flex-col gap-3 text-[#F2EFEA] select-none shadow-lg">
+<div class="w-full rounded-2xl lq-glass-frost border border-white/[0.12] p-3.5 flex flex-col gap-3 text-[#F0F0F5] select-none shadow-lg">
   {#if captchaStatus === 'idle' || captchaStatus === 'analyzing'}
     <!-- FASE 1: CHECKBOX INTELIGENTE ESTILO TURNSTILE -->
     <button
@@ -114,14 +114,14 @@
     >
       <div class="flex items-center gap-3">
         <!-- Caixa de Seleção com Micro-animação -->
-        <div class="w-6 h-6 rounded-lg border-2 border-white/[0.2] group-hover:border-[#66D7D1] transition flex items-center justify-center bg-black/20 shrink-0">
+        <div class="w-6 h-6 rounded-lg border-2 border-white/[0.2] group-hover:border-[#3093AA] transition flex items-center justify-center bg-black/20 shrink-0">
           {#if captchaStatus === 'analyzing'}
-            <Loader2 class="w-4 h-4 text-[#66D7D1] animate-spin" />
+            <Loader2 class="w-4 h-4 text-[#3093AA] animate-spin" />
           {/if}
         </div>
 
         <div class="text-left">
-          <p class="text-xs font-bold text-[#F2EFEA] group-hover:text-[#66D7D1] transition">
+          <p class="text-xs font-bold text-[#F0F0F5] group-hover:text-[#3093AA] transition">
             {captchaStatus === 'analyzing' ? 'Verificando segurança...' : 'Não sou um robô'}
           </p>
           <p class="text-[10px] text-white/40">Clique para validar o cadastro</p>
@@ -129,7 +129,7 @@
       </div>
 
       <div class="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition">
-        <ShieldCheck class="w-4 h-4 text-[#66D7D1]" />
+        <ShieldCheck class="w-4 h-4 text-[#3093AA]" />
         <span class="text-[9px] font-mono tracking-wider uppercase text-white/50">Anti-Bot</span>
       </div>
     </button>
@@ -139,16 +139,16 @@
     <div class="flex flex-col gap-2.5 animate-in fade-in duration-200">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <Sparkles class="w-3.5 h-3.5 text-[#FC7753]" />
-          <p class="text-xs font-bold text-[#F2EFEA]">
-            Selecione <strong class="text-[#66D7D1] underline underline-offset-2">{currentTarget.label}</strong>:
+          <Sparkles class="w-3.5 h-3.5 text-[#EF7D4B]" />
+          <p class="text-xs font-bold text-[#F0F0F5]">
+            Selecione <strong class="text-[#3093AA] underline underline-offset-2">{currentTarget.label}</strong>:
           </p>
         </div>
 
         <button
           type="button"
           onclick={generateChallenge}
-          class="p-1 rounded-lg text-white/40 hover:text-[#66D7D1] hover:bg-white/[0.06] transition cursor-pointer"
+          class="p-1 rounded-lg text-white/40 hover:text-[#3093AA] hover:bg-white/[0.06] transition cursor-pointer"
           title="Trocar desafio"
         >
           <RotateCcw class="w-3.5 h-3.5" />
@@ -162,15 +162,15 @@
           <button
             type="button"
             onclick={() => handleSelectOption(opt)}
-            class="aspect-square rounded-xl bg-white/[0.04] hover:bg-[#66D7D1]/15 border border-white/[0.1] hover:border-[#66D7D1]/50 flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer group"
+            class="aspect-square rounded-xl bg-white/[0.04] hover:bg-[#3093AA]/15 border border-white/[0.1] hover:border-[#3093AA]/50 flex flex-col items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer group"
           >
-            <IconComp class="w-5 h-5 text-white/70 group-hover:text-[#66D7D1] group-hover:scale-110 transition-transform" />
+            <IconComp class="w-5 h-5 text-white/70 group-hover:text-[#3093AA] group-hover:scale-110 transition-transform" />
           </button>
         {/each}
       </div>
 
       {#if errorMessage}
-        <div class="flex items-center gap-1.5 text-[10px] text-[#FC7753] font-medium pt-0.5">
+        <div class="flex items-center gap-1.5 text-[10px] text-[#EF7D4B] font-medium pt-0.5">
           <AlertCircle class="w-3 h-3 shrink-0" />
           <span>{errorMessage}</span>
         </div>
@@ -179,14 +179,14 @@
 
   {:else if captchaStatus === 'verified'}
     <!-- FASE 3: VERIFICADO COM SUCESSO -->
-    <div class="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#66D7D1]/15 border border-[#66D7D1]/35 text-[#66D7D1] animate-in zoom-in-95 duration-200">
+    <div class="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#3093AA]/15 border border-[#3093AA]/35 text-[#3093AA] animate-in zoom-in-95 duration-200">
       <div class="flex items-center gap-2.5">
-        <div class="w-6 h-6 rounded-lg bg-[#66D7D1] text-[#09090d] flex items-center justify-center shadow-md">
+        <div class="w-6 h-6 rounded-lg bg-[#3093AA] text-[#0B1020] flex items-center justify-center shadow-md">
           <Check class="w-4 h-4 stroke-[3]" />
         </div>
         <div>
-          <p class="text-xs font-bold text-[#F2EFEA]">Humano verificado com sucesso</p>
-          <p class="text-[10px] text-[#66D7D1]/80">Cadastro desbloqueado</p>
+          <p class="text-xs font-bold text-[#F0F0F5]">Humano verificado com sucesso</p>
+          <p class="text-[10px] text-[#3093AA]/80">Cadastro desbloqueado</p>
         </div>
       </div>
 

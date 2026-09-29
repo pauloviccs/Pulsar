@@ -86,10 +86,10 @@
 {#if friend}
   <!-- Chat Docked no Canto Inferior Direito Estilo Riot Client / iMessage -->
   <div 
-    class="fixed bottom-24 right-4 sm:right-8 w-84 md:w-96 h-[480px] max-h-[calc(100vh-140px)] max-w-[calc(100vw-32px)] z-50 flex flex-col rounded-3xl liquid-glass border border-white/[0.14] shadow-2xl backdrop-blur-3xl overflow-hidden animate-in zoom-in-95 duration-200 select-none"
+    class="fixed bottom-24 right-4 sm:right-8 w-84 md:w-96 h-[480px] max-h-[calc(100vh-140px)] max-w-[calc(100vw-32px)] z-50 flex flex-col rounded-3xl lq-glass-frost border border-white/[0.14] shadow-2xl backdrop-blur-3xl overflow-hidden animate-in zoom-in-95 duration-200 select-none"
   >
     <!-- Header do Chat -->
-    <div class="p-3.5 px-4 bg-[#09090d]/80 border-b border-white/[0.08] flex items-center justify-between">
+    <div class="p-3.5 px-4 bg-[#0B1020]/80 border-b border-white/[0.08] flex items-center justify-between">
       <div class="flex items-center gap-3 min-w-0">
         <div class="relative shrink-0">
           <img 
@@ -97,15 +97,15 @@
             alt={friendName} 
             class="w-9 h-9 rounded-full object-cover border border-white/[0.15]"
           />
-          <div class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#09090d] {friendStatus === 'online' ? 'bg-[#66D7D1]' : friendStatus === 'away' ? 'bg-[#DBD56E]' : 'bg-[#F2EFEA]/30'}"></div>
+          <div class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0B1020] {friendStatus === 'online' ? 'bg-[#3093AA]' : friendStatus === 'away' ? 'bg-[#F3B044]' : 'bg-[#F0F0F5]/30'}"></div>
         </div>
 
         <div class="min-w-0">
           <div class="flex items-center gap-1.5 truncate">
-            <span class="text-xs font-bold text-[#F2EFEA] truncate">{friendName}</span>
-            <span class="text-[10px] font-mono text-[#66D7D1]">#{friendTag}</span>
+            <span class="text-xs font-bold text-[#F0F0F5] truncate">{friendName}</span>
+            <span class="text-[10px] font-mono text-[#3093AA]">#{friendTag}</span>
           </div>
-          <p class="text-[10px] text-[#F2EFEA]/50 truncate">
+          <p class="text-[10px] text-[#F0F0F5]/50 truncate">
             {friendCurrentTrack ? `Ouvindo: ${friendCurrentTrack}` : 'Mensagens diretas'}
           </p>
         </div>
@@ -114,7 +114,7 @@
       <div class="flex items-center gap-1">
         <button
           onclick={() => activeChatFriend.set(null)}
-          class="p-1.5 rounded-xl text-[#F2EFEA]/40 hover:text-[#F2EFEA] hover:bg-white/[0.08] transition cursor-pointer"
+          class="p-1.5 rounded-xl text-[#F0F0F5]/40 hover:text-[#F0F0F5] hover:bg-white/[0.08] transition cursor-pointer"
           title="Fechar Chat"
         >
           <X class="w-4 h-4" />
@@ -129,11 +129,11 @@
     >
       {#if messages.length === 0}
         <div class="m-auto text-center flex flex-col items-center gap-2 p-6">
-          <div class="w-12 h-12 rounded-full liquid-glass flex items-center justify-center text-[#66D7D1]">
+          <div class="w-12 h-12 rounded-full lq-glass-frost flex items-center justify-center text-[#3093AA]">
             <Sparkles class="w-6 h-6" />
           </div>
-          <p class="text-xs font-bold text-[#F2EFEA]">Inicie a conversa com {friendName}</p>
-          <p class="text-[11px] text-[#F2EFEA]/40 max-w-xs">
+          <p class="text-xs font-bold text-[#F0F0F5]">Inicie a conversa com {friendName}</p>
+          <p class="text-[11px] text-[#F0F0F5]/40 max-w-xs">
             Envie mensagens instantâneas ou compartilhe músicas para ouvirem juntos.
           </p>
         </div>
@@ -144,8 +144,8 @@
             <!-- Balão de Texto -->
             <div 
               class="max-w-[80%] rounded-2xl px-3.5 py-2.5 text-xs shadow-md {isMine 
-                ? 'bg-gradient-to-br from-[#FC7753] to-[#FC7753]/90 text-white rounded-tr-xs' 
-                : 'liquid-glass border border-white/[0.1] text-[#F2EFEA] rounded-tl-xs'}"
+                ? 'bg-gradient-to-br from-[#EF7D4B] to-[#EF7D4B]/90 text-white rounded-tr-xs' 
+                : 'lq-glass-frost border border-white/[0.1] text-[#F0F0F5] rounded-tl-xs'}"
             >
               <p class="leading-relaxed break-words">{msg.content}</p>
 
@@ -163,7 +163,7 @@
                   </div>
                   <button
                     onclick={() => handlePlaySharedTrack(msg.shared_track!)}
-                    class="p-2 rounded-xl bg-[#66D7D1] text-[#09090d] hover:scale-105 transition active:scale-95 cursor-pointer shrink-0 shadow-md"
+                    class="p-2 rounded-xl bg-[#3093AA] text-[#0B1020] hover:scale-105 transition active:scale-95 cursor-pointer shrink-0 shadow-md"
                     title="Tocar Agora"
                   >
                     <Play class="w-3.5 h-3.5 fill-current" />
@@ -173,11 +173,11 @@
             </div>
 
             <!-- Timestamp e Status -->
-            <div class="flex items-center gap-1 px-1 text-[9px] text-[#F2EFEA]/40 font-mono">
+            <div class="flex items-center gap-1 px-1 text-[9px] text-[#F0F0F5]/40 font-mono">
               <span>{formatTime(msg.created_at)}</span>
               {#if isMine}
                 {#if msg.read}
-                  <CheckCheck class="w-3 h-3 text-[#66D7D1]" />
+                  <CheckCheck class="w-3 h-3 text-[#3093AA]" />
                 {:else}
                   <Check class="w-3 h-3" />
                 {/if}
@@ -189,15 +189,15 @@
     </div>
 
     <!-- Barra de Digitação e Ações Rápidas -->
-    <div class="p-3 bg-[#09090d]/80 border-t border-white/[0.08] flex flex-col gap-2">
+    <div class="p-3 bg-[#0B1020]/80 border-t border-white/[0.08] flex flex-col gap-2">
       <!-- Botão para Compartilhar Música que Está Tocando -->
       {#if $currentTrack}
         <button
           onclick={handleShareCurrentTrack}
-          class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[10px] font-semibold text-[#66D7D1] transition cursor-pointer w-fit"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[10px] font-semibold text-[#3093AA] transition cursor-pointer w-fit"
           title="Compartilhar '{$currentTrack.title}' com este amigo"
         >
-          <Music2 class="w-3 h-3 text-[#66D7D1]" />
+          <Music2 class="w-3 h-3 text-[#3093AA]" />
           <span class="truncate max-w-[220px]">Compartilhar: {$currentTrack.title}</span>
         </button>
       {/if}
@@ -210,13 +210,13 @@
           type="text"
           bind:value={messageInput}
           placeholder="Mensagem para {friendName}..."
-          class="flex-1 py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F2EFEA] placeholder:text-[#F2EFEA]/30 outline-none"
+          class="flex-1 py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] placeholder:text-[#F0F0F5]/30 outline-none"
         />
 
         <button
           type="submit"
           disabled={!messageInput.trim()}
-          class="p-2.5 rounded-2xl bg-[#FC7753] hover:bg-[#FC7753]/90 disabled:opacity-40 text-white transition active:scale-95 cursor-pointer shadow-md shadow-[#FC7753]/20 shrink-0"
+          class="p-2.5 rounded-2xl bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 disabled:opacity-40 text-white transition active:scale-95 cursor-pointer shadow-md shadow-[#EF7D4B]/20 shrink-0"
         >
           <Send class="w-4 h-4" />
         </button>

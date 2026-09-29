@@ -2,7 +2,7 @@
 
 > **Documento Oficial de Arquitetura — Fase 2 do Pulsar Connect**  
 > **Status:** Aprovado para Implementação  
-> **Depende de:** [`docs/audio/CURRENT_STATE.md`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/docs/audio/CURRENT_STATE.md)  
+> **Depende de:** [`docs/audio/CURRENT_STATE.md`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/docs/audio/CURRENT_STATE.md)  
 > **Alvo:** Desacoplar decodificação e transporte de áudio do dispositivo físico final.
 
 ---

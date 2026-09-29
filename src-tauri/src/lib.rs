@@ -153,6 +153,8 @@ pub fn run() {
             commands::get_recent_tracks,
             commands::update_playlist,
             commands::upsert_playlist,
+            commands::toggle_follow_playlist,
+            commands::increment_playlist_play,
             commands::save_track_direct,
             commands::set_playlist_tracks,
             commands::toggle_mini_player,

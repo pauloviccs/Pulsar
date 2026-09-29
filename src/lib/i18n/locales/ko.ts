@@ -33,6 +33,8 @@ export const ko: TranslationDictionary = {
   sidebar: {
     zeroAds: '광고 없는 음악 경험',
     pasteLink: '링크 / 재생목록 붙여넣기',
+    addMusic: '음악 추가',
+    importLink: '링크 가져오기',
     menu: '메뉴',
     socialCloud: '소셜 & 클라우드',
     playlists: '플레이리스트',

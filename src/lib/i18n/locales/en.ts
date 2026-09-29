@@ -33,6 +33,8 @@ export const en: TranslationDictionary = {
   sidebar: {
     zeroAds: 'Zero Ads',
     pasteLink: 'Paste Link / Playlist',
+    addMusic: 'Add Music',
+    importLink: 'Import Link',
     menu: 'Menu',
     socialCloud: 'Social & Cloud',
     playlists: 'Playlists',

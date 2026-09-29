@@ -84,14 +84,14 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 id="logs-modal-title" class="text-sm font-bold text-[#F2EFEA] tracking-tight">
+              <h2 id="logs-modal-title" class="text-sm font-bold text-[#F0F0F5] tracking-tight">
                 Console de Diagnóstico & Logs
               </h2>
               <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/[0.06] text-white/70 border border-white/[0.08]">
                 {$logs.length} eventos
               </span>
             </div>
-            <p class="text-[11px] text-[#F2EFEA]/50">
+            <p class="text-[11px] text-[#F0F0F5]/50">
               Histórico operacional de Bluetooth, streaming, áudio WASAPI e rede
             </p>
           </div>
@@ -102,23 +102,23 @@
           <button
             onclick={handleSync}
             disabled={isSyncing}
-            class="p-2 rounded-xl text-[#F2EFEA]/60 hover:text-[#F2EFEA] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            class="p-2 rounded-xl text-[#F0F0F5]/60 hover:text-[#F0F0F5] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             title="Atualizar Logs"
           >
-            <RefreshCw class="w-4 h-4 {isSyncing ? 'animate-spin text-[#66D7D1]' : ''}" />
+            <RefreshCw class="w-4 h-4 {isSyncing ? 'animate-spin text-[#3093AA]' : ''}" />
           </button>
 
           <!-- Botão Copiar -->
           <button
             onclick={handleCopy}
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#F2EFEA] border border-white/[0.08] transition-all cursor-pointer active:scale-95"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#F0F0F5] border border-white/[0.08] transition-all cursor-pointer active:scale-95"
             title="Copiar todos os logs"
           >
             {#if copied}
               <Check class="w-3.5 h-3.5 text-emerald-400" />
               <span class="text-emerald-400">Copiado!</span>
             {:else}
-              <Copy class="w-3.5 h-3.5 text-[#F2EFEA]/70" />
+              <Copy class="w-3.5 h-3.5 text-[#F0F0F5]/70" />
               <span>Copiar</span>
             {/if}
           </button>
@@ -126,17 +126,17 @@
           <!-- Botão Abrir Pasta -->
           <button
             onclick={handleOpenFolder}
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#F2EFEA] border border-white/[0.08] transition-all cursor-pointer active:scale-95"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#F0F0F5] border border-white/[0.08] transition-all cursor-pointer active:scale-95"
             title="Abrir pasta do arquivo pulsar.log no Explorer"
           >
-            <FolderOpen class="w-3.5 h-3.5 text-[#F2EFEA]/70" />
+            <FolderOpen class="w-3.5 h-3.5 text-[#F0F0F5]/70" />
             <span class="hidden sm:inline">Pasta</span>
           </button>
 
           <!-- Botão Fechar -->
           <button
             onclick={() => isOpen = false}
-            class="p-2 rounded-xl text-[#F2EFEA]/50 hover:text-[#F2EFEA] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
+            class="p-2 rounded-xl text-[#F0F0F5]/50 hover:text-[#F0F0F5] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
             title="Fechar"
           >
             <X class="w-4 h-4" />
@@ -153,7 +153,7 @@
             type="text"
             bind:value={searchTerm}
             placeholder="Filtrar por mensagem ou data..."
-            class="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[#F2EFEA] placeholder-white/30 focus:outline-none focus:border-[#66D7D1]/50 transition-colors"
+            class="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[#F0F0F5] placeholder-white/30 focus:outline-none focus:border-[#3093AA]/50 transition-colors"
           />
         </div>
 
@@ -232,7 +232,7 @@
         <span class="truncate">
           Arquivo: <code class="text-white/60 bg-white/[0.05] px-1.5 py-0.5 rounded">%APPDATA%/com.pulsar.app/logs/pulsar.log</code>
         </span>
-        <span class="shrink-0 text-[#66D7D1]">
+        <span class="shrink-0 text-[#3093AA]">
           Pulsar v0.2.4
         </span>
       </div>

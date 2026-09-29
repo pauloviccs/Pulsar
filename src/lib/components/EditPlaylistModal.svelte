@@ -270,19 +270,19 @@
       role="dialog"
       aria-modal="true"
       tabindex="-1"
-      class="liquid-modal w-full max-w-xl max-h-[88vh] rounded-3xl p-6 flex flex-col gap-5 border border-white/[0.16] shadow-2xl text-[#F2EFEA] animate-apple-spring relative overflow-hidden"
+      class="lq-glass-elevated w-full max-w-xl max-h-[88vh] rounded-3xl p-6 flex flex-col gap-5 border border-white/[0.16] shadow-2xl text-[#F0F0F5] animate-apple-spring relative overflow-hidden"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Escape') close(); }}
     >
       <!-- Header -->
       <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] shrink-0">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-[#66D7D1]/15 border border-[#66D7D1]/30 flex items-center justify-center text-[#66D7D1]">
+          <div class="w-10 h-10 rounded-2xl bg-[#3093AA]/15 border border-[#3093AA]/30 flex items-center justify-center text-[#3093AA]">
             <Sparkles class="w-5 h-5" />
           </div>
           <div>
-            <h2 class="text-sm font-bold tracking-tight text-[#F2EFEA]">{$t('editPlaylistModal.title')}</h2>
-            <p class="text-[11px] text-[#F2EFEA]/50">{$t('editPlaylistModal.subtitle')}</p>
+            <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5]">{$t('editPlaylistModal.title')}</h2>
+            <p class="text-[11px] text-[#F0F0F5]/50">{$t('editPlaylistModal.subtitle')}</p>
           </div>
         </div>
 
@@ -296,7 +296,7 @@
 
       <!-- Mensagem de Erro -->
       {#if errorMessage}
-        <div class="p-3 rounded-2xl bg-[#FC7753]/15 border border-[#FC7753]/30 flex items-center gap-2.5 text-xs text-[#FC7753]">
+        <div class="p-3 rounded-2xl bg-[#EF7D4B]/15 border border-[#EF7D4B]/30 flex items-center gap-2.5 text-xs text-[#EF7D4B]">
           <AlertCircle class="w-4 h-4 shrink-0" />
           <span>{errorMessage}</span>
         </div>
@@ -306,7 +306,7 @@
         <!-- ================= ESTÚDIO DE RECORTE 1:1 COM ZOOM E PAN ================= -->
         <div class="flex flex-col items-center gap-4 py-1">
           <div class="flex items-center justify-between w-full px-2">
-            <span class="text-xs font-semibold text-[#66D7D1] flex items-center gap-1.5">
+            <span class="text-xs font-semibold text-[#3093AA] flex items-center gap-1.5">
               <Crop class="w-4 h-4" />
               <span>{$t('editPlaylistModal.cropTitle')}</span>
             </span>
@@ -316,7 +316,7 @@
           </div>
 
           <!-- Viewport do Canvas Quadrado Interativo -->
-          <div class="relative w-64 h-64 rounded-2xl overflow-hidden border-2 border-[#66D7D1]/50 shadow-2xl bg-black/90 cursor-grab active:cursor-grabbing select-none group">
+          <div class="relative w-64 h-64 rounded-2xl overflow-hidden border-2 border-[#3093AA]/50 shadow-2xl bg-black/90 cursor-grab active:cursor-grabbing select-none group">
             <canvas
               bind:this={cropCanvas}
               width="280"
@@ -342,7 +342,7 @@
                 max="3.0"
                 step="0.05"
                 bind:value={zoomLevel}
-                class="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#66D7D1]"
+                class="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#3093AA]"
               />
               <ZoomIn class="w-3.5 h-3.5 text-white/40" />
               <span class="text-[11px] font-mono text-white/60 w-10 text-right">{zoomLevel.toFixed(1)}x</span>
@@ -370,7 +370,7 @@
             <button
               type="button"
               onclick={applyCrop}
-              class="flex items-center gap-2 px-5 py-2 rounded-2xl bg-[#66D7D1] text-[#09090d] font-bold text-xs shadow-lg shadow-[#66D7D1]/20 hover:bg-[#66D7D1]/90 active:scale-95 transition cursor-pointer"
+              class="flex items-center gap-2 px-5 py-2 rounded-2xl bg-[#3093AA] text-[#0B1020] font-bold text-xs shadow-lg shadow-[#3093AA]/20 hover:bg-[#3093AA]/90 active:scale-95 transition cursor-pointer"
             >
               <Check class="w-4 h-4" />
               <span>{$t('editPlaylistModal.confirmCrop')}</span>
@@ -383,14 +383,14 @@
           <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-6 items-start">
             <!-- Upload e Preview de Capa Quadrada -->
             <div class="flex flex-col gap-2 items-center">
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F2EFEA]/60 text-center">
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F0F0F5]/60 text-center">
                 {$t('editPlaylistModal.cover11')}
               </span>
               
               <button
                 type="button"
                 onclick={() => fileInput?.click()}
-                class="relative w-32 h-32 rounded-2xl overflow-hidden group cursor-pointer border border-white/[0.15] shadow-xl bg-black/40 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#66D7D1]"
+                class="relative w-32 h-32 rounded-2xl overflow-hidden group cursor-pointer border border-white/[0.15] shadow-xl bg-black/40 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#3093AA]"
               >
                 {#if coverPreview}
                   <img 
@@ -403,7 +403,7 @@
                 {/if}
 
                 <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1.5 text-white transition-opacity backdrop-blur-[2px]">
-                  <Upload class="w-5 h-5 text-[#66D7D1]" />
+                  <Upload class="w-5 h-5 text-[#3093AA]" />
                   <span class="text-[10px] font-semibold">{$t('editPlaylistModal.changePhoto')}</span>
                 </div>
               </button>
@@ -417,7 +417,7 @@
                 class="hidden"
               />
 
-              <span class="text-[10px] text-[#F2EFEA]/40 text-center leading-tight">
+              <span class="text-[10px] text-[#F0F0F5]/40 text-center leading-tight">
                 {$t('editPlaylistModal.formatHint')}
               </span>
             </div>
@@ -425,7 +425,7 @@
             <!-- Campos de Nome e Descrição -->
             <div class="flex flex-col gap-4">
               <div class="flex flex-col gap-1.5">
-                <label for="playlist-name-input" class="text-xs font-semibold text-[#F2EFEA]/80">
+                <label for="playlist-name-input" class="text-xs font-semibold text-[#F0F0F5]/80">
                   {$t('editPlaylistModal.nameLabel')}
                 </label>
                 <input
@@ -434,12 +434,12 @@
                   bind:value={name}
                   placeholder={$t('editPlaylistModal.namePlaceholder')}
                   maxlength="60"
-                  class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F2EFEA] placeholder:text-[#F2EFEA]/30 focus:outline-none"
+                  class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] placeholder:text-[#F0F0F5]/30 focus:outline-none"
                 />
               </div>
 
               <div class="flex flex-col gap-1.5">
-                <label for="playlist-desc-input" class="text-xs font-semibold text-[#F2EFEA]/80">
+                <label for="playlist-desc-input" class="text-xs font-semibold text-[#F0F0F5]/80">
                   {$t('editPlaylistModal.descLabel')}
                 </label>
                 <textarea
@@ -448,18 +448,18 @@
                   placeholder={$t('editPlaylistModal.descPlaceholder')}
                   rows="3"
                   maxlength="200"
-                  class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F2EFEA] placeholder:text-[#F2EFEA]/30 focus:outline-none resize-none"
+                  class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] placeholder:text-[#F0F0F5]/30 focus:outline-none resize-none"
                 ></textarea>
               </div>
 
               <!-- Seletor de Visibilidade Social / Nuvem -->
               <div class="flex flex-col gap-1.5">
-                <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F2EFEA]/60">{$t('editPlaylistModal.visibilityLabel')}</span>
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F0F0F5]/60">{$t('editPlaylistModal.visibilityLabel')}</span>
                 <div class="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onclick={() => visibility = 'public'}
-                    class="p-2.5 rounded-xl border flex flex-col items-center gap-1.5 text-center transition cursor-pointer {visibility === 'public' ? 'liquid-glass border-[#66D7D1] text-[#66D7D1]' : 'border-white/[0.08] bg-white/[0.02] text-[#F2EFEA]/50 hover:text-[#F2EFEA]'}"
+                    class="p-2.5 rounded-xl border flex flex-col items-center gap-1.5 text-center transition cursor-pointer {visibility === 'public' ? 'liquid-glass border-[#3093AA] text-[#3093AA]' : 'border-white/[0.08] bg-white/[0.02] text-[#F0F0F5]/50 hover:text-[#F0F0F5]'}"
                   >
                     <Globe class="w-4 h-4" />
                     <span class="text-[11px] font-bold">{$t('common.public')}</span>
@@ -468,7 +468,7 @@
                   <button
                     type="button"
                     onclick={() => visibility = 'shared'}
-                    class="p-2.5 rounded-xl border flex flex-col items-center gap-1.5 text-center transition cursor-pointer {visibility === 'shared' ? 'liquid-glass border-[#DBD56E] text-[#DBD56E]' : 'border-white/[0.08] bg-white/[0.02] text-[#F2EFEA]/50 hover:text-[#F2EFEA]'}"
+                    class="p-2.5 rounded-xl border flex flex-col items-center gap-1.5 text-center transition cursor-pointer {visibility === 'shared' ? 'liquid-glass border-[#F3B044] text-[#F3B044]' : 'border-white/[0.08] bg-white/[0.02] text-[#F0F0F5]/50 hover:text-[#F0F0F5]'}"
                   >
                     <Share2 class="w-4 h-4" />
                     <span class="text-[11px] font-bold">{$t('common.friends')}</span>
@@ -477,7 +477,7 @@
                   <button
                     type="button"
                     onclick={() => visibility = 'private'}
-                    class="p-2.5 rounded-xl border flex flex-col items-center gap-1.5 text-center transition cursor-pointer {visibility === 'private' ? 'liquid-glass border-[#FC7753] text-[#FC7753]' : 'border-white/[0.08] bg-white/[0.02] text-[#F2EFEA]/50 hover:text-[#F2EFEA]'}"
+                    class="p-2.5 rounded-xl border flex flex-col items-center gap-1.5 text-center transition cursor-pointer {visibility === 'private' ? 'liquid-glass border-[#EF7D4B] text-[#EF7D4B]' : 'border-white/[0.08] bg-white/[0.02] text-[#F0F0F5]/50 hover:text-[#F0F0F5]'}"
                   >
                     <Lock class="w-4 h-4" />
                     <span class="text-[11px] font-bold">{$t('common.private')}</span>
@@ -502,7 +502,7 @@
             type="button"
             onclick={handleSave}
             disabled={!name.trim() || isSaving}
-            class="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#FC7753] hover:bg-[#FC7753]/90 text-white font-bold text-xs shadow-lg shadow-[#FC7753]/25 active:scale-95 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+            class="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 text-white font-bold text-xs shadow-lg shadow-[#EF7D4B]/25 active:scale-95 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
           >
             {#if isSaving}
               <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>

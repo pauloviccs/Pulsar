@@ -33,6 +33,8 @@ export const ja: TranslationDictionary = {
   sidebar: {
     zeroAds: '広告ゼロ体験',
     pasteLink: 'リンク / プレイリストを貼り付け',
+    addMusic: '音楽を追加',
+    importLink: 'リンクをインポート',
     menu: 'メニュー',
     socialCloud: 'ソーシャル & クラウド',
     playlists: 'プレイリスト',

@@ -123,13 +123,14 @@
 
 <!-- Container Principal do Mini Player: Apple Liquid Glass com materiais multicamadas -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div 
   role="application"
   tabindex="-1"
   data-tauri-drag-region
   onmousedown={handleWindowDrag}
-  class="w-full h-full flex flex-col justify-between select-none overflow-hidden relative group cursor-grab active:cursor-grabbing p-3 text-[#F2EFEA]
-         bg-[#0b0c13]/70 backdrop-blur-3xl 
+  class="w-full h-full flex flex-col justify-between select-none overflow-hidden relative group cursor-grab active:cursor-grabbing p-3 text-[#F0F0F5]
+         bg-[#0B1020]/70 backdrop-blur-3xl 
          border-t border-white/[0.22] border-x border-white/[0.08] border-b border-black/40
          shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_20px_50px_rgba(0,0,0,0.8)]"
 >
@@ -142,8 +143,8 @@
         class="w-full h-full object-cover scale-150 blur-3xl opacity-25 filter saturate-150"
       />
     {:else}
-      <div class="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-[#FC7753] blur-3xl opacity-20"></div>
-      <div class="absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-[#66D7D1] blur-3xl opacity-20"></div>
+      <div class="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-[#EF7D4B] blur-3xl opacity-20"></div>
+      <div class="absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-[#3093AA] blur-3xl opacity-20"></div>
     {/if}
     <div class="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-black/40"></div>
   </div>
@@ -152,7 +153,7 @@
   <div class="w-full flex items-center justify-between pb-1.5 shrink-0" data-tauri-drag-region>
     <!-- Grip & Branding Apple Glass -->
     <div class="flex items-center gap-2" data-tauri-drag-region>
-      <div class="w-2 h-2 rounded-full bg-[#66D7D1] shadow-sm shadow-[#66D7D1]/60"></div>
+      <div class="w-2 h-2 rounded-full bg-[#3093AA] shadow-sm shadow-[#3093AA]/60"></div>
       <span class="text-[10px] font-bold tracking-wider uppercase text-white/50" data-tauri-drag-region>Pulsar</span>
       <!-- Grab Bar Tátil estilo iOS Sheet Grabber -->
       <div class="w-12 h-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors ml-1" data-tauri-drag-region></div>
@@ -163,11 +164,11 @@
       {#if $currentTrack}
         <button
           onclick={() => playerActions.toggleMiniPlayerVideo()}
-          class="p-1 rounded-lg hover:bg-white/[0.1] text-white/60 hover:text-[#FC7753] transition-all cursor-pointer active:scale-95"
+          class="p-1 rounded-lg hover:bg-white/[0.1] text-white/60 hover:text-[#EF7D4B] transition-all cursor-pointer active:scale-95"
           title={$isMiniPlayerVideo ? "Alternar para Modo Capa" : "Alternar para Modo Vídeo"}
         >
           {#if $isMiniPlayerVideo}
-            <Music class="w-3.5 h-3.5 text-[#66D7D1]" />
+            <Music class="w-3.5 h-3.5 text-[#3093AA]" />
           {:else}
             <Video class="w-3.5 h-3.5" />
           {/if}
@@ -232,7 +233,7 @@
 
       <!-- Metadados da Música -->
       <div class="flex-1 min-w-0 flex flex-col justify-center" data-tauri-drag-region>
-        <h3 class="text-xs font-bold text-[#F2EFEA] truncate leading-tight" title={$currentTrack?.title || 'Nenhuma faixa'}>
+        <h3 class="text-xs font-bold text-[#F0F0F5] truncate leading-tight" title={$currentTrack?.title || 'Nenhuma faixa'}>
           {$currentTrack?.title || 'Nenhuma música tocando'}
         </h3>
         <p class="text-[11px] text-white/50 truncate leading-normal">
@@ -247,7 +248,7 @@
           class="p-2 rounded-xl hover:bg-white/[0.1] text-white/40 hover:text-white transition-all cursor-pointer active:scale-95 shrink-0"
           title={isFav ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
         >
-          <Heart class="w-4 h-4 {isFav ? 'fill-[#FC7753] text-[#FC7753]' : ''}" />
+          <Heart class="w-4 h-4 {isFav ? 'fill-[#EF7D4B] text-[#EF7D4B]' : ''}" />
         </button>
       {/if}
     </div>
@@ -271,7 +272,7 @@
           onpointerdown={handleSeekPointerDown}
           oninput={handleSeekInput}
           onchange={handleSeekChange}
-          class="w-full h-1 bg-white/[0.12] rounded-full appearance-none cursor-pointer accent-[#FC7753] group-hover/seek:h-1.5 transition-all"
+          class="w-full h-1 bg-white/[0.12] rounded-full appearance-none cursor-pointer accent-[#EF7D4B] group-hover/seek:h-1.5 transition-all"
         />
       </div>
 
@@ -307,13 +308,13 @@
 
         <button
           onclick={() => playerActions.togglePlay()}
-          class="p-2.5 rounded-2xl bg-gradient-to-tr from-[#FC7753] to-[#ff8f70] text-[#0b0c13] shadow-md shadow-[#FC7753]/30 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+          class="p-2.5 rounded-2xl bg-gradient-to-tr from-[#EF7D4B] to-[#ff8f70] text-[#0B1020] shadow-md shadow-[#EF7D4B]/30 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
           title={$isPlaying ? "Pausar" : "Reproduzir"}
         >
           {#if $isPlaying}
-            <Pause class="w-4 h-4 fill-current text-[#0b0c13]" />
+            <Pause class="w-4 h-4 fill-current text-[#0B1020]" />
           {:else}
-            <Play class="w-4 h-4 fill-current text-[#0b0c13] ml-0.5" />
+            <Play class="w-4 h-4 fill-current text-[#0B1020] ml-0.5" />
           {/if}
         </button>
 

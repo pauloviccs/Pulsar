@@ -1,7 +1,7 @@
 import { writable, get } from 'svelte/store';
 import { safeInvoke, safeListen } from '../api/tauri';
 
-export const APP_CURRENT_VERSION = '0.2.6-b';
+export const APP_CURRENT_VERSION = '0.2.7';
 export const DEFAULT_MANIFEST_URL = 'https://raw.githubusercontent.com/pauloviccs/Pulsar/main/latest.json';
 
 export interface UpdateManifest {
@@ -46,17 +46,80 @@ export const updateStatusMessage = writable<string>('');
 export const lastCheckTime = writable<string | null>(null);
 
 /**
- * Compara versões SemVer (ex: "0.2.5" > "0.2.2")
+ * Mapa de sufixos pré-release conhecidos → peso numérico para comparação.
+ * Ex: "0.2.6-alpha" < "0.2.6-beta" < "0.2.6-b" < "0.2.6-rc" < "0.2.6" (release)
+ */
+const PRE_RELEASE_WEIGHT: Record<string, number> = {
+  alpha: -4,
+  a: -4,
+  beta: -3,
+  b: -2,
+  rc: -1,
+};
+
+/**
+ * Normaliza uma string de versão em um array numérico comparável.
+ * Suporta: "0.2.7", "v0.2.6-b", "0.2.6.1", "0.2.6-beta.2"
+ *
+ * Lógica:
+ * 1. Remove prefixo "v"
+ * 2. Separa por "-" → parte numérica + sufixo pré-release
+ * 3. Parte numérica é splitada por "." → segmentos inteiros
+ * 4. Se houver sufixo pré-release, acrescenta seu peso como segmento extra
+ *    (releases sem sufixo recebem 0, mantendo-as maiores que pré-releases)
+ */
+function normalizeVersion(ver: string): number[] {
+  const cleaned = String(ver).replace(/^v/i, '').trim();
+  if (!cleaned) return [0];
+
+  // Trata explicitamente a equivalência histórica do release 0.2.6:
+  // "0.2.6-b" e "0.2.6.1" representam a mesma release em canais diferentes (app vs Inno Setup)
+  if (cleaned === '0.2.6-b' || cleaned === '0.2.6.b') {
+    return [0, 2, 6, 1];
+  }
+
+  const dashIndex = cleaned.indexOf('-');
+  const corePart = dashIndex >= 0 ? cleaned.slice(0, dashIndex) : cleaned;
+  const preRelease = dashIndex >= 0 ? cleaned.slice(dashIndex + 1).toLowerCase() : undefined;
+
+  const segments = corePart.split('.').map(s => parseInt(s, 10) || 0);
+
+  if (preRelease !== undefined) {
+    // Pode ser "b", "beta", "rc", "alpha", ou "beta.2"
+    const preParts = preRelease.split('.');
+    const label = preParts[0];
+    const weight = PRE_RELEASE_WEIGHT[label] ?? -1;
+    segments.push(weight);
+    // Se houver sub-número após o label (ex: "beta.2"), adiciona
+    if (preParts.length > 1) {
+      segments.push(parseInt(preParts[1], 10) || 0);
+    }
+  } else {
+    // Release final → peso 0 (maior que qualquer pré-release negativo)
+    segments.push(0);
+  }
+
+  return segments;
+}
+
+/**
+ * Compara versões de forma robusta, suportando SemVer com sufixos pré-release.
+ * Exemplos:
+ *   "0.2.7" > "0.2.6-b"    → true
+ *   "0.2.6.1" > "0.2.6-b"  → false (ambas equivalem à mesma release cycle, mas .1 ≈ sub-patch)
+ *   "0.2.7" > "0.2.7"      → false (iguais)
  */
 export function isNewerVersion(remoteVersion: string, currentVer?: string): boolean {
   const activeVer = currentVer || get(currentVersion) || APP_CURRENT_VERSION;
   if (!remoteVersion || !activeVer) return false;
-  const r = String(remoteVersion).replace(/^v/i, '').trim().split('.').map(n => parseInt(n, 10) || 0);
-  const c = String(activeVer).replace(/^v/i, '').trim().split('.').map(n => parseInt(n, 10) || 0);
 
-  for (let i = 0; i < Math.max(r.length, c.length); i++) {
-    const rPart = r[i] || 0;
-    const cPart = c[i] || 0;
+  const r = normalizeVersion(remoteVersion);
+  const c = normalizeVersion(activeVer);
+
+  const maxLen = Math.max(r.length, c.length);
+  for (let i = 0; i < maxLen; i++) {
+    const rPart = r[i] ?? 0;
+    const cPart = c[i] ?? 0;
     if (rPart > cPart) return true;
     if (rPart < cPart) return false;
   }

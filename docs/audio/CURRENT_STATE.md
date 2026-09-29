@@ -1,7 +1,7 @@
 # Estado Atual do Pipeline de Áudio do Pulsar (Current State)
 
 > Documento oficial de diagnóstico arquitetural da Fase 1 do projeto **Pulsar Connect**.  
-> Baseado no código-fonte em `g:\GitHub\Vibecoding\VICCS_Git\VICCS_Pullsar`.
+> Baseado no código-fonte em `g:\GitHub\Vibecoding\VICCS_Git\VICCS_Lumia\VICCS_Pulsar`.
 
 ---
 
@@ -12,9 +12,9 @@ A reprodução física do áudio no Pulsar é **híbrida**, dividida entre o pro
 
 | Camada | Tecnologia | Localização no Código | Responsabilidade Primária |
 | :--- | :--- | :--- | :--- |
-| **Frontend** | HTML5 `<audio>` Element | [`src/lib/components/GlobalAudioEngine.svelte`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/src/lib/components/GlobalAudioEngine.svelte) | Decodificação de áudio, buffer de streaming, crossfade, controle de volume, disparo de scrobble Last.fm. |
-| **Backend** | Axum HTTP Proxy (Porta `41235`) | [`src-tauri/src/audio_engine/mod.rs`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/src-tauri/src/audio_engine/mod.rs) | Proxy local HTTP com suporte a requisições parciais `Range` (HTTP 206), cache em disco (`.m4a`) e resolução sob demanda via `yt-dlp`. |
-| **Sidecar** | Binário `yt-dlp` embutido | [`src-tauri/src/youtube/mod.rs`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/src-tauri/src/youtube/mod.rs) | Extração de URLs brutas de streaming `googlevideo.com` e busca acústica (`ytsearch1:`). |
+| **Frontend** | HTML5 `<audio>` Element | [`src/lib/components/GlobalAudioEngine.svelte`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/src/lib/components/GlobalAudioEngine.svelte) | Decodificação de áudio, buffer de streaming, crossfade, controle de volume, disparo de scrobble Last.fm. |
+| **Backend** | Axum HTTP Proxy (Porta `41235`) | [`src-tauri/src/audio_engine/mod.rs`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/src-tauri/src/audio_engine/mod.rs) | Proxy local HTTP com suporte a requisições parciais `Range` (HTTP 206), cache em disco (`.m4a`) e resolução sob demanda via `yt-dlp`. |
+| **Sidecar** | Binário `yt-dlp` embutido | [`src-tauri/src/youtube/mod.rs`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/src-tauri/src/youtube/mod.rs) | Extração de URLs brutas de streaming `googlevideo.com` e busca acústica (`ytsearch1:`). |
 
 Nenhuma biblioteca nativa de áudio de baixo nível (como `rodio`, `cpal`, `symphonia` ou `miniaudio`) está sendo utilizada no backend Rust atualmente. O áudio é consumido pelo navegador embutido do WebView2 diretamente via URL de loopback:
 ```text
@@ -71,12 +71,12 @@ sequenceDiagram
 1. **Extração / Resolução:** O sidecar `yt-dlp` extrai streams de formato `-f "bestaudio[ext=m4a]/bestaudio/ba/b"`. Se for importação Spotify, faz a busca textual e acústica por duração antes de obter a URL.
 2. **Streaming & Proxy:** O servidor Axum escuta em `127.0.0.1:41235`. Quando recebe requisições, repassa o cabeçalho `Range: bytes=X-Y`, viabilizando *seeking* (scrubbing) instantâneo sem precisar baixar o arquivo inteiro previamente.
 3. **Decodificação & Buffer:** Delegada inteiramente ao pipeline de mídia do Chromium (decodificador embutido de AAC/MP4 e Opus/WebM). O buffer de antecipação segue a estratégia interna do elemento `<audio>`.
-4. **Fila e Navegação:** Mantida em memória na store Svelte [`src/lib/stores/playerStore.ts`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/src/lib/stores/playerStore.ts) (`queue`, `queueIndex`, `history`, `shuffle`, `repeatMode`).
+4. **Fila e Navegação:** Mantida em memória na store Svelte [`src/lib/stores/playerStore.ts`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/src/lib/stores/playerStore.ts) (`queue`, `queueIndex`, `history`, `shuffle`, `repeatMode`).
 5. **Volume e Mute:**
    - **Controle interno por software:** Controlado estritamente pela propriedade `audioElement.volume` (número de 0.0 a 1.0). Não altera o volume master do Windows.
    - **Normalização de Volume:** Quando ativada (`audioNormalization: true`), multiplica o volume base por um fator de teto fixo (`0.92`) para mitigar picos de distorção entre faixas de diferentes canais.
 6. **Crossfade:**
-   - Implementado matematicamente em JavaScript dentro do evento `ontimeupdate` de [`GlobalAudioEngine.svelte`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/src/lib/components/GlobalAudioEngine.svelte).
+   - Implementado matematicamente em JavaScript dentro do evento `ontimeupdate` de [`GlobalAudioEngine.svelte`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/src/lib/components/GlobalAudioEngine.svelte).
    - Realiza interpolação linear (`remaining / crossfade`) nos últimos segundos da faixa em fade-out e chama `playerActions.next()` quando restam menos de 0.25s. Ao mesmo tempo, aplica fade-in suave nos primeiros 2s da faixa seguinte.
 
 ---

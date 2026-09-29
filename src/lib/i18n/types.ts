@@ -40,6 +40,8 @@ export interface TranslationDictionary {
   sidebar: {
     zeroAds: string;
     pasteLink: string;
+    addMusic: string;
+    importLink: string;
     menu: string;
     socialCloud: string;
     playlists: string;

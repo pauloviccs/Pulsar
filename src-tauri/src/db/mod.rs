@@ -47,6 +47,20 @@ pub struct PlaylistDTO {
     pub track_count: i64,
     #[serde(default)]
     pub total_duration_seconds: i64,
+    #[serde(default)]
+    pub user_id: Option<String>,
+    #[serde(default)]
+    pub owner_name: Option<String>,
+    #[serde(default)]
+    pub owner_username: Option<String>,
+    #[serde(default)]
+    pub visibility: Option<String>,
+    #[serde(default)]
+    pub is_followed: bool,
+    #[serde(default)]
+    pub play_count: i64,
+    #[serde(default)]
+    pub owner_avatar_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,6 +165,13 @@ impl Database {
         let _ = conn.execute("ALTER TABLE playlists ADD COLUMN cover_image_path TEXT DEFAULT ''", []);
         let _ = conn.execute("ALTER TABLE playlists ADD COLUMN is_imported_youtube_playlist BOOLEAN DEFAULT 0", []);
         let _ = conn.execute("ALTER TABLE playlists ADD COLUMN source_youtube_playlist_id TEXT", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN user_id TEXT", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN owner_name TEXT", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN owner_username TEXT", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN visibility TEXT DEFAULT 'public'", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN is_followed BOOLEAN DEFAULT 0", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN play_count INTEGER DEFAULT 0", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN owner_avatar_url TEXT", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN audio_stream_cached BOOLEAN DEFAULT 0", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN last_played_at TIMESTAMP", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN source_platform TEXT DEFAULT 'youtube'", []);
@@ -371,7 +392,9 @@ impl Database {
             .prepare(
                 "SELECT p.id, p.name, COALESCE(p.description, ''), p.cover_image_path, p.created_at, p.is_imported_youtube_playlist,
                         COUNT(pt.track_id) as track_count,
-                        COALESCE(SUM(t.duration_seconds), 0) as total_duration
+                        COALESCE(SUM(t.duration_seconds), 0) as total_duration,
+                        p.user_id, p.owner_name, p.owner_username, COALESCE(p.visibility, 'public'),
+                        COALESCE(p.is_followed, 0), COALESCE(p.play_count, 0), p.owner_avatar_url
                  FROM playlists p
                  LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id
                  LEFT JOIN tracks t ON pt.track_id = t.id
@@ -383,6 +406,7 @@ impl Database {
         let rows = stmt
             .query_map([], |row| {
                 let cover: Option<String> = row.get(3)?;
+                let is_followed_num: i64 = row.get(12).unwrap_or(0);
                 Ok(PlaylistDTO {
                     id: row.get(0)?,
                     name: row.get(1)?,
@@ -392,6 +416,13 @@ impl Database {
                     is_imported_youtube_playlist: row.get(5)?,
                     track_count: row.get(6)?,
                     total_duration_seconds: row.get(7)?,
+                    user_id: row.get(8).ok(),
+                    owner_name: row.get(9).ok(),
+                    owner_username: row.get(10).ok(),
+                    visibility: row.get(11).ok(),
+                    is_followed: is_followed_num == 1,
+                    play_count: row.get(13).unwrap_or(0),
+                    owner_avatar_url: row.get(14).ok(),
                 })
             })
             .map_err(|e| e.to_string())?;
@@ -405,15 +436,25 @@ impl Database {
         Ok(list)
     }
 
-    /// Cria uma nova playlist
-    pub fn create_playlist(&self, name: &str, description: &str) -> Result<PlaylistDTO, String> {
+    /// Cria uma nova playlist com metadados do criador
+    pub fn create_playlist(
+        &self,
+        name: &str,
+        description: &str,
+        user_id: Option<&str>,
+        owner_name: Option<&str>,
+        owner_username: Option<&str>,
+        visibility: Option<&str>,
+        owner_avatar_url: Option<&str>,
+    ) -> Result<PlaylistDTO, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let id = uuid::Uuid::new_v4().to_string();
         let default_cover = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
 
         conn.execute(
-            "INSERT INTO playlists (id, name, description, cover_image_path) VALUES (?1, ?2, ?3, ?4)",
-            params![id, name, description, default_cover],
+            "INSERT INTO playlists (id, name, description, cover_image_path, user_id, owner_name, owner_username, visibility, is_followed, play_count, owner_avatar_url)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 0, ?9)",
+            params![id, name, description, default_cover, user_id, owner_name, owner_username, visibility.unwrap_or("public"), owner_avatar_url],
         ).map_err(|e| e.to_string())?;
 
         Ok(PlaylistDTO {
@@ -425,6 +466,13 @@ impl Database {
             is_imported_youtube_playlist: false,
             track_count: 0,
             total_duration_seconds: 0,
+            user_id: user_id.map(|s| s.to_string()),
+            owner_name: owner_name.map(|s| s.to_string()),
+            owner_username: owner_username.map(|s| s.to_string()),
+            visibility: Some(visibility.unwrap_or("public").to_string()),
+            is_followed: false,
+            play_count: 0,
+            owner_avatar_url: owner_avatar_url.map(|s| s.to_string()),
         })
     }
 
@@ -434,6 +482,30 @@ impl Database {
         conn.execute("DELETE FROM playlists WHERE id = ?1", params![id])
             .map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    /// Alterna status de playlist seguida (is_followed)
+    pub fn toggle_follow_playlist(&self, id: &str, follow: bool) -> Result<bool, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let val = if follow { 1 } else { 0 };
+        conn.execute("UPDATE playlists SET is_followed = ?1 WHERE id = ?2", params![val, id])
+            .map_err(|e| e.to_string())?;
+        Ok(follow)
+    }
+
+    /// Incrementa atômico do contador de plays de uma playlist
+    pub fn increment_playlist_play(&self, id: &str) -> Result<i64, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE playlists SET play_count = COALESCE(play_count, 0) + 1 WHERE id = ?1",
+            params![id],
+        ).map_err(|e| e.to_string())?;
+        let count: i64 = conn.query_row(
+            "SELECT COALESCE(play_count, 0) FROM playlists WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        ).unwrap_or(0);
+        Ok(count)
     }
 
     /// Atualiza nome, descrição e/ou capa de uma playlist
@@ -461,7 +533,9 @@ impl Database {
         let pl = conn.query_row(
             "SELECT p.id, p.name, COALESCE(p.description, ''), p.cover_image_path, p.created_at, p.is_imported_youtube_playlist,
                     COUNT(pt.track_id) as track_count,
-                    COALESCE(SUM(t.duration_seconds), 0) as total_duration
+                    COALESCE(SUM(t.duration_seconds), 0) as total_duration,
+                    p.user_id, p.owner_name, p.owner_username, COALESCE(p.visibility, 'public'),
+                    COALESCE(p.is_followed, 0), COALESCE(p.play_count, 0), p.owner_avatar_url
              FROM playlists p
              LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id
              LEFT JOIN tracks t ON pt.track_id = t.id
@@ -470,6 +544,7 @@ impl Database {
             params![id],
             |row| {
                 let cover: Option<String> = row.get(3)?;
+                let is_followed_num: i64 = row.get(12).unwrap_or(0);
                 Ok(PlaylistDTO {
                     id: row.get(0)?,
                     name: row.get(1)?,
@@ -479,6 +554,13 @@ impl Database {
                     is_imported_youtube_playlist: row.get(5)?,
                     track_count: row.get(6)?,
                     total_duration_seconds: row.get(7)?,
+                    user_id: row.get(8).ok(),
+                    owner_name: row.get(9).ok(),
+                    owner_username: row.get(10).ok(),
+                    visibility: row.get(11).ok(),
+                    is_followed: is_followed_num == 1,
+                    play_count: row.get(13).unwrap_or(0),
+                    owner_avatar_url: row.get(14).ok(),
                 })
             },
         ).map_err(|e| e.to_string())?;
@@ -490,20 +572,34 @@ impl Database {
     pub fn upsert_playlist(&self, pl: &PlaylistDTO) -> Result<PlaylistDTO, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         conn.execute(
-            "INSERT INTO playlists (id, name, description, cover_image_path, created_at, is_imported_youtube_playlist)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO playlists (id, name, description, cover_image_path, created_at, is_imported_youtube_playlist, user_id, owner_name, owner_username, visibility, is_followed, play_count, owner_avatar_url)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
              ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 description = excluded.description,
                 cover_image_path = excluded.cover_image_path,
-                is_imported_youtube_playlist = excluded.is_imported_youtube_playlist",
+                is_imported_youtube_playlist = excluded.is_imported_youtube_playlist,
+                user_id = COALESCE(excluded.user_id, playlists.user_id),
+                owner_name = COALESCE(excluded.owner_name, playlists.owner_name),
+                owner_username = COALESCE(excluded.owner_username, playlists.owner_username),
+                visibility = COALESCE(excluded.visibility, playlists.visibility),
+                is_followed = excluded.is_followed,
+                play_count = MAX(excluded.play_count, playlists.play_count),
+                owner_avatar_url = COALESCE(excluded.owner_avatar_url, playlists.owner_avatar_url)",
             params![
                 pl.id,
                 pl.name,
                 pl.description,
                 pl.cover_image,
                 pl.created_at,
-                pl.is_imported_youtube_playlist
+                pl.is_imported_youtube_playlist,
+                pl.user_id,
+                pl.owner_name,
+                pl.owner_username,
+                pl.visibility.as_deref().unwrap_or("public"),
+                if pl.is_followed { 1 } else { 0 },
+                pl.play_count,
+                pl.owner_avatar_url
             ],
         ).map_err(|e| e.to_string())?;
         Ok(pl.clone())

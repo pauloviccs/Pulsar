@@ -62,7 +62,7 @@ pub async fn resolve_playlist(
     }
 
     // Criar a playlist no SQLite
-    let pl = db.create_playlist(&playlist_title, "Playlist importada do YouTube")?;
+    let pl = db.create_playlist(&playlist_title, "Playlist importada do YouTube", None, None, None, Some("public"), None)?;
 
     let mut saved_count = 0usize;
     // Salvar cada faixa e associar à playlist
@@ -106,9 +106,39 @@ pub fn get_playlist_tracks(playlist_id: String, db: State<'_, Database>) -> Resu
 pub fn create_playlist(
     name: String,
     description: String,
+    user_id: Option<String>,
+    owner_name: Option<String>,
+    owner_username: Option<String>,
+    visibility: Option<String>,
+    owner_avatar_url: Option<String>,
     db: State<'_, Database>,
 ) -> Result<PlaylistDTO, String> {
-    db.create_playlist(&name, &description)
+    db.create_playlist(
+        &name,
+        &description,
+        user_id.as_deref(),
+        owner_name.as_deref(),
+        owner_username.as_deref(),
+        visibility.as_deref(),
+        owner_avatar_url.as_deref(),
+    )
+}
+
+#[tauri::command]
+pub fn toggle_follow_playlist(
+    playlist_id: String,
+    follow: bool,
+    db: State<'_, Database>,
+) -> Result<bool, String> {
+    db.toggle_follow_playlist(&playlist_id, follow)
+}
+
+#[tauri::command]
+pub fn increment_playlist_play(
+    playlist_id: String,
+    db: State<'_, Database>,
+) -> Result<i64, String> {
+    db.increment_playlist_play(&playlist_id)
 }
 
 #[tauri::command]
@@ -417,7 +447,7 @@ pub async fn resolve_spotify_playlist(
     println!("[Pulsar] {} faixas detectadas no Spotify, iniciando busca no YouTube...", total);
 
     // Criar playlist no SQLite
-    let pl = db.create_playlist(&name, "Importado do Spotify")?;
+    let pl = db.create_playlist(&name, "Importado do Spotify", None, None, None, Some("public"), None)?;
 
     // Atualizar capa se disponível
     if !cover.is_empty() {

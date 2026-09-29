@@ -40,51 +40,51 @@
       type: 'action',
       badge: $t('hero.badge'),
       badgeIcon: Sparkles,
-      badgeColor: '#FC7753',
+      badgeColor: '#EF7D4B',
       title: $t('hero.title'),
       subtitle: $t('hero.desc'),
       image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1000&auto=format&fit=crop&q=80',
       buttonText: $t('hero.pasteBtn'),
-      buttonColor: '#FC7753'
+      buttonColor: '#EF7D4B'
     },
     {
       id: 'slide-trending-1',
       type: 'track',
       badge: $t('hero.trendingBadge'),
       badgeIcon: Flame,
-      badgeColor: '#FC7753',
+      badgeColor: '#EF7D4B',
       title: tracks[0]?.title || 'Lofi Hip Hop Radio - Beats to Relax/Study to',
       subtitle: `${tracks[0]?.channel_name || 'Lofi Girl'} • ${$t('hero.trendingSubtitle')}`,
       image: tracks[0]?.thumbnail_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1000&auto=format&fit=crop&q=80',
       track: tracks[0],
       buttonText: $t('hero.listenNow'),
-      buttonColor: '#FC7753'
+      buttonColor: '#EF7D4B'
     },
     {
       id: 'slide-trending-2',
       type: 'track',
       badge: 'SYNTHWAVE • RETRO',
       badgeIcon: TrendingUp,
-      badgeColor: '#66D7D1',
+      badgeColor: '#3093AA',
       title: tracks[1]?.title || 'Midnight City (Synthwave Drive)',
       subtitle: `${tracks[1]?.channel_name || 'RetroWaves FM'}`,
       image: tracks[1]?.thumbnail_url || 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1000&auto=format&fit=crop&q=80',
       track: tracks[1],
       buttonText: $t('playlistDetail.play'),
-      buttonColor: '#66D7D1'
+      buttonColor: '#3093AA'
     },
     {
       id: 'slide-trending-3',
       type: 'track',
       badge: 'DEEP FOCUS • SOUNDSCAPE',
       badgeIcon: Headphones,
-      badgeColor: '#DBD56E',
+      badgeColor: '#F3B044',
       title: tracks[2]?.title || 'Deep Focus Ambient Sessions',
       subtitle: `${tracks[2]?.channel_name || 'Mind & Code'}`,
       image: tracks[2]?.thumbnail_url || 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1000&auto=format&fit=crop&q=80',
       track: tracks[2],
       buttonText: $t('playlistDetail.play'),
-      buttonColor: '#DBD56E'
+      buttonColor: '#F3B044'
     }
   ]);
 
@@ -173,12 +173,12 @@
           </div>
 
           <!-- Título -->
-          <h2 class="text-xl md:text-3xl font-extrabold tracking-tight text-[#F2EFEA] line-clamp-2 leading-tight drop-shadow-md">
+          <h2 class="text-xl md:text-3xl font-extrabold tracking-tight text-[#F0F0F5] line-clamp-2 leading-tight drop-shadow-md">
             {slide.title}
           </h2>
 
           <!-- Subtítulo -->
-          <p class="text-xs md:text-sm text-[#F2EFEA]/70 line-clamp-2 leading-relaxed">
+          <p class="text-xs md:text-sm text-[#F0F0F5]/70 line-clamp-2 leading-relaxed">
             {slide.subtitle}
           </p>
 
@@ -202,7 +202,7 @@
             {#if slide.type === 'track' && slide.track}
               <button
                 onclick={() => handleAddToQueue(slide.track)}
-                class="px-3.5 py-2.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.08] text-xs font-medium text-[#F2EFEA] flex items-center gap-2 transition active:scale-95 cursor-pointer"
+                class="px-3.5 py-2.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.08] text-xs font-medium text-[#F0F0F5] flex items-center gap-2 transition active:scale-95 cursor-pointer"
                 title="{$t('player.queue')}"
               >
                 <Plus class="w-4 h-4" />
@@ -259,7 +259,7 @@
     {#each slides as _, i}
       <button
         onclick={() => goToSlide(i)}
-        class="h-1.5 rounded-full transition-all duration-500 cursor-pointer {currentSlideIndex === i ? 'w-6 bg-[#FC7753]' : 'w-2 bg-white/25 hover:bg-white/50'}"
+        class="h-1.5 rounded-full transition-all duration-500 cursor-pointer {currentSlideIndex === i ? 'w-6 bg-[#EF7D4B]' : 'w-2 bg-white/25 hover:bg-white/50'}"
         title="Slide {i + 1}"
       ></button>
     {/each}

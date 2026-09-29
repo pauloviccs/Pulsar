@@ -33,6 +33,8 @@ export const zhCN: TranslationDictionary = {
   sidebar: {
     zeroAds: '零广告体验',
     pasteLink: '粘贴链接 / 歌单',
+    addMusic: '添加音乐',
+    importLink: '导入链接',
     menu: '菜单',
     socialCloud: '社交与云端',
     playlists: '播放列表',

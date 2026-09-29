@@ -394,4 +394,20 @@ BEGIN
 END;
 $$;
 
+-- 14. TABELA DE PLAYLISTS SEGUIDAS (PLAYLIST FOLLOWS)
+CREATE TABLE IF NOT EXISTS public.playlist_follows (
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    playlist_id UUID REFERENCES public.cloud_playlists(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, playlist_id)
+);
+
+ALTER TABLE public.playlist_follows ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Qualquer um visualiza playlists seguidas públicas" ON public.playlist_follows;
+CREATE POLICY "Qualquer um visualiza playlists seguidas públicas" ON public.playlist_follows FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Usuário gerencia suas próprias playlists seguidas" ON public.playlist_follows;
+CREATE POLICY "Usuário gerencia suas próprias playlists seguidas" ON public.playlist_follows FOR ALL USING (auth.uid() = user_id);
+
 

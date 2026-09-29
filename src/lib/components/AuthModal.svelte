@@ -98,13 +98,13 @@
       role="dialog"
       aria-modal="true"
       tabindex="-1"
-      class="liquid-modal w-full max-w-md max-h-[90vh] rounded-3xl p-6 sm:p-7 flex flex-col gap-4 border border-white/[0.16] shadow-2xl text-[#F2EFEA] animate-apple-spring relative overflow-hidden"
+      class="lq-glass-elevated w-full max-w-md max-h-[90vh] rounded-3xl p-6 sm:p-7 flex flex-col gap-4 border border-white/[0.16] shadow-2xl text-[#F0F0F5] animate-apple-spring relative overflow-hidden"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Escape') authActions.continueAsGuest(); }}
     >
       <!-- Glow Decorativo visionOS -->
-      <div class="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-[#FC7753]/25 blur-3xl pointer-events-none"></div>
-      <div class="absolute -bottom-20 -left-20 w-48 h-48 rounded-full bg-[#66D7D1]/25 blur-3xl pointer-events-none"></div>
+      <div class="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-[#EF7D4B]/25 blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-20 -left-20 w-48 h-48 rounded-full bg-[#3093AA]/25 blur-3xl pointer-events-none"></div>
 
       <!-- Botão Fechar / Modo Convidado -->
       <button 
@@ -117,20 +117,18 @@
 
       <!-- Topo: Logo & Título -->
       <div class="flex flex-col items-center text-center gap-1.5 pt-1 shrink-0">
-        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FC7753] to-[#66D7D1] p-0.5 shadow-xl shadow-[#FC7753]/20 flex items-center justify-center">
-          <div class="w-full h-full bg-[#09090d] rounded-[14px] flex items-center justify-center">
-            <Radio class="w-6 h-6 text-[#66D7D1]" />
-          </div>
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center">
+          <img src="/pulsar-isotipo.svg" alt="Pulsar" class="w-11 h-11 rounded-2xl shadow-lg border border-white/[0.12] bg-[#1E1E1C]" />
         </div>
-        <h2 class="text-lg font-extrabold tracking-tight text-[#F2EFEA]">Pulsar Social</h2>
-        <p class="text-[11px] text-[#F2EFEA]/60 max-w-xs">
+        <h2 class="text-lg font-extrabold tracking-tight text-[#F0F0F5]">Pulsar Social</h2>
+        <p class="text-[11px] text-[#F0F0F5]/60 max-w-xs">
           Música sem limites, perfis compartilhados e presença em tempo real.
         </p>
       </div>
 
       <!-- Mensagens de Alerta ou Sucesso -->
       {#if $authError}
-        <div class="p-3 rounded-2xl bg-[#FC7753]/15 border border-[#FC7753]/30 flex flex-col gap-2 text-xs text-[#FC7753] animate-shake shrink-0">
+        <div class="p-3 rounded-2xl bg-[#EF7D4B]/15 border border-[#EF7D4B]/30 flex flex-col gap-2 text-xs text-[#EF7D4B] animate-shake shrink-0">
           <div class="flex items-start gap-2.5">
             <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
             <span class="leading-relaxed">{$authError}</span>
@@ -147,7 +145,7 @@
                   authError.set(res.error || 'Erro ao reenviar confirmação.');
                 }
               }}
-              class="self-end px-3 py-1 rounded-xl bg-[#FC7753]/20 hover:bg-[#FC7753]/30 border border-[#FC7753]/40 text-[11px] font-bold text-white transition cursor-pointer"
+              class="self-end px-3 py-1 rounded-xl bg-[#EF7D4B]/20 hover:bg-[#EF7D4B]/30 border border-[#EF7D4B]/40 text-[11px] font-bold text-white transition cursor-pointer"
             >
               Reenviar E-mail de Confirmação
             </button>
@@ -156,7 +154,7 @@
       {/if}
 
       {#if successMessage}
-        <div class="p-3 rounded-2xl bg-[#66D7D1]/15 border border-[#66D7D1]/30 flex items-center gap-2.5 text-xs text-[#66D7D1] shrink-0">
+        <div class="p-3 rounded-2xl bg-[#3093AA]/15 border border-[#3093AA]/30 flex items-center gap-2.5 text-xs text-[#3093AA] shrink-0">
           <Check class="w-4 h-4 shrink-0" />
           <span>{successMessage}</span>
         </div>
@@ -196,7 +194,7 @@
                   bind:value={displayName}
                   placeholder="Seu Nome"
                   maxlength="30"
-                  class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F2EFEA] focus:outline-none"
+                  class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
                 />
               </div>
 
@@ -210,13 +208,13 @@
                     bind:value={username}
                     placeholder="usuario"
                     maxlength="20"
-                    class="w-full py-2 pl-6 pr-3 rounded-xl liquid-input text-xs text-[#F2EFEA] font-mono focus:outline-none"
+                    class="w-full py-2 pl-6 pr-3 rounded-xl liquid-input text-xs text-[#F0F0F5] font-mono focus:outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <p class="text-[10px] text-[#66D7D1]/80 flex items-center gap-1">
+            <p class="text-[10px] text-[#3093AA]/80 flex items-center gap-1">
               <Sparkles class="w-3 h-3" />
               <span>Sua tag alfanumérica única (ex: #{username ? '7X9A' : '0000'}) será gerada automaticamente.</span>
             </p>
@@ -231,7 +229,7 @@
               bind:value={email}
               placeholder="voce@exemplo.com"
               required
-              class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F2EFEA] focus:outline-none"
+              class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
             />
           </div>
 
@@ -244,7 +242,7 @@
                   <button
                     type="button"
                     onclick={() => authMode.set('forgot')}
-                    class="text-[10px] text-[#66D7D1] hover:underline cursor-pointer"
+                    class="text-[10px] text-[#3093AA] hover:underline cursor-pointer"
                   >
                     Esqueceu a senha?
                   </button>
@@ -256,7 +254,7 @@
                 bind:value={password}
                 placeholder="••••••••"
                 required
-                class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F2EFEA] focus:outline-none"
+                class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
               />
             </div>
           {/if}
@@ -282,7 +280,7 @@
           <button
             type="submit"
             disabled={$isAuthLoading || ($authMode === 'register' && !isCaptchaVerified)}
-            class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#FC7753] hover:bg-[#FC7753]/90 text-white font-bold text-xs shadow-lg shadow-[#FC7753]/25 active:scale-95 transition cursor-pointer mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 text-white font-bold text-xs shadow-lg shadow-[#EF7D4B]/25 active:scale-95 transition cursor-pointer mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {#if $isAuthLoading}
               <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -305,7 +303,7 @@
         <button
           type="button"
           onclick={() => authActions.continueAsGuest()}
-          class="flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F2EFEA] transition cursor-pointer"
+          class="flex items-center gap-1.5 text-xs text-white/50 hover:text-[#F0F0F5] transition cursor-pointer"
         >
           <span>Continuar como Convidado (Modo Offline)</span>
           <ArrowRight class="w-3.5 h-3.5" />

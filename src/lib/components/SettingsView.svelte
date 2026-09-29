@@ -265,23 +265,23 @@
   }
 </script>
 
-<div class="flex flex-col gap-8 max-w-4xl mx-auto w-full pb-20 text-[#F2EFEA]">
+<div class="flex flex-col gap-8 max-w-4xl mx-auto w-full pb-20 text-[#F0F0F5]">
   <!-- Header de Configurações -->
   <div class="flex items-center gap-3.5 pb-2 border-b border-white/[0.08]">
-    <div class="p-3 rounded-2xl bg-[#66D7D1]/15 text-[#66D7D1] border border-[#66D7D1]/30 shadow-lg shadow-[#66D7D1]/10">
+    <div class="p-3 rounded-2xl bg-[#3093AA]/15 text-[#3093AA] border border-[#3093AA]/30 shadow-lg shadow-[#3093AA]/10">
       <Settings class="w-6 h-6" />
     </div>
     <div>
-      <h1 class="text-2xl font-extrabold tracking-tight text-[#F2EFEA]">{$t('settings.title')}</h1>
-      <p class="text-xs text-[#F2EFEA]/50">{$t('settings.subtitle')}</p>
+      <h1 class="text-2xl font-extrabold tracking-tight text-[#F0F0F5]">{$t('settings.title')}</h1>
+      <p class="text-xs text-[#F0F0F5]/50">{$t('settings.subtitle')}</p>
     </div>
   </div>
 
   <!-- SEÇÃO 1: IDIOMA DO APLICATIVO (6 IDIOMAS) -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
     <div class="flex items-center gap-2.5">
-      <Globe class="w-5 h-5 text-[#66D7D1]" />
-      <h2 class="text-sm font-bold tracking-tight text-[#F2EFEA] uppercase">{$t('settings.language')}</h2>
+      <Globe class="w-5 h-5 text-[#3093AA]" />
+      <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5] uppercase">{$t('settings.language')}</h2>
     </div>
 
     <p class="text-xs text-white/60">{$t('settings.languageDesc')}</p>
@@ -291,15 +291,15 @@
         <button
           type="button"
           onclick={() => handleSelectLanguage(loc)}
-          class="flex items-center gap-3 p-3.5 rounded-2xl border transition text-left cursor-pointer {loc.code === $currentLocale ? 'bg-[#66D7D1]/15 border-[#66D7D1]/50 text-[#F2EFEA] shadow-md shadow-[#66D7D1]/10' : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.07] text-white/70'}"
+          class="flex items-center gap-3 p-3.5 rounded-2xl border transition text-left cursor-pointer {loc.code === $currentLocale ? 'bg-[#3093AA]/15 border-[#3093AA]/50 text-[#F0F0F5] shadow-md shadow-[#3093AA]/10' : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.07] text-white/70'}"
         >
           <span class="text-2xl">{loc.flag}</span>
           <div class="flex-1 min-w-0">
-            <p class="text-xs font-bold leading-tight truncate {loc.code === $currentLocale ? 'text-[#66D7D1]' : 'text-[#F2EFEA]'}">{loc.nativeName}</p>
+            <p class="text-xs font-bold leading-tight truncate {loc.code === $currentLocale ? 'text-[#3093AA]' : 'text-[#F0F0F5]'}">{loc.nativeName}</p>
             <p class="text-[10px] text-white/40 truncate">{loc.name}</p>
           </div>
           {#if loc.code === $currentLocale}
-            <div class="w-2 h-2 rounded-full bg-[#66D7D1] shadow-sm shadow-[#66D7D1]"></div>
+            <div class="w-2 h-2 rounded-full bg-[#3093AA] shadow-sm shadow-[#3093AA]"></div>
           {/if}
         </button>
       {/each}
@@ -307,20 +307,20 @@
   </div>
 
   <!-- SEÇÃO 2: REPRODUÇÃO & MIXAGEM (CROSSFADE SPOTIFY-LIKE) -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
     <div class="flex items-center gap-2.5">
-      <Sliders class="w-5 h-5 text-[#FC7753]" />
-      <h2 class="text-sm font-bold tracking-tight text-[#F2EFEA] uppercase">{$t('settings.playback')}</h2>
+      <Sliders class="w-5 h-5 text-[#EF7D4B]" />
+      <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5] uppercase">{$t('settings.playback')}</h2>
     </div>
 
     <!-- Controle de Crossfade -->
     <div class="flex flex-col gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-xs font-bold text-[#F2EFEA]">{$t('settings.crossfade')}</p>
+          <p class="text-xs font-bold text-[#F0F0F5]">{$t('settings.crossfade')}</p>
           <p class="text-[11px] text-white/50">{$t('settings.crossfadeDesc')}</p>
         </div>
-        <span class="px-2.5 py-1 rounded-xl bg-white/[0.06] text-xs font-mono font-bold text-[#66D7D1]">
+        <span class="px-2.5 py-1 rounded-xl bg-white/[0.06] text-xs font-mono font-bold text-[#3093AA]">
           {$crossfadeSeconds === 0 ? $t('common.disabled') : `${$crossfadeSeconds}s`}
         </span>
       </div>
@@ -334,7 +334,7 @@
           step="1"
           value={$crossfadeSeconds}
           oninput={(e) => playerActions.setCrossfade(parseInt((e.target as HTMLInputElement).value))}
-          class="flex-1 h-1.5 bg-white/[0.1] rounded-full appearance-none cursor-pointer accent-[#66D7D1]"
+          class="flex-1 h-1.5 bg-white/[0.1] rounded-full appearance-none cursor-pointer accent-[#3093AA]"
         />
         <span class="text-[10px] font-mono text-white/40">12s</span>
       </div>
@@ -343,7 +343,7 @@
     <!-- Normalização de Volume -->
     <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
       <div>
-        <p class="text-xs font-bold text-[#F2EFEA]">{$t('settings.normalization')}</p>
+        <p class="text-xs font-bold text-[#F0F0F5]">{$t('settings.normalization')}</p>
         <p class="text-[11px] text-white/50">{$t('settings.normalizationDesc')}</p>
       </div>
 
@@ -351,7 +351,7 @@
         type="button"
         aria-label="Ativar ou desativar normalização de áudio"
         onclick={() => playerActions.toggleNormalization()}
-        class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$audioNormalization ? 'bg-[#66D7D1]' : 'bg-white/[0.1]'}"
+        class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$audioNormalization ? 'bg-[#3093AA]' : 'bg-white/[0.1]'}"
       >
         <div class="w-5 h-5 rounded-full bg-white transition-transform {$audioNormalization ? 'translate-x-6' : 'translate-x-0'}"></div>
       </button>
@@ -359,15 +359,15 @@
   </div>
 
   <!-- SEÇÃO 3: COMPORTAMENTO DA JANELA (TRAY) -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
     <div class="flex items-center gap-2.5">
-      <AppWindow class="w-5 h-5 text-[#DBD56E]" />
-      <h2 class="text-sm font-bold tracking-tight text-[#F2EFEA] uppercase">{$t('settings.windowBehavior')}</h2>
+      <AppWindow class="w-5 h-5 text-[#F3B044]" />
+      <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5] uppercase">{$t('settings.windowBehavior')}</h2>
     </div>
 
     <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
       <div>
-        <p class="text-xs font-bold text-[#F2EFEA]">{$t('settings.minimizeTray')}</p>
+        <p class="text-xs font-bold text-[#F0F0F5]">{$t('settings.minimizeTray')}</p>
         <p class="text-[11px] text-white/50">{$t('settings.minimizeTrayDesc')}</p>
       </div>
 
@@ -375,7 +375,7 @@
         type="button"
         aria-label="Ativar ou desativar minimizar para bandeja ao fechar"
         onclick={() => playerActions.toggleMinimizeToTray()}
-        class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$minimizeToTray ? 'bg-[#DBD56E]' : 'bg-white/[0.1]'}"
+        class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$minimizeToTray ? 'bg-[#F3B044]' : 'bg-white/[0.1]'}"
       >
         <div class="w-5 h-5 rounded-full bg-white transition-transform {$minimizeToTray ? 'translate-x-6' : 'translate-x-0'}"></div>
       </button>
@@ -383,17 +383,17 @@
   </div>
 
   <!-- SEÇÃO 4: ARMAZENAMENTO & CACHE LOCAL -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
     <div class="flex items-center gap-2.5">
-      <HardDrive class="w-5 h-5 text-[#66D7D1]" />
-      <h2 class="text-sm font-bold tracking-tight text-[#F2EFEA] uppercase">{$t('settings.storage')}</h2>
+      <HardDrive class="w-5 h-5 text-[#3093AA]" />
+      <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5] uppercase">{$t('settings.storage')}</h2>
     </div>
 
     <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
       <div>
         <div class="flex items-center gap-2">
-          <p class="text-xs font-bold text-[#F2EFEA]">{$t('settings.audioCache')}</p>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#66D7D1]/15 text-[#66D7D1] font-mono font-bold">
+          <p class="text-xs font-bold text-[#F0F0F5]">{$t('settings.audioCache')}</p>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#3093AA]/15 text-[#3093AA] font-mono font-bold">
             {cacheSize} ({cacheFiles} itens)
           </span>
         </div>
@@ -404,7 +404,7 @@
         type="button"
         onclick={handleClearCache}
         disabled={isClearingCache}
-        class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#FC7753]/20 hover:bg-[#FC7753]/30 border border-[#FC7753]/40 text-xs font-bold text-[#FC7753] transition cursor-pointer disabled:opacity-50"
+        class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#EF7D4B]/20 hover:bg-[#EF7D4B]/30 border border-[#EF7D4B]/40 text-xs font-bold text-[#EF7D4B] transition cursor-pointer disabled:opacity-50"
       >
         {#if isClearingCache}
           <RefreshCw class="w-3.5 h-3.5 animate-spin" />
@@ -417,7 +417,7 @@
     </div>
 
     {#if cacheClearFeedback}
-      <div class="p-3 rounded-2xl bg-[#66D7D1]/15 border border-[#66D7D1]/30 flex items-center gap-2 text-xs text-[#66D7D1] animate-in fade-in">
+      <div class="p-3 rounded-2xl bg-[#3093AA]/15 border border-[#3093AA]/30 flex items-center gap-2 text-xs text-[#3093AA] animate-in fade-in">
         <Check class="w-4 h-4" />
         <span>{cacheClearFeedback}</span>
       </div>
@@ -425,21 +425,21 @@
   </div>
 
   <!-- SEÇÃO 5: INTEGRAÇÃO COM LAST.FM OFICIAL -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
     <div class="flex items-center gap-2.5">
-      <Radio class="w-5 h-5 text-[#FC7753]" />
-      <h2 class="text-sm font-bold tracking-tight text-[#F2EFEA] uppercase">{$t('settings.lastfm')}</h2>
+      <Radio class="w-5 h-5 text-[#EF7D4B]" />
+      <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5] uppercase">{$t('settings.lastfm')}</h2>
     </div>
 
     <div class="flex flex-col gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-xs font-bold text-[#F2EFEA]">Scrobble Automático (API 2.0)</p>
+          <p class="text-xs font-bold text-[#F0F0F5]">Scrobble Automático (API 2.0)</p>
           <p class="text-[11px] text-white/50">{$t('settings.lastfmDesc')}</p>
         </div>
 
         {#if $lastFmConnected}
-          <span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#66D7D1]/15 border border-[#66D7D1]/30 text-xs font-bold text-[#66D7D1]">
+          <span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3093AA]/15 border border-[#3093AA]/30 text-xs font-bold text-[#3093AA]">
             <CheckCircle2 class="w-3.5 h-3.5" />
             <span>{$t('settings.lastfmConnected')} @{$lastFmAccountName}</span>
           </span>
@@ -455,7 +455,7 @@
               type="button"
               aria-label="Ativar ou desativar scrobble do Last.fm"
               onclick={() => playerActions.setLastFm(!$lastFmEnabled, $lastFmAccountName)}
-              class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$lastFmEnabled ? 'bg-[#66D7D1]' : 'bg-white/[0.1]'}"
+              class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$lastFmEnabled ? 'bg-[#3093AA]' : 'bg-white/[0.1]'}"
             >
               <div class="w-5 h-5 rounded-full bg-white transition-transform {$lastFmEnabled ? 'translate-x-6' : 'translate-x-0'}"></div>
             </button>
@@ -465,7 +465,7 @@
           <button
             type="button"
             onclick={handleDisconnectLastFm}
-            class="px-4 py-2 rounded-2xl bg-[#FC7753]/15 hover:bg-[#FC7753]/25 border border-[#FC7753]/30 text-xs font-bold text-[#FC7753] transition cursor-pointer"
+            class="px-4 py-2 rounded-2xl bg-[#EF7D4B]/15 hover:bg-[#EF7D4B]/25 border border-[#EF7D4B]/30 text-xs font-bold text-[#EF7D4B] transition cursor-pointer"
           >
             {$t('settings.lastfmDisconnectBtn')}
           </button>
@@ -479,7 +479,7 @@
                 type="button"
                 onclick={handleStartLastFmAuth}
                 disabled={isConnectingLastFm}
-                class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#FC7753] hover:bg-[#FC7753]/90 text-xs font-bold text-white shadow-md shadow-[#FC7753]/20 transition cursor-pointer disabled:opacity-50"
+                class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 text-xs font-bold text-white shadow-md shadow-[#EF7D4B]/20 transition cursor-pointer disabled:opacity-50"
               >
                 {#if isConnectingLastFm}
                   <RefreshCw class="w-3.5 h-3.5 animate-spin" />
@@ -492,9 +492,9 @@
             </div>
           {:else}
             <!-- Passo de Confirmação OAuth -->
-            <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[#66D7D1]/10 border border-[#66D7D1]/30">
+            <div class="flex flex-col gap-3 p-4 rounded-2xl bg-[#3093AA]/10 border border-[#3093AA]/30">
               <div class="flex flex-col gap-1">
-                <p class="text-xs font-bold text-[#66D7D1]">{$t('settings.lastfmAuthStep1')}</p>
+                <p class="text-xs font-bold text-[#3093AA]">{$t('settings.lastfmAuthStep1')}</p>
                 <p class="text-[11px] text-white/70">{$t('settings.lastfmAuthStep2')}</p>
               </div>
 
@@ -503,7 +503,7 @@
                   <button
                     type="button"
                     onclick={handleOpenAuthUrlManually}
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.12] text-xs font-medium text-[#66D7D1] transition cursor-pointer"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.12] text-xs font-medium text-[#3093AA] transition cursor-pointer"
                   >
                     <ExternalLink class="w-3.5 h-3.5" />
                     <span>{$t('settings.lastfmOpenBrowser')}</span>
@@ -515,8 +515,8 @@
                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-white/80 transition cursor-pointer"
                   >
                     {#if copiedAuthUrl}
-                      <Check class="w-3.5 h-3.5 text-[#66D7D1]" />
-                      <span class="text-[#66D7D1]">{$t('settings.lastfmLinkCopied')}</span>
+                      <Check class="w-3.5 h-3.5 text-[#3093AA]" />
+                      <span class="text-[#3093AA]">{$t('settings.lastfmLinkCopied')}</span>
                     {:else}
                       <Copy class="w-3.5 h-3.5 text-white/50" />
                       <span>{$t('settings.lastfmCopyLink')}</span>
@@ -530,7 +530,7 @@
                   type="button"
                   onclick={handleCompleteLastFmAuth}
                   disabled={isConnectingLastFm}
-                  class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#66D7D1] hover:bg-[#66D7D1]/90 text-xs font-bold text-[#09090D] shadow-md shadow-[#66D7D1]/20 active:scale-95 transition cursor-pointer disabled:opacity-50"
+                  class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#3093AA] hover:bg-[#3093AA]/90 text-xs font-bold text-[#09090D] shadow-md shadow-[#3093AA]/20 active:scale-95 transition cursor-pointer disabled:opacity-50"
                 >
                   {#if isConnectingLastFm}
                     <RefreshCw class="w-3.5 h-3.5 animate-spin" />
@@ -559,7 +559,7 @@
               class="flex items-center justify-between py-1 text-xs text-white/50 hover:text-white transition cursor-pointer"
             >
               <span class="flex items-center gap-1.5 font-semibold">
-                <KeyRound class="w-3.5 h-3.5 text-[#DBD56E]" />
+                <KeyRound class="w-3.5 h-3.5 text-[#F3B044]" />
                 <span>{$t('settings.lastfmCustomApiToggle')}</span>
               </span>
               {#if showAdvancedLastFm}
@@ -582,7 +582,7 @@
                     type="text"
                     bind:value={customApiKey}
                     placeholder="94b31a524883e32f92eb88142d3e3546 (Oficial)"
-                    class="w-full py-1.5 px-3 rounded-xl liquid-input font-mono text-xs text-[#F2EFEA] focus:outline-none"
+                    class="w-full py-1.5 px-3 rounded-xl liquid-input font-mono text-xs text-[#F0F0F5] focus:outline-none"
                   />
                 </div>
 
@@ -593,7 +593,7 @@
                     type="password"
                     bind:value={customApiSecret}
                     placeholder="••••••••••••••••••••••••••••••••"
-                    class="w-full py-1.5 px-3 rounded-xl liquid-input font-mono text-xs text-[#F2EFEA] focus:outline-none"
+                    class="w-full py-1.5 px-3 rounded-xl liquid-input font-mono text-xs text-[#F0F0F5] focus:outline-none"
                   />
                 </div>
 
@@ -601,7 +601,7 @@
                   <button
                     type="button"
                     onclick={handleSaveCustomKeys}
-                    class="px-3.5 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-xs font-semibold text-[#66D7D1] transition cursor-pointer"
+                    class="px-3.5 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-xs font-semibold text-[#3093AA] transition cursor-pointer"
                   >
                     {$t('settings.lastfmCustomApiSave')}
                   </button>
@@ -613,7 +613,7 @@
                     Redefinir
                   </button>
                   {#if savedCustomKeysNotice}
-                    <span class="text-[11px] text-[#66D7D1]">Salvo!</span>
+                    <span class="text-[11px] text-[#3093AA]">Salvo!</span>
                   {/if}
                 </div>
               </div>
@@ -628,7 +628,7 @@
           {/if}
 
           {#if lastFmSuccess}
-            <div class="p-3 rounded-xl bg-[#66D7D1]/15 border border-[#66D7D1]/30 flex items-center gap-2 text-xs text-[#66D7D1]">
+            <div class="p-3 rounded-xl bg-[#3093AA]/15 border border-[#3093AA]/30 flex items-center gap-2 text-xs text-[#3093AA]">
               <CheckCircle2 class="w-4 h-4 shrink-0" />
               <span>{lastFmSuccess}</span>
             </div>
@@ -646,7 +646,7 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h3 class="text-xs font-bold text-[#F2EFEA]">Spotify Web API</h3>
+              <h3 class="text-xs font-bold text-[#F0F0F5]">Spotify Web API</h3>
               {#if spotifyClientId}
                 <span class="text-[9px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold border border-green-500/30">
                   Configurado
@@ -686,7 +686,7 @@
               type="text"
               bind:value={spotifyClientId}
               placeholder="Ex: 7a8b9c0d1e2f3a4b..."
-              class="w-full py-2 px-3 rounded-xl liquid-input font-mono text-xs text-[#F2EFEA] focus:outline-none"
+              class="w-full py-2 px-3 rounded-xl liquid-input font-mono text-xs text-[#F0F0F5] focus:outline-none"
             />
           </div>
 
@@ -697,7 +697,7 @@
               type="password"
               bind:value={spotifyClientSecret}
               placeholder="••••••••••••••••••••••••••••••••"
-              class="w-full py-2 px-3 rounded-xl liquid-input font-mono text-xs text-[#F2EFEA] focus:outline-none"
+              class="w-full py-2 px-3 rounded-xl liquid-input font-mono text-xs text-[#F0F0F5] focus:outline-none"
             />
           </div>
 
@@ -734,10 +734,10 @@
   </div>
 
   <!-- SEÇÃO 6: CONTA & SESSÃO -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
     <div class="flex items-center gap-2.5">
-      <User class="w-5 h-5 text-[#66D7D1]" />
-      <h2 class="text-sm font-bold tracking-tight text-[#F2EFEA] uppercase">{$t('profile.title')} & Sessão</h2>
+      <User class="w-5 h-5 text-[#3093AA]" />
+      <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5] uppercase">{$t('profile.title')} & Sessão</h2>
     </div>
 
     {#if $currentProfile && !$currentProfile.id.startsWith('guest')}
@@ -749,7 +749,7 @@
             class="w-11 h-11 rounded-full object-cover border border-white/[0.15]"
           />
           <div>
-            <p class="text-xs font-bold text-[#F2EFEA]">{$currentProfile.display_name}</p>
+            <p class="text-xs font-bold text-[#F0F0F5]">{$currentProfile.display_name}</p>
             <p class="text-[11px] font-mono text-white/40">@{$currentProfile.username}#{$currentProfile.tag}</p>
           </div>
         </div>
@@ -757,7 +757,7 @@
         <button
           type="button"
           onclick={handleLogout}
-          class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#FC7753]/10 hover:bg-[#FC7753]/20 border border-[#FC7753]/30 text-xs font-bold text-[#FC7753] transition cursor-pointer"
+          class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#EF7D4B]/10 hover:bg-[#EF7D4B]/20 border border-[#EF7D4B]/30 text-xs font-bold text-[#EF7D4B] transition cursor-pointer"
         >
           <LogOut class="w-3.5 h-3.5" />
           <span>{$t('common.logout')}</span>
@@ -766,14 +766,14 @@
     {:else}
       <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
         <div>
-          <p class="text-xs font-bold text-[#F2EFEA]">Modo Convidado (Offline)</p>
+          <p class="text-xs font-bold text-[#F0F0F5]">Modo Convidado (Offline)</p>
           <p class="text-[11px] text-white/50">Conecte sua conta para salvar playlists em nuvem e conversar com amigos.</p>
         </div>
 
         <button
           type="button"
           onclick={() => isAuthModalOpen.set(true)}
-          class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#FC7753] hover:bg-[#FC7753]/90 text-white text-xs font-bold shadow-md shadow-[#FC7753]/25 transition cursor-pointer"
+          class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 text-white text-xs font-bold shadow-md shadow-[#EF7D4B]/25 transition cursor-pointer"
         >
           <Sparkles class="w-3.5 h-3.5" />
           <span>{$t('auth.login')} / {$t('auth.register')}</span>
@@ -783,14 +783,14 @@
   </div>
 
   <!-- SEÇÃO DE ATUALIZAÇÕES DO APLICATIVO -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.1] flex flex-col gap-4">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.1] flex flex-col gap-4">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 rounded-2xl bg-[#66D7D1]/15 text-[#66D7D1] border border-[#66D7D1]/30">
+        <div class="p-2.5 rounded-2xl bg-[#3093AA]/15 text-[#3093AA] border border-[#3093AA]/30">
           <Sparkles class="w-5 h-5" />
         </div>
         <div>
-          <h2 class="text-sm font-bold text-[#F2EFEA]">Atualizações do Aplicativo</h2>
+          <h2 class="text-sm font-bold text-[#F0F0F5]">Atualizações do Aplicativo</h2>
           <p class="text-xs text-white/50">Mantenha o Pulsar sempre atualizado com as últimas correções e recursos.</p>
         </div>
       </div>
@@ -799,7 +799,7 @@
         type="button"
         onclick={() => updateActions.checkForUpdates(true)}
         disabled={$isCheckingUpdates}
-        class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#66D7D1]/10 hover:bg-[#66D7D1]/20 border border-[#66D7D1]/30 text-xs font-bold text-[#66D7D1] transition active:scale-95 disabled:opacity-50 cursor-pointer"
+        class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#3093AA]/10 hover:bg-[#3093AA]/20 border border-[#3093AA]/30 text-xs font-bold text-[#3093AA] transition active:scale-95 disabled:opacity-50 cursor-pointer"
       >
         <RefreshCw class="w-3.5 h-3.5 {$isCheckingUpdates ? 'animate-spin' : ''}" />
         <span>{$isCheckingUpdates ? 'Buscando...' : 'Verificar Atualizações'}</span>
@@ -809,7 +809,7 @@
     <div class="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-xs">
       <div class="flex items-center gap-2">
         <span class="text-white/50">Versão Instalada:</span>
-        <span class="font-mono font-bold text-[#F2EFEA]">v{$currentVersion}</span>
+        <span class="font-mono font-bold text-[#F0F0F5]">v{$currentVersion}</span>
       </div>
 
       {#if $lastCheckTime}
@@ -819,14 +819,14 @@
   </div>
 
   <!-- SEÇÃO DE DIAGNÓSTICO & LOGS DO SISTEMA -->
-  <div class="liquid-glass rounded-3xl p-6 border border-white/[0.1] flex flex-col gap-4">
+  <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.1] flex flex-col gap-4">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="p-2.5 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
           <Terminal class="w-5 h-5" />
         </div>
         <div>
-          <h2 class="text-sm font-bold text-[#F2EFEA]">Diagnóstico & Logs do Sistema</h2>
+          <h2 class="text-sm font-bold text-[#F0F0F5]">Diagnóstico & Logs do Sistema</h2>
           <p class="text-xs text-white/50">Histórico detalhado de áudio WASAPI, conexões Bluetooth, streaming e erros.</p>
         </div>
       </div>
@@ -868,15 +868,15 @@
       role="dialog"
       aria-modal="true"
       tabindex="-1"
-      class="liquid-modal w-full max-w-md rounded-3xl p-6 flex flex-col gap-4 border border-white/[0.16] shadow-2xl text-[#F2EFEA] animate-apple-spring relative"
+      class="lq-glass-elevated w-full max-w-md rounded-3xl p-6 flex flex-col gap-4 border border-white/[0.16] shadow-2xl text-[#F0F0F5] animate-apple-spring relative"
     >
       <div class="flex items-center justify-between pb-3 border-b border-white/[0.08]">
         <div class="flex items-center gap-2.5">
-          <div class="p-2 rounded-xl bg-[#66D7D1]/15 text-[#66D7D1] border border-[#66D7D1]/30">
+          <div class="p-2 rounded-xl bg-[#3093AA]/15 text-[#3093AA] border border-[#3093AA]/30">
             <Globe class="w-4 h-4" />
           </div>
           <div>
-            <h3 class="text-sm font-bold text-[#F2EFEA]">{$t('common.restartRequired')}</h3>
+            <h3 class="text-sm font-bold text-[#F0F0F5]">{$t('common.restartRequired')}</h3>
             <p class="text-[10px] text-white/50">{newlySelectedLocale.flag} {newlySelectedLocale.nativeName}</p>
           </div>
         </div>
@@ -901,7 +901,7 @@
         <button
           type="button"
           onclick={() => restartApplication()}
-          class="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#66D7D1] hover:bg-[#66D7D1]/90 text-xs font-bold text-[#09090D] shadow-lg shadow-[#66D7D1]/20 transition cursor-pointer"
+          class="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#3093AA] hover:bg-[#3093AA]/90 text-xs font-bold text-[#09090D] shadow-lg shadow-[#3093AA]/20 transition cursor-pointer"
         >
           <RefreshCw class="w-3.5 h-3.5" />
           <span>{$t('common.restartNow')}</span>

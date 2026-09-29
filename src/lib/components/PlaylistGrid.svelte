@@ -17,7 +17,7 @@
     await libraryActions.loadPlaylistTracks(pl.id);
     const tracks = get(selectedPlaylistTracks);
     if (tracks && tracks.length > 0) {
-      playerActions.playTrack(tracks[0], tracks);
+      playerActions.playTrack(tracks[0], tracks, pl.id);
     } else {
       openPlaylist(pl);
     }
@@ -31,7 +31,7 @@
       tabindex="0"
       onclick={() => openPlaylist(pl)}
       onkeydown={(e) => { if (e.key === 'Enter') openPlaylist(pl); }}
-      class="liquid-card rounded-3xl p-4 flex flex-col gap-3.5 group cursor-pointer border border-white/[0.1] hover:border-[#66D7D1]/40 transition-all duration-300"
+      class="liquid-card rounded-3xl p-4 flex flex-col gap-3.5 group cursor-pointer border border-white/[0.08] hover:border-[#3093AA]/40 transition-all duration-300"
     >
       <!-- Capa 1:1 com botão de Play flutuante -->
       <div class="relative aspect-square w-full rounded-2xl overflow-hidden shadow-lg border border-white/[0.12] bg-black/40">
@@ -41,43 +41,55 @@
           class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 
-        <!-- Hover Overlay com Play Apple Style -->
+        <!-- Hover Overlay com Play Coral Oficial -->
         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
           <button
             type="button"
             onclick={(e) => handleQuickPlay(e, pl)}
             aria-label="Reproduzir playlist {pl.name}"
-            class="w-13 h-13 rounded-full bg-[#FC7753] hover:bg-[#FC7753]/90 text-white flex items-center justify-center shadow-xl shadow-[#FC7753]/50 transform translate-y-2 group-hover:translate-y-0 transition-transform cursor-pointer"
+            class="w-13 h-13 rounded-full bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 text-white flex items-center justify-center shadow-xl shadow-[#EF7D4B]/40 transform translate-y-2 group-hover:translate-y-0 transition-transform cursor-pointer hover:scale-105 active:scale-95"
           >
             <Play class="w-6 h-6 fill-current ml-0.5" />
           </button>
         </div>
 
         {#if pl.is_imported_youtube_playlist}
-          <div class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/[0.12] text-[9px] font-bold text-[#66D7D1] tracking-wider uppercase">
+          <div class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/[0.12] text-[9px] font-bold text-[#EF7D4B] tracking-wider uppercase">
             YouTube
+          </div>
+        {/if}
+
+        {#if pl.is_followed}
+          <div class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-[#3093AA]/80 backdrop-blur-md border border-white/[0.2] text-[9px] font-bold text-white tracking-wider">
+            Seguindo
           </div>
         {/if}
       </div>
 
       <!-- Info da Playlist -->
       <div class="flex flex-col gap-1 px-0.5">
-        <h3 class="text-sm font-bold text-[#F2EFEA] truncate group-hover:text-[#66D7D1] transition-colors tracking-tight">
+        <h3 class="text-sm font-bold text-[#F0F0F5] truncate group-hover:text-[#3093AA] transition-colors tracking-tight">
           {pl.name}
         </h3>
-        <p class="text-xs text-[#F2EFEA]/50 line-clamp-2 leading-relaxed">
+
+        {#if pl.owner_name || pl.owner_username}
+          <span class="text-[11px] text-white/50 truncate">
+            Por {pl.owner_name || `@${pl.owner_username}`}
+          </span>
+        {/if}
+
+        <p class="text-xs text-white/50 line-clamp-2 leading-relaxed">
           {pl.description || $t('playlistDetail.localAudioDesc')}
         </p>
 
-        <div class="flex items-center gap-3 text-[11px] text-[#F2EFEA]/40 pt-2.5 border-t border-white/[0.06] font-medium">
+        <div class="flex items-center justify-between text-[11px] text-white/40 pt-2.5 border-t border-white/[0.06] font-medium flex-wrap gap-1">
           <span class="flex items-center gap-1.5">
-            <ListMusic class="w-3.5 h-3.5 text-[#66D7D1]" />
+            <ListMusic class="w-3.5 h-3.5 text-[#3093AA]" />
             {pl.track_count} {$t('common.tracks')}
           </span>
-          {#if pl.total_duration_seconds > 0}
-            <span class="flex items-center gap-1.5">
-              <Clock class="w-3.5 h-3.5 text-[#DBD56E]" />
-              {Math.floor(pl.total_duration_seconds / 60)} {$t('common.minutes')}
+          {#if (pl.play_count || 0) > 0}
+            <span class="text-[#3093AA] font-semibold">
+              {pl.play_count} plays
             </span>
           {/if}
         </div>

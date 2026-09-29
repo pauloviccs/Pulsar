@@ -57,6 +57,28 @@ const INITIAL_PLAYLISTS: Playlist[] = [
 
 export const allTracks = writable<Track[]>(INITIAL_TRACKS);
 export const playlists = writable<Playlist[]>(INITIAL_PLAYLISTS);
+
+// Playlists da biblioteca do usuário ativo (criadas por ele ou seguidas, isolando outras contas)
+export const userLibraryPlaylists = derived(
+  [playlists, currentProfile],
+  ([$playlists, $profile]) => {
+    const isGuest = !$profile || $profile.id.startsWith('guest');
+    return $playlists.filter(pl => {
+      // 1. Usuário logado
+      if (!isGuest && $profile) {
+        if (pl.user_id && pl.user_id === $profile.id) return true;
+        if (pl.is_followed) return true;
+        if (!pl.user_id && pl.id.startsWith('a0000000')) return true;
+        return false;
+      }
+      // 2. Convidado / offline
+      if (!pl.user_id || pl.user_id === 'guest-local-user') return true;
+      if (pl.is_followed) return true;
+      return false;
+    });
+  }
+);
+
 export const favoriteTrackIds = writable<Set<string>>(new Set(['b0000000-0000-4000-8000-000000000001']));
 export const activeView = writable<ActiveView>('home');
 export const selectedPlaylist = writable<Playlist | null>(null);
@@ -168,6 +190,50 @@ export const libraryActions = {
         selectedPlaylistTracks.set([]);
       }
     }
+
+    // Enriquecimento dinâmico em background com dados reais do criador no Supabase
+    try {
+      const currPl = get(selectedPlaylist);
+      const supabase = getSupabase();
+      if (currPl && supabase) {
+        if (currPl.user_id && (!currPl.owner_name || !currPl.owner_avatar_url)) {
+          supabase
+            .from('profiles')
+            .select('username, display_name, avatar_url')
+            .eq('id', currPl.user_id)
+            .maybeSingle()
+            .then(({ data: prof }) => {
+              if (prof) {
+                selectedPlaylist.update(p => p ? {
+                  ...p,
+                  owner_name: prof.display_name || prof.username || p.owner_name,
+                  owner_username: prof.username || p.owner_username,
+                  owner_avatar_url: prof.avatar_url || p.owner_avatar_url
+                } : null);
+              }
+            });
+        } else if (!currPl.user_id) {
+          supabase
+            .from('cloud_playlists')
+            .select('user_id, play_count, profiles:user_id(username, display_name, avatar_url)')
+            .eq('id', currPl.id)
+            .maybeSingle()
+            .then(({ data: cData }) => {
+              if (cData) {
+                const prof = (cData as any).profiles;
+                selectedPlaylist.update(p => p ? {
+                  ...p,
+                  user_id: cData.user_id,
+                  owner_name: prof?.display_name || prof?.username || p.owner_name,
+                  owner_username: prof?.username || p.owner_username,
+                  owner_avatar_url: prof?.avatar_url || p.owner_avatar_url,
+                  play_count: Math.max(p.play_count || 0, cData.play_count || 0)
+                } : null);
+              }
+            });
+        }
+      }
+    } catch {}
   },
 
   async loadRecentTracks() {
@@ -244,9 +310,36 @@ export const libraryActions = {
   },
 
   async createPlaylist(name: string, description: string = '', visibility: PlaylistVisibility = 'public') {
+    const prof = get(currentProfile);
+    const userId = prof?.id;
+    const ownerName = prof?.display_name || prof?.username;
+    const ownerUsername = prof?.username;
+    const ownerAvatarUrl = prof?.avatar_url;
+
     try {
-      const created = await safeInvoke<Playlist>('create_playlist', { name, description });
-      const fullPlaylist: Playlist = { ...created, visibility };
+      const created = await safeInvoke<Playlist>('create_playlist', {
+        name,
+        description,
+        userId: userId || null,
+        user_id: userId || null,
+        ownerName: ownerName || null,
+        owner_name: ownerName || null,
+        ownerUsername: ownerUsername || null,
+        owner_username: ownerUsername || null,
+        visibility,
+        ownerAvatarUrl: ownerAvatarUrl || null,
+        owner_avatar_url: ownerAvatarUrl || null
+      });
+      const fullPlaylist: Playlist = {
+        ...created,
+        visibility,
+        user_id: userId,
+        owner_name: ownerName,
+        owner_username: ownerUsername,
+        owner_avatar_url: ownerAvatarUrl,
+        is_followed: false,
+        play_count: 0
+      };
       playlists.update(list => [fullPlaylist, ...list]);
 
       import('../services/syncEngine').then(({ syncEngine }) => {
@@ -265,7 +358,12 @@ export const libraryActions = {
         is_imported_youtube_playlist: false,
         track_count: 0,
         total_duration_seconds: 0,
-        visibility
+        visibility,
+        user_id: userId,
+        owner_name: ownerName,
+        owner_username: ownerUsername,
+        is_followed: false,
+        play_count: 0
       };
       playlists.update(list => [fallback, ...list]);
 
@@ -275,6 +373,64 @@ export const libraryActions = {
 
       return fallback;
     }
+  },
+
+  async toggleFollowPlaylist(playlistId: string) {
+    const pl = get(playlists).find(p => p.id === playlistId) || get(selectedPlaylist);
+    if (!pl) return;
+    const nextVal = !pl.is_followed;
+
+    playlists.update(list => list.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, is_followed: nextVal };
+      }
+      return p;
+    }));
+
+    selectedPlaylist.update(curr => {
+      if (curr && curr.id === playlistId) {
+        return { ...curr, is_followed: nextVal };
+      }
+      return curr;
+    });
+
+    try {
+      await safeInvoke('toggle_follow_playlist', { playlistId, follow: nextVal });
+    } catch (e) {
+      console.warn('[Pulsar DB] Erro ao alternar follow da playlist localmente:', e);
+    }
+
+    import('../services/syncEngine').then(({ syncEngine }) => {
+      syncEngine.toggleFollowPlaylist(playlistId, nextVal);
+    });
+  },
+
+  async recordPlaylistPlay(playlistId: string) {
+    if (!playlistId) return;
+
+    playlists.update(list => list.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, play_count: (p.play_count || 0) + 1 };
+      }
+      return p;
+    }));
+
+    selectedPlaylist.update(curr => {
+      if (curr && curr.id === playlistId) {
+        return { ...curr, play_count: (curr.play_count || 0) + 1 };
+      }
+      return curr;
+    });
+
+    try {
+      await safeInvoke('increment_playlist_play', { playlistId });
+    } catch (e) {
+      // Ignora erro em contagem local
+    }
+
+    import('../services/syncEngine').then(({ syncEngine }) => {
+      syncEngine.incrementPlaylistPlay(playlistId);
+    });
   },
 
   async updatePlaylist(id: string, name: string, description: string, coverImage?: string, visibility?: PlaylistVisibility) {

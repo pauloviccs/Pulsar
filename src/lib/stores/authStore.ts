@@ -121,9 +121,10 @@ export const authActions = {
           following_count: followingRes.count || 0
         });
 
-        // Disparar sincronização e hidratação das playlists/tracks do usuário a partir da nuvem
+        // Disparar sincronização inicial e ativar ciclo automático silencioso em segundo plano
         import('../services/syncEngine').then(({ syncEngine }) => {
           syncEngine.hydrateFromCloud(userId);
+          syncEngine.startAutoSync(userId);
         });
       }
     } catch (err) {
@@ -230,12 +231,84 @@ export const authActions = {
   },
 
   async logout() {
+    import('../services/syncEngine').then(({ syncEngine }) => {
+      syncEngine.stopAutoSync();
+    });
     const supabase = getSupabase();
     if (supabase) {
       await supabase.auth.signOut().catch(() => {});
     }
+    viewedProfile.set(null);
     currentUser.set(null);
     currentProfile.set(guestProfile);
+  },
+
+  async viewUserProfile(profileData: {
+    id: string;
+    username?: string;
+    display_name?: string;
+    avatar_url?: string;
+  }) {
+    if (!profileData?.id) return;
+    const curr = get(currentProfile);
+    if (curr && curr.id === profileData.id) {
+      viewedProfile.set(null);
+      import('./libraryStore').then(({ libraryActions }) => {
+        libraryActions.setActiveView('profile');
+      });
+      return;
+    }
+
+    const initialViewed: UserProfile = {
+      id: profileData.id,
+      username: profileData.username || 'usuario',
+      tag: '0000',
+      display_name: profileData.display_name || profileData.username || 'Usuário Pulsar',
+      avatar_url: profileData.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
+      banner_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+      bio: '',
+      presence: 'offline',
+      presence_status: 'offline',
+      created_at: new Date().toISOString().split('T')[0],
+      followers_count: 0,
+      following_count: 0
+    };
+
+    viewedProfile.set(initialViewed);
+    import('./libraryStore').then(({ libraryActions }) => {
+      libraryActions.setActiveView('profile');
+    });
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', profileData.id)
+          .maybeSingle();
+
+        if (data) {
+          const [followersRes, followingRes] = await Promise.all([
+            supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', profileData.id),
+            supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', profileData.id)
+          ]);
+
+          viewedProfile.update(curr => curr ? {
+            ...curr,
+            ...data,
+            followers_count: followersRes.count || 0,
+            following_count: followingRes.count || 0
+          } : null);
+        }
+      } catch (e) {
+        console.warn('[Pulsar Auth] Erro ao carregar perfil do criador:', e);
+      }
+    }
+  },
+
+  clearViewedProfile() {
+    viewedProfile.set(null);
   },
 
   async updateProfile(updates: Partial<UserProfile>) {

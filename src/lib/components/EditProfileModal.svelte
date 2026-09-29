@@ -80,18 +80,18 @@
       role="dialog"
       aria-modal="true"
       tabindex="-1"
-      class="liquid-modal w-full max-w-lg max-h-[88vh] rounded-3xl p-5 sm:p-6 flex flex-col border border-white/[0.16] shadow-2xl text-[#F2EFEA] animate-apple-spring relative overflow-hidden"
+      class="lq-glass-elevated w-full max-w-lg max-h-[88vh] rounded-3xl p-5 sm:p-6 flex flex-col border border-white/[0.16] shadow-2xl text-[#F0F0F5] animate-apple-spring relative overflow-hidden"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Escape') close(); }}
     >
       <!-- Header -->
       <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] shrink-0">
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="p-2 rounded-xl bg-[#66D7D1]/15 text-[#66D7D1] border border-[#66D7D1]/30 shrink-0">
+          <div class="p-2 rounded-xl bg-[#3093AA]/15 text-[#3093AA] border border-[#3093AA]/30 shrink-0">
             <User class="w-4 h-4" />
           </div>
           <div class="min-w-0">
-            <h2 class="text-sm font-bold text-[#F2EFEA] truncate">{$t('editProfileModal.title')}</h2>
+            <h2 class="text-sm font-bold text-[#F0F0F5] truncate">{$t('editProfileModal.title')}</h2>
             <p class="text-[10px] text-white/50 truncate">{$t('editProfileModal.subtitle')}</p>
           </div>
         </div>
@@ -107,12 +107,12 @@
       <!-- Preview do Banner e Avatar Estilo Twitter -->
       <div class="relative w-full rounded-2xl overflow-hidden border border-white/[0.1] bg-black/40">
         <!-- Banner -->
-        <div class="relative w-full h-28 bg-gradient-to-r from-[#FC7753]/30 to-[#66D7D1]/30 overflow-hidden group">
+        <div class="relative w-full h-28 bg-gradient-to-r from-[#EF7D4B]/30 to-[#3093AA]/30 overflow-hidden group">
           {#if bannerUrl}
             <img src={bannerUrl} alt="Banner" class="w-full h-full object-cover" />
           {/if}
           <label class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 text-white text-xs font-semibold cursor-pointer transition backdrop-blur-[2px]">
-            <Upload class="w-4 h-4 text-[#66D7D1]" />
+            <Upload class="w-4 h-4 text-[#3093AA]" />
             <span>{$t('editProfileModal.changeBanner')}</span>
             <input type="file" accept="image/*" onchange={handleBannerFile} class="hidden" />
           </label>
@@ -120,7 +120,7 @@
 
         <!-- Avatar sobreposto ao banner -->
         <div class="p-4 pt-0 flex items-end justify-between -mt-10">
-          <div class="relative w-20 h-20 rounded-full border-4 border-[#09090d] bg-[#16161d] overflow-hidden shadow-xl group">
+          <div class="relative w-20 h-20 rounded-full border-4 border-[#0B1020] bg-[#16161d] overflow-hidden shadow-xl group">
             {#if avatarUrl}
               <img src={avatarUrl} alt="Avatar" class="w-full h-full object-cover" />
             {:else}
@@ -129,7 +129,7 @@
               </div>
             {/if}
             <label class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[9px] font-bold cursor-pointer transition backdrop-blur-[2px]">
-              <Upload class="w-3.5 h-3.5 text-[#66D7D1]" />
+              <Upload class="w-3.5 h-3.5 text-[#3093AA]" />
               <span>{$t('editProfileModal.changePhoto')}</span>
               <input type="file" accept="image/*" onchange={handleAvatarFile} class="hidden" />
             </label>
@@ -151,7 +151,7 @@
             bind:value={displayName}
             placeholder={$t('editProfileModal.displayNamePlaceholder')}
             maxlength="40"
-            class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F2EFEA] focus:outline-none"
+            class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
           />
         </div>
 
@@ -163,7 +163,7 @@
             placeholder={$t('editProfileModal.bioPlaceholder')}
             rows="3"
             maxlength="160"
-            class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F2EFEA] focus:outline-none resize-none"
+            class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F0F0F5] focus:outline-none resize-none"
           ></textarea>
         </div>
 
@@ -175,7 +175,7 @@
             bind:value={customStatus}
             placeholder={$t('editProfileModal.customStatusPlaceholder')}
             maxlength="60"
-            class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F2EFEA] focus:outline-none"
+            class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
           />
         </div>
       </div>
@@ -195,7 +195,7 @@
           type="button"
           onclick={handleSave}
           disabled={!displayName.trim() || isSaving}
-          class="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#FC7753] hover:bg-[#FC7753]/90 text-white font-bold text-xs shadow-lg shadow-[#FC7753]/25 active:scale-95 transition cursor-pointer disabled:opacity-50"
+          class="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 text-white font-bold text-xs shadow-lg shadow-[#EF7D4B]/25 active:scale-95 transition cursor-pointer disabled:opacity-50"
         >
           {#if isSaving}
             <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>

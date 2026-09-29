@@ -2,7 +2,7 @@
 
 > **Documento Oficial de Engenharia — Fase 3 do Pulsar Connect**  
 > **Status:** Concluído com Recomendação Registrada  
-> **Depende de:** [`docs/audio/CURRENT_STATE.md`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/docs/audio/CURRENT_STATE.md) e [`docs/audio/OUTPUT_ABSTRACTION.md`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Pullsar/docs/audio/OUTPUT_ABSTRACTION.md)  
+> **Depende de:** [`docs/audio/CURRENT_STATE.md`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/docs/audio/CURRENT_STATE.md) e [`docs/audio/OUTPUT_ABSTRACTION.md`](file:///g:/GitHub/Vibecoding/VICCS_Git/VICCS_Lumia/VICCS_Pulsar/docs/audio/OUTPUT_ABSTRACTION.md)  
 > **Escopo:** Dispositivos 100% focados em áudio na rede local (sem TV / sem nuvem externa).
 
 ---

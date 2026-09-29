@@ -33,6 +33,8 @@ export const ptBR: TranslationDictionary = {
   sidebar: {
     zeroAds: 'Zero Propaganda',
     pasteLink: 'Colar Link / Playlist',
+    addMusic: 'Adicionar Música',
+    importLink: 'Importar Link',
     menu: 'Menu',
     socialCloud: 'Social & Nuvem',
     playlists: 'Playlists',

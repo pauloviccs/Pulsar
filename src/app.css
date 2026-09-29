@@ -1,23 +1,44 @@
 @import "tailwindcss";
 
 @theme {
-  --color-pulsar-paper: #F2EFEA;
-  --color-pulsar-coral: #FC7753;
-  --color-pulsar-mint: #66D7D1;
-  --color-pulsar-charcoal: #403D58;
-  --color-pulsar-gold: #DBD56E;
-  
-  --color-surface-base: #09090d;
-  --color-surface-raised: #121218;
-  --color-surface-glass: rgba(255, 255, 255, 0.04);
-  
+  --color-pulsar-coral: #EF7D4B;
+  --color-pulsar-teal-deep: #097198;
+  --color-pulsar-teal: #3093AA;
+  --color-pulsar-gold: #F3B044;
+  --color-pulsar-navy: #1E1E1C;
+  --color-pulsar-mint: #3093AA;
+  --color-pulsar-paper: #F0F0F5;
+  --color-pulsar-charcoal: #1E1E1C;
+
+  --color-surface-base: #0B1020;
+  --color-surface-raised: #111827;
+  --color-surface-glass: rgba(255, 255, 255, 0.05);
+
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 :root {
   color-scheme: dark;
-  background-color: #09090d;
-  color: #F2EFEA;
+
+  /* Design Tokens v2 (Extraídos da Logo v2 & Liqui.design) */
+  --pulsar-teal-deep: #097198;
+  --pulsar-teal: #3093AA;
+  --pulsar-coral: #EF7D4B;
+  --pulsar-gold: #F3B044;
+  --pulsar-navy: #1E1E1C;
+  --pulsar-bg-base: #0B1020;
+  --pulsar-bg-raised: #111827;
+  --pulsar-bg-glass: rgba(255, 255, 255, 0.05);
+  --pulsar-text: #F0F0F5;
+  --pulsar-text-dim: rgba(240, 240, 245, 0.55);
+  --pulsar-accent: #EF7D4B;
+  --pulsar-success: #34D399;
+  --pulsar-danger: #F87171;
+
+  background-color: #0B1020;
+  color: #F0F0F5;
   font-family: var(--font-sans);
   user-select: none;
   -webkit-user-select: none;
@@ -26,74 +47,179 @@
 body {
   margin: 0;
   overflow: hidden;
-  background: radial-gradient(circle at 50% -10%, rgba(252, 119, 83, 0.12) 0%, transparent 60%),
-              radial-gradient(circle at 100% 100%, rgba(102, 215, 209, 0.07) 0%, transparent 50%),
-              #09090d;
+  background: radial-gradient(circle at 50% -10%, rgba(239, 125, 75, 0.12) 0%, transparent 60%),
+              radial-gradient(circle at 100% 100%, rgba(48, 147, 170, 0.08) 0%, transparent 50%),
+              #0B1020;
   min-height: 100vh;
 }
 
-/* Apple Liquid Glass Foundation */
+/* Material Liquid Glass — Frosted Surface */
+.lq-glass-frost,
 .glass-panel,
 .liquid-glass {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
-  backdrop-filter: blur(36px) saturate(210%);
-  -webkit-backdrop-filter: blur(36px) saturate(210%);
+  backdrop-filter: blur(24px) saturate(1.9);
+  -webkit-backdrop-filter: blur(24px) saturate(1.9);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.2),
-              0 24px 48px -12px rgba(0, 0, 0, 0.75);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
+              inset 0 -1px 1px 0 rgba(0, 0, 0, 0.25),
+              0 24px 48px -12px rgba(0, 0, 0, 0.6);
 }
 
+/* Material Liquid Glass — Floating Island Panel */
+.lq-floating-island {
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.75) 0%, rgba(11, 16, 32, 0.88) 100%);
+  backdrop-filter: blur(32px) saturate(2.0);
+  -webkit-backdrop-filter: blur(32px) saturate(2.0);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.28),
+              inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4),
+              0 20px 50px -10px rgba(0, 0, 0, 0.7);
+  border-radius: 28px;
+}
+
+/* Material Liquid Glass — Floating Media Capsule (Dock Suspensa) */
+.lq-capsule-dock {
+  background: linear-gradient(180deg, rgba(24, 30, 50, 0.85) 0%, rgba(10, 14, 28, 0.95) 100%);
+  backdrop-filter: blur(40px) saturate(2.2);
+  -webkit-backdrop-filter: blur(40px) saturate(2.2);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35),
+              inset 0 -1px 2px 0 rgba(0, 0, 0, 0.5),
+              0 28px 64px -12px rgba(0, 0, 0, 0.85),
+              0 0 32px -8px rgba(239, 125, 75, 0.18);
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Material Liquid Glass — Pílulas Interativas Táteis */
+.lq-glass-pill {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lq-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.38),
+              0 8px 24px -4px rgba(0, 0, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+.lq-glass-pill:active {
+  transform: translateY(0.5px) scale(0.97);
+}
+
+/* Material Liquid Glass — Elevated (Modais, Drawers, Popovers) */
+.lq-glass-elevated,
+.liquid-modal {
+  background: linear-gradient(145deg, rgba(22, 28, 48, 0.88) 0%, rgba(9, 13, 24, 0.96) 100%);
+  backdrop-filter: blur(48px) saturate(2.4);
+  -webkit-backdrop-filter: blur(48px) saturate(2.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.3),
+              0 36px 90px -10px rgba(0, 0, 0, 0.9),
+              0 0 40px -8px rgba(239, 125, 75, 0.15);
+  border-radius: 32px;
+}
+
+/* Cards Interativos */
 .glass-card,
 .liquid-card {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
-              0 8px 24px -4px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px) saturate(1.9);
+  -webkit-backdrop-filter: blur(24px) saturate(1.9);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.16),
+              0 12px 28px -6px rgba(0, 0, 0, 0.5);
+  border-radius: 24px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-card:hover,
 .liquid-card:hover {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
-  border-color: rgba(102, 215, 209, 0.4);
-  transform: translateY(-2px);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
-              0 16px 36px -6px rgba(0, 0, 0, 0.7),
-              0 0 20px -4px rgba(102, 215, 209, 0.2);
+  border-color: rgba(48, 147, 170, 0.55);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.3),
+              0 20px 44px -8px rgba(0, 0, 0, 0.7),
+              0 0 24px -4px rgba(48, 147, 170, 0.3);
 }
 
-/* Modais estilo Apple visionOS / macOS Tahoe */
-.liquid-modal {
-  background: linear-gradient(145deg, rgba(30, 30, 42, 0.85) 0%, rgba(15, 15, 22, 0.95) 100%);
-  backdrop-filter: blur(48px) saturate(220%);
-  -webkit-backdrop-filter: blur(48px) saturate(220%);
+/* Hero Cinematográfico 3D */
+.lq-hero-glass {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(28px) saturate(2.0);
+  -webkit-backdrop-filter: blur(28px) saturate(2.0);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.25),
-              0 32px 80px -10px rgba(0, 0, 0, 0.9),
-              0 0 40px -10px rgba(252, 119, 83, 0.15);
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.3),
+              0 32px 72px -16px rgba(0, 0, 0, 0.75);
+  border-radius: 32px;
 }
 
 /* Inputs de Vidro */
 .liquid-input {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+  border-radius: 9999px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .liquid-input:focus {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: #66D7D1;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4),
-              0 0 16px -2px rgba(102, 215, 209, 0.3);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: #3093AA;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45),
+              0 0 20px -2px rgba(48, 147, 170, 0.45);
+  outline: none;
+}
+
+/* Malha de Luz Ambiente (Orbs de Fundo) */
+.lq-ambient-orb-1 {
+  background: radial-gradient(circle, rgba(239, 125, 75, 0.18) 0%, transparent 70%);
+  filter: blur(90px);
+}
+
+.lq-ambient-orb-2 {
+  background: radial-gradient(circle, rgba(48, 147, 170, 0.16) 0%, transparent 70%);
+  filter: blur(100px);
+}
+
+.lq-ambient-orb-3 {
+  background: radial-gradient(circle, rgba(9, 113, 152, 0.14) 0%, transparent 70%);
+  filter: blur(110px);
+}
+
+/* Custom Scrollbar fluida e invisível */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(48, 147, 170, 0.6);
 }
 
 /* Animações Apple-like */
 @keyframes appleSpring {
   0% {
-    transform: scale(0.94) translateY(8px);
+    transform: scale(0.96) translateY(10px);
     opacity: 0;
   }
   100% {
@@ -103,5 +229,15 @@ body {
 }
 
 .animate-apple-spring {
-  animation: appleSpring 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: appleSpring 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Acessibilidade: respeitar redução de movimento */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

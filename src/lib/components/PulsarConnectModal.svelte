@@ -132,19 +132,19 @@
       <!-- Cabeçalho com Brilho Superior -->
       <div class="p-5 pb-4 flex items-center justify-between border-b border-white/[0.06] relative bg-gradient-to-b from-white/[0.04] to-transparent">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#66D7D1]/20 to-[#66D7D1]/40 border border-[#66D7D1]/30 flex items-center justify-center text-[#66D7D1] shadow-inner">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#3093AA]/20 to-[#3093AA]/40 border border-[#3093AA]/30 flex items-center justify-center text-[#3093AA] shadow-inner">
             <Radio class="w-5 h-5 animate-pulse" />
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 id="pulsar-connect-title" class="text-base font-bold text-[#F2EFEA] tracking-tight">
+              <h2 id="pulsar-connect-title" class="text-base font-bold text-[#F0F0F5] tracking-tight">
                 {$t('connect.title')}
               </h2>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#66D7D1]/15 text-[#66D7D1] border border-[#66D7D1]/30">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#3093AA]/15 text-[#3093AA] border border-[#3093AA]/30">
                 LAN & BT
               </span>
             </div>
-            <p class="text-xs text-[#F2EFEA]/60 truncate max-w-[260px]">
+            <p class="text-xs text-[#F0F0F5]/60 truncate max-w-[260px]">
               {$t('connect.subtitle')}
             </p>
           </div>
@@ -154,7 +154,7 @@
           <!-- Botão Console de Logs & Diagnóstico -->
           <button
             onclick={() => isLogsOpen = true}
-            class="p-2 rounded-xl text-[#F2EFEA]/60 hover:text-amber-400 hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
+            class="p-2 rounded-xl text-[#F0F0F5]/60 hover:text-amber-400 hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
             title="Abrir Console de Diagnóstico e Logs"
           >
             <Terminal class="w-4 h-4" />
@@ -164,16 +164,16 @@
           <button
             onclick={handleRefresh}
             disabled={isScanningManual}
-            class="p-2 rounded-xl text-[#F2EFEA]/50 hover:text-[#F2EFEA] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            class="p-2 rounded-xl text-[#F0F0F5]/50 hover:text-[#F0F0F5] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             title="{$t('connect.scanBtn')}"
           >
-            <RefreshCw class="w-4 h-4 {isScanningManual ? 'animate-spin text-[#66D7D1]' : ''}" />
+            <RefreshCw class="w-4 h-4 {isScanningManual ? 'animate-spin text-[#3093AA]' : ''}" />
           </button>
 
           <!-- Botão Fechar -->
           <button
             onclick={() => isOpen = false}
-            class="p-2 rounded-xl text-[#F2EFEA]/50 hover:text-[#F2EFEA] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
+            class="p-2 rounded-xl text-[#F0F0F5]/50 hover:text-[#F0F0F5] hover:bg-white/[0.06] active:scale-95 transition-all cursor-pointer"
             title="{$t('common.close')}"
           >
             <X class="w-4 h-4" />
@@ -185,7 +185,7 @@
       <div class="p-5 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
         <!-- Categoria 1: Este Dispositivo (Local) -->
         <div class="space-y-2">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F2EFEA]/40 px-1">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F0F0F5]/40 px-1">
             {$t('connect.thisDevice')}
           </span>
 
@@ -197,17 +197,17 @@
               <button
                 type="button"
                 onclick={() => selectDevice(dev)}
-                class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#66D7D1]/12 border-[#66D7D1]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
+                class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#3093AA]/12 border-[#3093AA]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
               >
                 <div class="flex items-center gap-3.5 min-w-0">
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#66D7D1] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F2EFEA]/70'}">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#3093AA] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F0F0F5]/70'}">
                     <Laptop class="w-5 h-5" />
                   </div>
                   <div class="flex flex-col min-w-0">
-                    <span class="text-xs font-semibold text-[#F2EFEA] truncate">
+                    <span class="text-xs font-semibold text-[#F0F0F5] truncate">
                       {$t('connect.systemDefault')}
                     </span>
-                    <span class="text-[11px] {isActive ? 'text-[#66D7D1]' : 'text-[#F2EFEA]/40'} truncate">
+                    <span class="text-[11px] {isActive ? 'text-[#3093AA]' : 'text-[#F0F0F5]/40'} truncate">
                       {isActive ? $t('connect.playingHere') : `Latência mínima (~${dev.approximateLatencyMs}ms)`}
                     </span>
                   </div>
@@ -215,9 +215,9 @@
 
                 <div class="shrink-0 flex items-center gap-2">
                   {#if isConnecting}
-                    <Loader2 class="w-4 h-4 text-[#66D7D1] animate-spin" />
+                    <Loader2 class="w-4 h-4 text-[#3093AA] animate-spin" />
                   {:else if isActive}
-                    <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#66D7D1]/20 text-[#66D7D1] text-[10px] font-bold border border-[#66D7D1]/30">
+                    <div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#3093AA]/20 text-[#3093AA] text-[10px] font-bold border border-[#3093AA]/30">
                       <Check class="w-3 h-3" />
                       <span>Ativo</span>
                     </div>
@@ -231,20 +231,20 @@
         <!-- Categoria 2: Speakers JBL, Fones & Bluetooth -->
         <div class="space-y-2">
           <div class="flex items-center justify-between px-1">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F2EFEA]/40">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F0F0F5]/40">
               {$t('connect.bluetoothDevices')}
             </span>
-            <span class="text-[11px] text-[#F2EFEA]/30">
+            <span class="text-[11px] text-[#F0F0F5]/30">
               {realBluetoothDevices.length}
             </span>
           </div>
 
           {#if realBluetoothDevices.length === 0}
             <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] text-center space-y-2.5">
-              <p class="text-xs text-[#F2EFEA]/50">
+              <p class="text-xs text-[#F0F0F5]/50">
                 Nenhum fone ou speaker Bluetooth conectado no momento.
               </p>
-              <p class="text-[10px] text-[#F2EFEA]/30 max-w-xs mx-auto">
+              <p class="text-[10px] text-[#F0F0F5]/30 max-w-xs mx-auto">
                 Ligue seu fone ou conecte-o pelo Windows. O Pulsar reconhece a conexão na mesma hora.
               </p>
             </div>
@@ -263,10 +263,10 @@
                   tabindex="0"
                   onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') selectDevice(dev); }}
                   onclick={() => selectDevice(dev)}
-                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#66D7D1]/12 border-[#66D7D1]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
+                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#3093AA]/12 border-[#3093AA]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
                 >
                   <div class="flex items-center gap-3.5 min-w-0">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#66D7D1] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F2EFEA]/70'}">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#3093AA] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F0F0F5]/70'}">
                       {#if isSpeaker}
                         <Volume2 class="w-5 h-5" />
                       {:else}
@@ -275,7 +275,7 @@
                     </div>
                     <div class="flex flex-col min-w-0">
                       <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="text-xs font-semibold text-[#F2EFEA] truncate">
+                        <span class="text-xs font-semibold text-[#F0F0F5] truncate">
                           {dev.name}
                         </span>
                         {#if isHaylou}
@@ -292,7 +292,7 @@
                           </span>
                         {/if}
                       </div>
-                      <span class="text-[11px] {isActive ? 'text-[#66D7D1]' : 'text-[#F2EFEA]/40'} truncate">
+                      <span class="text-[11px] {isActive ? 'text-[#3093AA]' : 'text-[#F0F0F5]/40'} truncate">
                         {isActive ? $t('connect.playingHere') : `Disponível para reproduzir (~${dev.approximateLatencyMs}ms)`}
                       </span>
                     </div>
@@ -300,7 +300,7 @@
 
                   <div class="shrink-0 flex items-center gap-2">
                     {#if isConnecting}
-                      <Loader2 class="w-4 h-4 text-[#66D7D1] animate-spin" />
+                      <Loader2 class="w-4 h-4 text-[#3093AA] animate-spin" />
                     {:else if isActive}
                       <button
                         type="button"
@@ -334,10 +334,10 @@
         {#if tvDevices.length > 0}
           <div class="space-y-2">
             <div class="flex items-center justify-between px-1">
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F2EFEA]/40">
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F0F0F5]/40">
                 Monitores & Saídas de Vídeo (HDMI)
               </span>
-              <span class="text-[11px] text-[#F2EFEA]/30">
+              <span class="text-[11px] text-[#F0F0F5]/30">
                 {tvDevices.length}
               </span>
             </div>
@@ -352,17 +352,17 @@
                   tabindex="0"
                   onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') selectDevice(dev); }}
                   onclick={() => selectDevice(dev)}
-                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#66D7D1]/12 border-[#66D7D1]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
+                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#3093AA]/12 border-[#3093AA]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
                 >
                   <div class="flex items-center gap-3.5 min-w-0">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#66D7D1] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F2EFEA]/70'}">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#3093AA] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F0F0F5]/70'}">
                       <Tv class="w-5 h-5" />
                     </div>
                     <div class="flex flex-col min-w-0">
-                      <span class="text-xs font-semibold text-[#F2EFEA] truncate">
+                      <span class="text-xs font-semibold text-[#F0F0F5] truncate">
                         {dev.name}
                       </span>
-                      <span class="text-[11px] {isActive ? 'text-[#66D7D1]' : 'text-[#F2EFEA]/40'} truncate">
+                      <span class="text-[11px] {isActive ? 'text-[#3093AA]' : 'text-[#F0F0F5]/40'} truncate">
                         {isActive ? $t('connect.playingHere') : `Saída HDMI do Sistema (~${dev.approximateLatencyMs}ms)`}
                       </span>
                     </div>
@@ -370,7 +370,7 @@
 
                   <div class="shrink-0 flex items-center gap-2">
                     {#if isConnecting}
-                      <Loader2 class="w-4 h-4 text-[#66D7D1] animate-spin" />
+                      <Loader2 class="w-4 h-4 text-[#3093AA] animate-spin" />
                     {:else if isActive}
                       <button
                         type="button"
@@ -391,20 +391,20 @@
         <!-- Categoria 3: Google Home & Nest (Google Cast) -->
         <div class="space-y-2">
           <div class="flex items-center justify-between px-1">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F2EFEA]/40">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F0F0F5]/40">
               {$t('connect.castDevices')}
             </span>
-            <span class="text-[11px] text-[#F2EFEA]/30">
+            <span class="text-[11px] text-[#F0F0F5]/30">
               {castDevices.length}
             </span>
           </div>
 
           {#if castDevices.length === 0}
             <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] text-center space-y-1">
-              <p class="text-xs text-[#F2EFEA]/40">
+              <p class="text-xs text-[#F0F0F5]/40">
                 {$t('connect.noCast')}
               </p>
-              <span class="text-[10px] text-[#F2EFEA]/30 block">
+              <span class="text-[10px] text-[#F0F0F5]/30 block">
                 Google Home, Nest Mini e Chromecast conectados na mesma rede Wi-Fi são detectados automaticamente via mDNS.
               </span>
             </div>
@@ -419,22 +419,22 @@
                   tabindex="0"
                   onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') selectDevice(dev); }}
                   onclick={() => selectDevice(dev)}
-                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#66D7D1]/12 border-[#66D7D1]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
+                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#3093AA]/12 border-[#3093AA]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
                 >
                   <div class="flex items-center gap-3.5 min-w-0">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#66D7D1] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F2EFEA]/70'}">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#3093AA] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F0F0F5]/70'}">
                       <Cast class="w-5 h-5" />
                     </div>
                     <div class="flex flex-col min-w-0">
                       <div class="flex items-center gap-1.5">
-                        <span class="text-xs font-semibold text-[#F2EFEA] truncate">
+                        <span class="text-xs font-semibold text-[#F0F0F5] truncate">
                           {dev.name}
                         </span>
                         <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
                           Cast
                         </span>
                       </div>
-                      <span class="text-[11px] {isActive ? 'text-[#66D7D1]' : 'text-[#F2EFEA]/40'} truncate">
+                      <span class="text-[11px] {isActive ? 'text-[#3093AA]' : 'text-[#F0F0F5]/40'} truncate">
                         {isActive ? $t('connect.playingHere') : `Google Cast (~${dev.approximateLatencyMs}ms)`}
                       </span>
                     </div>
@@ -442,7 +442,7 @@
 
                   <div class="shrink-0 flex items-center gap-2">
                     {#if isConnecting}
-                      <Loader2 class="w-4 h-4 text-[#66D7D1] animate-spin" />
+                      <Loader2 class="w-4 h-4 text-[#3093AA] animate-spin" />
                     {:else if isActive}
                       <button
                         type="button"
@@ -464,20 +464,20 @@
         <!-- Categoria 4: Smart TVs & Receptores DLNA (LG TV, Samsung) -->
         <div class="space-y-2">
           <div class="flex items-center justify-between px-1">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F2EFEA]/40">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-[#F0F0F5]/40">
               {$t('connect.upnpDevices')}
             </span>
-            <span class="text-[11px] text-[#F2EFEA]/30">
+            <span class="text-[11px] text-[#F0F0F5]/30">
               {upnpDevices.length}
             </span>
           </div>
 
           {#if upnpDevices.length === 0}
             <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] text-center space-y-1">
-              <p class="text-xs text-[#F2EFEA]/40">
+              <p class="text-xs text-[#F0F0F5]/40">
                 {$t('connect.noUpnp')}
               </p>
-              <span class="text-[10px] text-[#F2EFEA]/30 block">
+              <span class="text-[10px] text-[#F0F0F5]/30 block">
                 Compatível com Smart TVs LG WebOS, Samsung Tizen e caixas DLNA na mesma rede Wi-Fi.
               </span>
             </div>
@@ -492,17 +492,17 @@
                   tabindex="0"
                   onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') selectDevice(dev); }}
                   onclick={() => selectDevice(dev)}
-                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#66D7D1]/12 border-[#66D7D1]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
+                  class="w-full p-3 rounded-2xl flex items-center justify-between border transition-all duration-200 cursor-pointer text-left {isActive ? 'bg-[#3093AA]/12 border-[#3093AA]/40 shadow-[0_0_20px_rgba(102,215,209,0.15)]' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/[0.05] hover:border-white/[0.1] active:scale-[0.99]'}"
                 >
                   <div class="flex items-center gap-3.5 min-w-0">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#66D7D1] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F2EFEA]/70'}">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {isActive ? 'bg-[#3093AA] text-[#121216] shadow-md' : 'bg-white/[0.06] text-[#F0F0F5]/70'}">
                       <Tv class="w-5 h-5" />
                     </div>
                     <div class="flex flex-col min-w-0">
-                      <span class="text-xs font-semibold text-[#F2EFEA] truncate">
+                      <span class="text-xs font-semibold text-[#F0F0F5] truncate">
                         {dev.name}
                       </span>
-                      <span class="text-[11px] {isActive ? 'text-[#66D7D1]' : 'text-[#F2EFEA]/40'} truncate">
+                      <span class="text-[11px] {isActive ? 'text-[#3093AA]' : 'text-[#F0F0F5]/40'} truncate">
                         {isActive ? $t('connect.playingHere') : `DLNA Stream (~${dev.approximateLatencyMs}ms)`}
                       </span>
                     </div>
@@ -510,7 +510,7 @@
 
                   <div class="shrink-0 flex items-center gap-2">
                     {#if isConnecting}
-                      <Loader2 class="w-4 h-4 text-[#66D7D1] animate-spin" />
+                      <Loader2 class="w-4 h-4 text-[#3093AA] animate-spin" />
                     {:else if isActive}
                       <button
                         type="button"
@@ -532,17 +532,17 @@
 
       <!-- Banner de Transmissão Ativa com Botão de Desconectar Rápido -->
       {#if $activeDevice.type !== 'local'}
-        <div class="mx-5 mb-3 p-3 rounded-2xl bg-gradient-to-r from-[#66D7D1]/12 via-[#66D7D1]/6 to-transparent border border-[#66D7D1]/25 flex items-center justify-between shadow-lg backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="mx-5 mb-3 p-3 rounded-2xl bg-gradient-to-r from-[#3093AA]/12 via-[#3093AA]/6 to-transparent border border-[#3093AA]/25 flex items-center justify-between shadow-lg backdrop-blur-sm animate-in fade-in duration-200">
           <div class="flex items-center gap-2.5 min-w-0">
             <span class="relative flex h-2.5 w-2.5 shrink-0">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#66D7D1] opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#66D7D1]"></span>
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3093AA] opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#3093AA]"></span>
             </span>
             <div class="flex flex-col min-w-0">
-              <span class="text-xs font-bold text-[#F2EFEA] truncate">
+              <span class="text-xs font-bold text-[#F0F0F5] truncate">
                 {$activeDevice.name}
               </span>
-              <span class="text-[10px] text-[#66D7D1] truncate">
+              <span class="text-[10px] text-[#3093AA] truncate">
                 Transmitindo agora via {$activeDevice.type.toUpperCase()}
               </span>
             </div>
@@ -561,7 +561,7 @@
 
       <!-- Rodapé Informativo com Transparência Apple-Like -->
       <div class="p-4 bg-white/[0.02] border-t border-white/[0.06] text-center">
-        <p class="text-[11px] text-[#F2EFEA]/40 leading-relaxed">
+        <p class="text-[11px] text-[#F0F0F5]/40 leading-relaxed">
           {$t('connect.localNotice')}
         </p>
       </div>

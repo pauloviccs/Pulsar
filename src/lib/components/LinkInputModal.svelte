@@ -259,14 +259,14 @@
       role="dialog"
       aria-modal="true"
       tabindex="-1"
-      class="glass-panel w-full max-w-lg max-h-[88vh] rounded-3xl p-5 sm:p-6 flex flex-col shadow-2xl border border-white/[0.1] text-[#F2EFEA] overflow-hidden"
+      class="lq-glass-elevated w-full max-w-lg max-h-[88vh] rounded-3xl p-5 sm:p-6 flex flex-col shadow-2xl border border-white/[0.12] text-[#F0F0F5] overflow-hidden"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => { if (e.key === 'Escape') close(); }}
     >
       <!-- Modal Header -->
       <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] shrink-0">
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="p-2 rounded-lg bg-[#FC7753]/20 text-[#FC7753] shrink-0">
+          <div class="p-2 rounded-xl bg-[#EF7D4B]/20 text-[#EF7D4B] shrink-0">
             {#if isPlaylistOrAlbum}
               <ListMusic class="w-5 h-5" />
             {:else}
@@ -274,10 +274,10 @@
             {/if}
           </div>
           <div class="min-w-0">
-            <h2 class="text-sm font-semibold tracking-tight text-[#F2EFEA] truncate">
+            <h2 class="text-sm font-semibold tracking-tight text-[#F0F0F5] truncate">
               {$t('modals.pasteLinkTitle')}
             </h2>
-            <p class="text-[11px] text-[#F2EFEA]/50 truncate">
+            <p class="text-[11px] text-[#F0F0F5]/50 truncate">
               {$t('modals.pasteLinkDesc')}
             </p>
           </div>
@@ -285,7 +285,7 @@
 
         <button
           onclick={close}
-          class="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.08] transition cursor-pointer shrink-0"
+          class="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.08] transition cursor-pointer shrink-0"
         >
           <X class="w-4 h-4" />
         </button>
@@ -302,13 +302,13 @@
                 bind:value={url}
                 placeholder={$t('modals.pastePlaceholder')}
                 onkeydown={(e) => { if (e.key === 'Enter') handleAnalyze(); }}
-                class="w-full py-2.5 px-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-[#66D7D1] focus:outline-none text-xs text-[#F2EFEA] placeholder:text-[#F2EFEA]/30 transition"
+                class="liquid-input w-full py-2.5 px-3.5 rounded-xl text-xs text-[#F0F0F5] placeholder:text-[#F0F0F5]/30 transition"
               />
             </div>
             <button
               type="button"
               onclick={handlePasteClipboard}
-              class="shrink-0 px-3 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-semibold text-[#66D7D1] transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+              class="shrink-0 px-3 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-semibold text-[#3093AA] transition cursor-pointer flex items-center gap-1.5 active:scale-95"
               title="Colar da área de transferência"
             >
               <Clipboard class="w-3.5 h-3.5" />
@@ -326,7 +326,7 @@
                   {badge.label}
                 </span>
                 {#if linkDetection?.link_type && linkDetection.link_type !== 'unknown'}
-                  <span class="text-[10px] text-[#F2EFEA]/40 capitalize">
+                  <span class="text-[10px] text-[#F0F0F5]/40 capitalize">
                     {linkDetection.link_type === 'album' ? 'Álbum' : linkDetection.link_type === 'playlist' ? 'Playlist' : 'Música'}
                   </span>
                 {/if}
@@ -354,7 +354,7 @@
                     <Key class="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 class="text-xs font-bold text-[#F2EFEA]">Credenciais da API Spotify</h4>
+                    <h4 class="text-xs font-bold text-[#F0F0F5]">Credenciais da API Spotify</h4>
                     <p class="text-[10px] text-white/50">Gratuito para qualquer conta Spotify</p>
                   </div>
                 </div>
@@ -385,13 +385,13 @@
                   type="text"
                   bind:value={spotifyClientId}
                   placeholder="Spotify Client ID"
-                  class="w-full py-2 px-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-xs font-mono text-[#F2EFEA] placeholder:text-white/30 focus:border-green-400 focus:outline-none transition"
+                  class="w-full py-2 px-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-xs font-mono text-[#F0F0F5] placeholder:text-white/30 focus:border-green-400 focus:outline-none transition"
                 />
                 <input
                   type="password"
                   bind:value={spotifyClientSecret}
                   placeholder="Spotify Client Secret"
-                  class="w-full py-2 px-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-xs font-mono text-[#F2EFEA] placeholder:text-white/30 focus:border-green-400 focus:outline-none transition"
+                  class="w-full py-2 px-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-xs font-mono text-[#F0F0F5] placeholder:text-white/30 focus:border-green-400 focus:outline-none transition"
                 />
                 <button
                   type="button"
@@ -414,13 +414,13 @@
           <button
             onclick={handleAnalyze}
             disabled={isResolving || !url.trim()}
-            class="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-[#F2EFEA] flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
+            class="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-[#F0F0F5] flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
           >
             {#if isResolving}
-              <Loader2 class="w-4 h-4 animate-spin text-[#66D7D1]" />
+              <Loader2 class="w-4 h-4 animate-spin text-[#3093AA]" />
               <span>{$t('modals.analyzing')}</span>
             {:else}
-              <Sparkles class="w-4 h-4 text-[#FC7753]" />
+              <Sparkles class="w-4 h-4 text-[#EF7D4B]" />
               <span>{$t('modals.analyzeBtn')}</span>
             {/if}
           </button>
@@ -450,13 +450,13 @@
               <span class="text-green-400 font-medium">
                 {$t('modals.spotifySearching').replace('{track}', spotifyProgress.current_track_title)}
               </span>
-              <span class="text-[#F2EFEA]/50 font-mono">
+              <span class="text-[#F0F0F5]/50 font-mono">
                 {spotifyProgress.current}/{spotifyProgress.total}
               </span>
             </div>
             <div class="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
               <div 
-                class="h-full rounded-full bg-gradient-to-r from-green-500 to-[#66D7D1] transition-all duration-300"
+                class="h-full rounded-full bg-gradient-to-r from-green-500 to-[#3093AA] transition-all duration-300"
                 style="width: {(spotifyProgress.current / spotifyProgress.total) * 100}%"
               ></div>
             </div>
@@ -465,7 +465,7 @@
 
         <!-- Erro -->
         {#if errorMessage}
-          <div class="p-3 rounded-xl bg-[#FC7753]/15 border border-[#FC7753]/30 flex items-center gap-2.5 text-xs text-[#FC7753]">
+          <div class="p-3 rounded-xl bg-[#EF7D4B]/15 border border-[#EF7D4B]/30 flex items-center gap-2.5 text-xs text-[#EF7D4B]">
             <AlertCircle class="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -473,12 +473,12 @@
 
         <!-- Faixa Única Detectada -->
         {#if resolvedTrack}
-          <div class="glass-card rounded-xl p-3.5 flex items-center gap-3.5 border border-[#66D7D1]/30 animate-[scale-up_0.2s_ease-out]">
+          <div class="glass-card rounded-xl p-3.5 flex items-center gap-3.5 border border-[#3093AA]/30 animate-[scale-up_0.2s_ease-out]">
             <img src={resolvedTrack.thumbnail_url} alt="" class="w-12 h-12 rounded-lg object-cover shadow-sm" />
             <div class="flex-1 min-w-0">
-              <h4 class="text-xs font-semibold text-[#F2EFEA] truncate">{resolvedTrack.title}</h4>
-              <p class="text-[11px] text-[#F2EFEA]/50 truncate">{resolvedTrack.artist_guess || resolvedTrack.channel_name}</p>
-              <span class="text-[10px] font-mono text-[#66D7D1]">
+              <h4 class="text-xs font-semibold text-[#F0F0F5] truncate">{resolvedTrack.title}</h4>
+              <p class="text-[11px] text-[#F0F0F5]/50 truncate">{resolvedTrack.artist_guess || resolvedTrack.channel_name}</p>
+              <span class="text-[10px] font-mono text-[#3093AA]">
                 {#if linkDetection?.platform === 'spotify'}
                   Spotify → YouTube (Stream Local)
                 {:else}
@@ -491,7 +491,7 @@
           <div class="flex items-center gap-3 pt-1">
             <button
               onclick={handlePlayNow}
-              class="flex-1 py-2.5 rounded-xl bg-[#FC7753] hover:bg-[#FC7753]/90 text-[#F2EFEA] text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-[#FC7753]/20 transition cursor-pointer"
+              class="flex-1 py-2.5 rounded-xl bg-[#EF7D4B] hover:bg-[#EF7D4B]/90 text-[#F0F0F5] text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-[#EF7D4B]/20 transition cursor-pointer"
             >
               <Play class="w-3.5 h-3.5 fill-current" />
               <span>{$t('playlistDetail.play')}</span>
@@ -499,7 +499,7 @@
 
             <button
               onclick={handleAddToQueue}
-              class="py-2.5 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-[#F2EFEA] text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
+              class="py-2.5 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-[#F0F0F5] text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <Plus class="w-3.5 h-3.5" />
               <span>{$t('player.queue')}</span>
@@ -509,15 +509,15 @@
 
         <!-- Playlist/Álbum Importado -->
         {#if resolvedPlaylist}
-          <div class="glass-card rounded-xl p-3.5 flex items-center gap-3.5 border border-[#66D7D1]/30 animate-[scale-up_0.2s_ease-out]">
+          <div class="glass-card rounded-xl p-3.5 flex items-center gap-3.5 border border-[#3093AA]/30 animate-[scale-up_0.2s_ease-out]">
             <img src={resolvedPlaylist.cover_image} alt="" class="w-12 h-12 rounded-lg object-cover shadow-sm" />
             <div class="flex-1 min-w-0">
-              <h4 class="text-xs font-semibold text-[#F2EFEA] truncate">{resolvedPlaylist.name}</h4>
-              <p class="text-[11px] text-[#F2EFEA]/50 truncate">{resolvedPlaylist.track_count} {$t('modals.tracksImported')}</p>
+              <h4 class="text-xs font-semibold text-[#F0F0F5] truncate">{resolvedPlaylist.name}</h4>
+              <p class="text-[11px] text-[#F0F0F5]/50 truncate">{resolvedPlaylist.track_count} {$t('modals.tracksImported')}</p>
               {#if wasCancelled}
                 <span class="text-[10px] font-mono text-amber-400 font-medium">Importação interrompida pelo usuário</span>
               {:else}
-                <span class="text-[10px] font-mono text-[#66D7D1]">{$t('modals.savedToSQLite')}</span>
+                <span class="text-[10px] font-mono text-[#3093AA]">{$t('modals.savedToSQLite')}</span>
               {/if}
             </div>
           </div>
@@ -549,7 +549,7 @@
           <div class="flex items-center gap-3 pt-1">
             <button
               onclick={handleOpenPlaylist}
-              class="w-full py-2.5 rounded-xl bg-[#66D7D1] hover:bg-[#66D7D1]/90 text-[#121216] text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-[#66D7D1]/20 transition cursor-pointer"
+              class="w-full py-2.5 rounded-xl bg-[#3093AA] hover:bg-[#3093AA]/90 text-[#121216] text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-[#3093AA]/20 transition cursor-pointer"
             >
               <ListMusic class="w-4 h-4" />
               <span>{$t('playlistDetail.backToLibrary')}</span>
