@@ -402,12 +402,52 @@ CREATE TABLE IF NOT EXISTS public.playlist_follows (
     PRIMARY KEY (user_id, playlist_id)
 );
 
-ALTER TABLE public.playlist_follows ENABLE ROW LEVEL SECURITY;
+-- 15. TABELA DE CENTRAL DE NOTIFICAÇÕES (NOTIFICATIONS)
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    actor_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    actor_username TEXT,
+    actor_avatar_url TEXT,
+    actor_display_name TEXT,
+    type TEXT NOT NULL, -- 'follow', 'playlist_follow', 'friend_request', 'message', 'system'
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    target_id TEXT,
+    target_title TEXT,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
-DROP POLICY IF EXISTS "Qualquer um visualiza playlists seguidas públicas" ON public.playlist_follows;
-CREATE POLICY "Qualquer um visualiza playlists seguidas públicas" ON public.playlist_follows FOR SELECT USING (true);
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Usuário gerencia suas próprias playlists seguidas" ON public.playlist_follows;
-CREATE POLICY "Usuário gerencia suas próprias playlists seguidas" ON public.playlist_follows FOR ALL USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Usuário visualiza suas próprias notificações" ON public.notifications;
+CREATE POLICY "Usuário visualiza suas próprias notificações"
+    ON public.notifications FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Usuário pode atualizar status de leitura das suas notificações" ON public.notifications;
+CREATE POLICY "Usuário pode atualizar status de leitura das suas notificações"
+    ON public.notifications FOR UPDATE
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Usuário pode deletar suas próprias notificações" ON public.notifications;
+CREATE POLICY "Usuário pode deletar suas próprias notificações"
+    ON public.notifications FOR DELETE
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Qualquer usuário autenticado pode enviar notificação para outro" ON public.notifications;
+CREATE POLICY "Qualquer usuário autenticado pode enviar notificação para outro"
+    ON public.notifications FOR INSERT
+    WITH CHECK (true);
+
+-- Habilita escuta Realtime
+DO $$
+BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 
 

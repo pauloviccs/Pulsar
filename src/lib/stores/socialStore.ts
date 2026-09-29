@@ -2,6 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import type { UserProfile, Friendship, ChatMessage, CloudPlaylist, Track } from '../types';
 import { getSupabase } from '../api/supabase';
 import { currentProfile, guestProfile, viewedProfile, isEditProfileModalOpen } from './authStore';
+import { notificationActions } from './notificationStore';
 
 export const friends = writable<Friendship[]>([]);
 export const pendingRequests = writable<Friendship[]>([]);
@@ -276,6 +277,22 @@ export const socialActions = {
           read: false
         };
         chatMessages.update(msgs => [...msgs, fullMsg]);
+
+        // Enviar notificação de mensagem para o destinatário
+        try {
+          await notificationActions.sendNotification({
+            user_id: receiverId,
+            sender_id: prof.id,
+            sender_username: prof.username,
+            sender_avatar_url: prof.avatar_url,
+            type: 'message',
+            title: 'Nova mensagem',
+            message: `@${prof.username}: ${content.trim() ? (content.trim().length > 40 ? content.trim().slice(0, 40) + '...' : content.trim()) : 'Compartilhou uma faixa com você'}`,
+            link: `user:${prof.id}`
+          });
+        } catch (errNotif) {
+          console.warn('[Pulsar Social] Falha ao enviar notificação de mensagem:', errNotif);
+        }
       }
     } catch (err) {
       console.error('[Pulsar Social] Erro ao enviar mensagem:', err);
@@ -341,6 +358,42 @@ export const socialActions = {
           is_following: true,
           followers_count: (vp.followers_count || 0) + 1
         } : null);
+
+        // Disparar notificação de seguidor
+        try {
+          await notificationActions.sendNotification({
+            user_id: targetUserId,
+            sender_id: prof.id,
+            sender_username: prof.username,
+            sender_avatar_url: prof.avatar_url,
+            type: 'follow',
+            title: 'Novo seguidor',
+            message: `@${prof.username} começou a seguir você!`,
+            link: `user:${prof.id}`
+          });
+        } catch (notifErr) {
+          console.warn('[Pulsar Social] Falha ao enviar notificação de seguidor:', notifErr);
+        }
+
+        // Adicionar à lista de amigos pendentes do remetente e destinatário
+        try {
+          const { data: existingFriendship } = await supabase
+            .from('friendships')
+            .select('*')
+            .or(`and(user_id.eq.${prof.id},friend_id.eq.${targetUserId}),and(user_id.eq.${targetUserId},friend_id.eq.${prof.id})`)
+            .maybeSingle();
+
+          if (!existingFriendship) {
+            await supabase.from('friendships').insert({
+              user_id: prof.id,
+              friend_id: targetUserId,
+              status: 'pending'
+            });
+            await this.loadFriends();
+          }
+        } catch (friendErr) {
+          console.warn('[Pulsar Social] Falha ao registrar amizade pendente ao seguir:', friendErr);
+        }
       }
     } catch (err) {
       console.error('[Pulsar Social] Erro ao seguir/deixar de seguir:', err);

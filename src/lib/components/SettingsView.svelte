@@ -91,9 +91,34 @@
   let spotifyError = $state<string | null>(null);
   let isSavingSpotify = $state(false);
 
+  // Inicialização Automática com o Sistema
+  let autostartEnabled = $state(true);
+
+  async function loadAutostartSetting() {
+    try {
+      const status = await safeInvoke<boolean>('get_autostart_status');
+      if (typeof status === 'boolean') {
+        autostartEnabled = status;
+      }
+    } catch (e) {
+      console.warn('[Pulsar Settings] Erro ao obter autostart:', e);
+    }
+  }
+
+  async function handleToggleAutostart() {
+    const next = !autostartEnabled;
+    autostartEnabled = next;
+    try {
+      await safeInvoke('set_autostart', { enabled: next });
+    } catch (e) {
+      console.error('[Pulsar Settings] Erro ao alternar autostart:', e);
+    }
+  }
+
   onMount(async () => {
     await updateCacheInfo();
     await loadSpotifySettings();
+    await loadAutostartSetting();
   });
 
   async function loadSpotifySettings() {
@@ -358,13 +383,31 @@
     </div>
   </div>
 
-  <!-- SEÇÃO 3: COMPORTAMENTO DA JANELA (TRAY) -->
+  <!-- SEÇÃO 3: COMPORTAMENTO DA JANELA & SISTEMA -->
   <div class="lq-glass-frost rounded-3xl p-6 border border-white/[0.12] flex flex-col gap-5 shadow-xl">
     <div class="flex items-center gap-2.5">
       <AppWindow class="w-5 h-5 text-[#F3B044]" />
       <h2 class="text-sm font-bold tracking-tight text-[#F0F0F5] uppercase">{$t('settings.windowBehavior')}</h2>
     </div>
 
+    <!-- Toggle Iniciar com o Sistema -->
+    <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+      <div>
+        <p class="text-xs font-bold text-[#F0F0F5]">Iniciar junto com o Sistema</p>
+        <p class="text-[11px] text-white/50">Abrir o Pulsar automaticamente em segundo plano ao ligar o computador.</p>
+      </div>
+
+      <button
+        type="button"
+        aria-label="Ativar ou desativar inicialização junto com o sistema"
+        onclick={handleToggleAutostart}
+        class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {autostartEnabled ? 'bg-[#F3B044]' : 'bg-white/[0.1]'}"
+      >
+        <div class="w-5 h-5 rounded-full bg-white transition-transform {autostartEnabled ? 'translate-x-6' : 'translate-x-0'}"></div>
+      </button>
+    </div>
+
+    <!-- Toggle Minimizar para Bandeja -->
     <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
       <div>
         <p class="text-xs font-bold text-[#F0F0F5]">{$t('settings.minimizeTray')}</p>
@@ -852,6 +895,30 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- RODAPÉ: CREATED BY (LUMIA & VICCS) -->
+  <div class="mt-4 pt-10 pb-8 flex flex-col items-center justify-center gap-4 text-center border-t border-white/[0.06]">
+    <span class="text-[11px] font-bold uppercase tracking-[0.25em] text-white/40">Created by</span>
+    <div class="flex items-center justify-center gap-8 flex-wrap">
+      <div class="flex items-center justify-center px-4 py-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.2] hover:bg-white/[0.06] transition shadow-lg">
+        <img 
+          src="/logos/lumia-logo.svg" 
+          alt="Lumia" 
+          class="h-7 w-auto object-contain opacity-90 hover:opacity-100 transition filter drop-shadow-[0_2px_8px_rgba(239,125,75,0.3)]" 
+        />
+      </div>
+      <div class="flex items-center justify-center px-4 py-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.2] hover:bg-white/[0.06] transition shadow-lg">
+        <img 
+          src="/logos/viccs-logo.svg" 
+          alt="VICCS" 
+          class="h-7 w-auto object-contain opacity-90 hover:opacity-100 transition filter drop-shadow-[0_2px_8px_rgba(48,147,170,0.3)]" 
+        />
+      </div>
+    </div>
+    <p class="text-[10px] text-white/30 tracking-wider">
+      Pulsar &bull; Experiência de Áudio Definitiva &bull; 2026
+    </p>
   </div>
 </div>
 

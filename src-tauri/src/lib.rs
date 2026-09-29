@@ -120,6 +120,17 @@ pub fn run() {
                 }
             }
 
+            #[cfg(target_os = "windows")]
+            {
+                let db_state = app.state::<Database>();
+                if let Ok(configured) = db_state.get_setting("autostart_configured") {
+                    if configured.is_none() {
+                        let _ = commands::set_autostart(true);
+                        let _ = db_state.save_setting("autostart_configured", "true");
+                    }
+                }
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -196,6 +207,9 @@ pub fn run() {
             commands::cast_stop,
             commands::cast_set_volume,
             commands::cast_seek,
+            // Windows Autostart
+            commands::get_autostart_status,
+            commands::set_autostart,
             // Native Auto-Updater
             updater::fetch_update_manifest,
             updater::download_and_run_installer,

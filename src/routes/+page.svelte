@@ -45,9 +45,11 @@
   import SocialDrawer from '$lib/components/SocialDrawer.svelte';
   import DirectChatModal from '$lib/components/DirectChatModal.svelte';
   import SettingsView from '$lib/components/SettingsView.svelte';
+  import NotificationCenter from '$lib/components/NotificationCenter.svelte';
   import UpdateModal from '$lib/components/UpdateModal.svelte';
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updateActions } from '$lib/stores/updateStore';
+  import { notificationActions } from '$lib/stores/notificationStore';
 
   import { 
     allTracks, 
@@ -73,6 +75,7 @@
 
   let searchInput = $state('');
   let isMobileSidebarOpen = $state(false);
+  let libraryTab = $state<'overview' | 'playlists' | 'tracks'>('overview');
 
   function handleSearchInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
@@ -83,7 +86,9 @@
   onMount(() => {
     libraryActions.initFromBackend();
     authActions.initAuth();
-    const unsub = socialActions.subscribeToRealtime();
+    notificationActions.initNotifications();
+    const unsubSocial = socialActions.subscribeToRealtime();
+    const unsubNotif = notificationActions.subscribeToRealtime();
 
     // Verificação de atualização suave em background após 3.5s
     const updateTimer = setTimeout(() => {
@@ -91,7 +96,8 @@
     }, 3500);
 
     return () => {
-      unsub();
+      unsubSocial();
+      unsubNotif();
       clearTimeout(updateTimer);
     };
   });
@@ -232,8 +238,9 @@
             </div>
           </div>
 
-          <!-- Lado Direito: Modal de Perfil com a #tag + Pílula Minimalista de Adicionar Mídia -->
+          <!-- Lado Direito: Central de Notificações + Modal de Perfil com a #tag + Pílula de Adicionar Mídia -->
           <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+            <NotificationCenter />
             <TopProfileButton />
 
             <!-- Pílula de Importação Rápida em Vidro Líquido (YouTube & Spotify) -->
@@ -286,66 +293,177 @@
             {/if}
 
           {:else if $activeView === 'library' && !$selectedPlaylist}
-            <!-- Modal Slider / Carrossel de Destaques e Mais Ouvidas -->
+            <!-- Barra Superior de Navegação da Biblioteca: Pílulas Táteis Liquid Glass -->
             {#if !searchInput}
-              <HeroSlider />
+              <div class="flex items-center justify-between gap-4 flex-wrap shrink-0">
+                <div class="flex items-center gap-2 p-1 rounded-full lq-glass-frost">
+                  <button
+                    type="button"
+                    onclick={() => libraryTab = 'overview'}
+                    class="px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer {libraryTab === 'overview' ? 'bg-gradient-to-r from-[#EF7D4B] to-[#F3B044] text-white shadow-md shadow-[#EF7D4B]/25 scale-105' : 'text-white/70 hover:text-white'}"
+                  >
+                    Visão Geral
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick={() => libraryTab = 'playlists'}
+                    class="px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 {libraryTab === 'playlists' ? 'bg-gradient-to-r from-[#3093AA] to-[#257385] text-white shadow-md shadow-[#3093AA]/25 scale-105' : 'text-white/70 hover:text-white'}"
+                  >
+                    <span>Playlists</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded-full {libraryTab === 'playlists' ? 'bg-white/20 text-white font-black' : 'bg-white/10 text-white/50'}">
+                      {$userLibraryPlaylists.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick={() => libraryTab = 'tracks'}
+                    class="px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 {libraryTab === 'tracks' ? 'bg-gradient-to-r from-[#3093AA] to-[#257385] text-white shadow-md shadow-[#3093AA]/25 scale-105' : 'text-white/70 hover:text-white'}"
+                  >
+                    <span>Músicas</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded-full {libraryTab === 'tracks' ? 'bg-white/20 text-white font-black' : 'bg-white/10 text-white/50'}">
+                      {$filteredTracks.length}
+                    </span>
+                  </button>
+                </div>
+
+                <!-- Ações Rápidas da Biblioteca à Direita -->
+                <div class="flex items-center gap-2">
+                  {#if $filteredTracks.length > 0}
+                    <button
+                      onclick={() => playAllPlaylist($filteredTracks)}
+                      class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full lq-glass-pill hover:bg-white/[0.1] text-xs font-medium text-white transition cursor-pointer"
+                    >
+                      <Play class="w-3.5 h-3.5 fill-current text-[#EF7D4B]" />
+                      <span>{$t('search.playAll')}</span>
+                    </button>
+                  {/if}
+                </div>
+              </div>
             {/if}
 
-            <!-- Seção Playlists -->
-            {#if !searchInput}
-              <section class="flex flex-col gap-4">
+            {#if searchInput}
+              <!-- Resultados de Busca na Biblioteca -->
+              <section class="flex flex-col gap-4 shrink-0">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-base font-bold text-[#F0F0F5]">
+                      {$t('search.resultsFor', { query: searchInput })}
+                    </h3>
+                    <p class="text-xs text-white/40">{$t('search.tracksAvailable', { count: $filteredTracks.length })}</p>
+                  </div>
+                </div>
+
+                <div class="lq-surface-panel p-3.5 shadow-xl shrink-0">
+                  <TrackList tracks={$filteredTracks} />
+                </div>
+              </section>
+
+            {:else if libraryTab === 'overview'}
+              <!-- MODO: VISÃO GERAL (Carrossel + Playlists Principais + Top Faixas) -->
+              <div class="shrink-0 w-full">
+                <HeroSlider />
+              </div>
+
+              <!-- Playlists em Destaque -->
+              <section class="flex flex-col gap-4 shrink-0">
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="text-base font-bold text-[#F0F0F5]">{$t('home.featuredPlaylists')}</h3>
                     <p class="text-xs text-white/40">{$t('home.featuredPlaylistsDesc')}</p>
                   </div>
+                  {#if $userLibraryPlaylists.length > 5}
+                    <button
+                      type="button"
+                      onclick={() => libraryTab = 'playlists'}
+                      class="text-xs text-[#3093AA] hover:text-[#3093AA]/80 font-bold transition cursor-pointer"
+                    >
+                      Ver todas ({$userLibraryPlaylists.length})
+                    </button>
+                  {/if}
+                </div>
+
+                <PlaylistGrid playlists={$userLibraryPlaylists.slice(0, 5)} />
+              </section>
+
+              <!-- Músicas da Biblioteca -->
+              <section class="flex flex-col gap-4 shrink-0">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-base font-bold text-[#F0F0F5]">{$t('search.allTracks')}</h3>
+                    <p class="text-xs text-white/40">{$t('search.tracksAvailable', { count: $filteredTracks.length })}</p>
+                  </div>
+                  {#if $filteredTracks.length > 10}
+                    <button
+                      type="button"
+                      onclick={() => libraryTab = 'tracks'}
+                      class="text-xs text-[#3093AA] hover:text-[#3093AA]/80 font-bold transition cursor-pointer"
+                    >
+                      Ver todas ({$filteredTracks.length})
+                    </button>
+                  {/if}
+                </div>
+
+                <div class="lq-surface-panel p-3.5 shadow-xl shrink-0">
+                  <TrackList tracks={$filteredTracks.slice(0, 10)} />
+                </div>
+              </section>
+
+            {:else if libraryTab === 'playlists'}
+              <!-- MODO: TODAS AS PLAYLISTS (Grid Completo Espaçoso) -->
+              <section class="flex flex-col gap-4 shrink-0">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-base font-bold text-[#F0F0F5]">{$t('home.featuredPlaylists')}</h3>
+                    <p class="text-xs text-white/40">{$userLibraryPlaylists.length} playlists disponíveis</p>
+                  </div>
                 </div>
 
                 <PlaylistGrid playlists={$userLibraryPlaylists} />
               </section>
-            {/if}
 
-            <!-- Seção Faixas -->
-            <section class="flex flex-col gap-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="text-base font-bold text-[#F0F0F5]">
-                    {searchInput ? $t('search.resultsFor', { query: searchInput }) : $t('search.allTracks')}
-                  </h3>
-                  <p class="text-xs text-white/40">{$t('search.tracksAvailable', { count: $filteredTracks.length })}</p>
+            {:else if libraryTab === 'tracks'}
+              <!-- MODO: TODAS AS MÚSICAS (Tabela Completa em Painel Estável) -->
+              <section class="flex flex-col gap-4 shrink-0">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-base font-bold text-[#F0F0F5]">{$t('search.allTracks')}</h3>
+                    <p class="text-xs text-white/40">{$t('search.tracksAvailable', { count: $filteredTracks.length })}</p>
+                  </div>
+
+                  {#if $filteredTracks.length > 0}
+                    <div class="flex items-center gap-2">
+                      <button
+                        onclick={() => playAllPlaylist($filteredTracks)}
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl lq-glass-frost hover:bg-white/[0.1] text-xs font-medium transition cursor-pointer"
+                      >
+                        <Play class="w-3.5 h-3.5 fill-current text-[#3093AA]" />
+                        <span>{$t('search.playAll')}</span>
+                      </button>
+                    </div>
+                  {/if}
                 </div>
 
-                {#if $filteredTracks.length > 0}
-                  <div class="flex items-center gap-2">
-                    <button
-                      onclick={() => playAllPlaylist($filteredTracks)}
-                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl lq-glass-frost hover:bg-white/[0.1] text-xs font-medium transition cursor-pointer"
-                    >
-                      <Play class="w-3.5 h-3.5 fill-current text-[#3093AA]" />
-                      <span>{$t('search.playAll')}</span>
-                    </button>
-                  </div>
-                {/if}
-              </div>
-
-              <div class="liquid-card rounded-3xl p-3.5 shadow-xl">
-                <TrackList tracks={$filteredTracks} />
-              </div>
-            </section>
+                <div class="lq-surface-panel p-3.5 shadow-xl shrink-0">
+                  <TrackList tracks={$filteredTracks} />
+                </div>
+              </section>
+            {/if}
 
           {:else if $activeView === 'playlist-detail' && $selectedPlaylist}
             <!-- Visualização Detalhada da Playlist -->
-            <section class="flex flex-col gap-6">
+            <section class="flex flex-col gap-6 shrink-0 min-h-0">
               <button
                 onclick={() => libraryActions.setActiveView('library')}
-                class="flex items-center gap-2 text-xs text-white/60 hover:text-white transition w-fit cursor-pointer"
+                class="flex items-center gap-2 text-xs text-white/60 hover:text-white transition w-fit cursor-pointer shrink-0"
               >
                 <ArrowLeft class="w-4 h-4" />
                 <span>{$t('playlistDetail.backToLibrary')}</span>
               </button>
 
               <!-- Header da Playlist Liquid Glass com Botão de Trocar Capa -->
-              <div class="lq-hero-glass p-4 sm:p-6 flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 relative overflow-hidden group/header">
+              <div class="lq-hero-glass p-5 sm:p-7 flex flex-col sm:flex-row sm:items-end gap-5 sm:gap-7 relative shrink-0 overflow-hidden group/header">
                 <!-- Capa 1:1 Clicável para Edição APENAS se for Dono -->
                 {#if isPlaylistOwner}
                   <div 
@@ -460,7 +578,7 @@
               </div>
 
               <!-- Ações da Playlist -->
-              <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div class="flex items-center justify-between gap-4 flex-wrap shrink-0">
                 <div class="flex items-center gap-3">
                   <button
                     onclick={() => playAllPlaylist($selectedPlaylistTracks)}
@@ -518,15 +636,15 @@
               </div>
 
               <!-- Lista de Músicas da Playlist -->
-              <div class="liquid-card rounded-3xl p-3.5 shadow-xl">
+              <div class="lq-surface-panel rounded-3xl p-3.5 shadow-xl shrink-0">
                 <TrackList tracks={$selectedPlaylistTracks} />
               </div>
             </section>
 
           {:else if $activeView === 'favorites'}
             <!-- Visualização Favoritos -->
-            <section class="flex flex-col gap-6">
-              <div class="flex items-center gap-3.5">
+            <section class="flex flex-col gap-6 shrink-0">
+              <div class="flex items-center gap-3.5 shrink-0">
                 <div class="p-3.5 rounded-2xl bg-[#F3B044]/15 border border-[#F3B044]/30 text-[#F3B044] shadow-lg shadow-[#F3B044]/10">
                   <Heart class="w-6 h-6 fill-current" />
                 </div>
@@ -536,15 +654,15 @@
                 </div>
               </div>
 
-              <div class="liquid-card rounded-3xl p-3.5 shadow-xl">
+              <div class="lq-surface-panel rounded-3xl p-3.5 shadow-xl shrink-0">
                 <TrackList tracks={favoriteTracks} />
               </div>
             </section>
 
           {:else if $activeView === 'recent'}
             <!-- Visualização Recentes -->
-            <section class="flex flex-col gap-6">
-              <div class="flex items-center gap-3.5">
+            <section class="flex flex-col gap-6 shrink-0">
+              <div class="flex items-center gap-3.5 shrink-0">
                 <div class="p-3.5 rounded-2xl bg-[#EF7D4B]/15 border border-[#EF7D4B]/30 text-[#EF7D4B] shadow-lg shadow-[#EF7D4B]/10">
                   <Clock class="w-6 h-6" />
                 </div>
@@ -556,7 +674,7 @@
                 </div>
               </div>
 
-              <div class="liquid-card rounded-3xl p-3.5 shadow-xl">
+              <div class="lq-surface-panel rounded-3xl p-3.5 shadow-xl shrink-0">
                 <TrackList tracks={$recentTracks.length > 0 ? $recentTracks : $allTracks.slice(0, 3)} />
               </div>
             </section>

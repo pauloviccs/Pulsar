@@ -1,8 +1,8 @@
 {
   "version": "0.2.7",
-  "name": "Pulsar Pro v0.2.7",
-  "url": "https://www.dropbox.com/scl/fi/vke566zu1f7ebgldc4llm/Pulsar_0.2.6-b_x64-setup.exe?rlkey=q9l30oi5brhegglrl0mj9ebrn&st=mzvp20sq&dl=1",
-  "notes": "### Novidades do Pulsar v0.2.7!\n\n- **Visual Rework Completo:** Nova Identidade Visual oficial com paleta extraída do isotipo v2 (Coral #EF7D4B, Teal #3093AA, Deep Teal #097198, Gold #F3B044) e acabamento Apple Liquid Glass / Frosted Glass.\n- **Splash Screen Animada:** Transição fluida de abertura com animação das 5 barras de onda sonora e tipografia da nova marca.\n- **Correção no Atualizador OTA:** Eliminação definitiva do falso positivo na comparação de versões entre canais do instalador.\n- **Superfícies Otimizadas:** Listas de músicas e tabelas agora em superfícies sólidas de alto contraste estilo Spotify para legibilidade máxima.",
-  "pub_date": "2026-09-28T18:00:00Z",
+  "name": "Pulsar v0.2.7",
+  "url": "https://github.com/pauloviccs/Pulsar/releases/download/0.2.7/Pulsar_0.2.7_x64-setup.exe",
+  "notes": "### Novidades do Pulsar v0.2.7!\n\n- **Central de Notificações em Tempo Real:** Novo ícone de sino no topo com badge numérico de não lidas e painel Liquid Glass com alertas de novos seguidores, curtidas em playlists e mensagens.\n- **Social Follow & Amizades Pendentes:** Ao seguir outro usuário, ele recebe notificação instantânea e uma solicitação de amizade pendente é criada automaticamente.\n- **Fix Definitivo de Overlap na Biblioteca:** Renderização progressiva com alta performance a 60 FPS e separação em 3 abas estruturadas (Visão Geral, Playlists e Músicas).\n- **SplashScreen Respirável em 2 Etapas:** Nova abertura calma com 5s apresentando Pulsar e 'Created by' Lumia e VICCS.\n- **Inicialização com o Sistema:** Opção nativa nas Configurações para abrir o Pulsar junto com o Windows por padrão.\n- **Created by Lumia & VICCS:** Assinatura institucional adicionada com destaque no rodapé das Configurações.",
+  "pub_date": "2026-09-29T19:30:00Z",
   "mandatory": false
 }

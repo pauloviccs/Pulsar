@@ -761,4 +761,59 @@ pub async fn cast_seek(
     cast_manager.seek(&ip, position_seconds).await
 }
 
+// ==========================================
+// Windows Autostart (Iniciar com o Sistema)
+// ==========================================
+
+#[tauri::command]
+pub fn get_autostart_status() -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::{HKEY_CURRENT_USER, KEY_READ};
+        use winreg::RegKey;
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok(run_key) = hkcu.open_subkey_with_flags(r"Software\Microsoft\Windows\CurrentVersion\Run", KEY_READ) {
+            let val: Result<String, _> = run_key.get_value("Pulsar");
+            return Ok(val.is_ok());
+        }
+        Ok(false)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+pub fn set_autostart(enable: bool) -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::HKEY_CURRENT_USER;
+        use winreg::RegKey;
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let (run_key, _) = hkcu.create_subkey(r"Software\Microsoft\Windows\CurrentVersion\Run")
+            .map_err(|e| format!("Falha ao acessar registro do Windows: {}", e))?;
+
+        if enable {
+            let current_exe = std::env::current_exe()
+                .map_err(|e| format!("Falha ao obter executável: {}", e))?;
+            let exe_str = current_exe.to_string_lossy().to_string();
+            let cmd = format!("\"{}\"", exe_str);
+            run_key.set_value("Pulsar", &cmd)
+                .map_err(|e| format!("Falha ao salvar no registro: {}", e))?;
+            println!("[Pulsar Autostart] Inicialização ativada: {}", cmd);
+            Ok(true)
+        } else {
+            let _ = run_key.delete_value("Pulsar");
+            println!("[Pulsar Autostart] Inicialização desativada.");
+            Ok(false)
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(false)
+    }
+}
+
+
 

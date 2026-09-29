@@ -11,6 +11,17 @@
   let hoveredTrackId = $state<string | null>(null);
   let openPlaylistMenuTrackId = $state<string | null>(null);
 
+  // Limite progressivo para evitar que listas com 2.000+ faixas colapsem a GPU do WebView2
+  let displayLimit = $state(60);
+
+  $effect(() => {
+    // Reseta quando a lista mudar
+    const _t = tracks.length;
+    displayLimit = 60;
+  });
+
+  let visibleTracks = $derived(tracks.slice(0, displayLimit));
+
   let isCurrentPlaylistOwner = $derived(
     Boolean(
       $selectedPlaylist && (
@@ -49,7 +60,7 @@
 
 <svelte:window onclick={() => openPlaylistMenuTrackId = null} />
 
-<div class="w-full select-none">
+<div class="w-full select-none shrink-0 min-w-0">
   <!-- Table Header -->
   <div class="grid grid-cols-[48px_1fr_200px_100px_130px] items-center px-4 py-2.5 border-b border-white/[0.06] text-[11px] font-medium uppercase tracking-wider text-[#F0F0F5]/40">
     <span class="text-center">{$t('trackList.colNumber')}</span>
@@ -61,7 +72,7 @@
 
   <!-- Rows -->
   <div class="flex flex-col divide-y divide-white/[0.02]">
-    {#each tracks as track, index (track.id)}
+    {#each visibleTracks as track, index (track.id)}
       {@const isCurrent = $currentTrack?.id === track.id}
       {@const isTrackPlaying = isCurrent && $isPlaying}
 
@@ -205,4 +216,16 @@
       </div>
     {/each}
   </div>
+
+  {#if tracks.length > displayLimit}
+    <div class="py-4 flex items-center justify-center">
+      <button
+        type="button"
+        onclick={() => displayLimit += 60}
+        class="px-6 py-2.5 rounded-full lq-glass-pill hover:bg-white/[0.1] text-xs font-bold text-[#3093AA] transition cursor-pointer flex items-center gap-2 shadow-md hover:scale-105 active:scale-95"
+      >
+        <span>Carregar mais músicas ({tracks.length - displayLimit} restantes)</span>
+      </button>
+    </div>
+  {/if}
 </div>

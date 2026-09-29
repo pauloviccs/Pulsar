@@ -815,6 +815,32 @@ export const syncEngine = {
           playlist_id: canonicalId,
           created_at: new Date().toISOString()
         }, { onConflict: 'user_id,playlist_id' });
+
+        // Disparar notificação para o dono da playlist se não for o próprio usuário
+        try {
+          const { data: plData } = await supabase
+            .from('cloud_playlists')
+            .select('user_id, title')
+            .eq('id', canonicalId)
+            .maybeSingle();
+
+          if (plData && plData.user_id && plData.user_id !== prof.id) {
+            const { notificationActions } = await import('../stores/notificationStore');
+            await notificationActions.sendNotification({
+              user_id: plData.user_id,
+              sender_id: prof.id,
+              sender_username: prof.username,
+              sender_avatar_url: prof.avatar_url,
+              type: 'playlist_follow',
+              title: 'Playlist favoritada',
+              message: `@${prof.username} começou a seguir sua playlist "${plData.title}"!`,
+              target_id: canonicalId,
+              link: `playlist:${canonicalId}`
+            });
+          }
+        } catch (notifErr) {
+          console.warn('[Pulsar SyncEngine] Falha ao enviar notificação de playlist_follow:', notifErr);
+        }
       } else {
         await supabase.from('playlist_follows').delete()
           .eq('user_id', prof.id)

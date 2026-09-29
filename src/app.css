@@ -151,6 +151,15 @@ body {
               0 0 24px -4px rgba(48, 147, 170, 0.3);
 }
 
+/* Painéis de Superfície Estáveis para Listas Longas e Tabelas (Zero GPU Stacking Glitch) */
+.lq-surface-panel {
+  background: linear-gradient(145deg, rgba(17, 24, 42, 0.72) 0%, rgba(10, 14, 28, 0.88) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.14),
+              0 20px 48px -10px rgba(0, 0, 0, 0.65);
+  border-radius: 28px;
+}
+
 /* Hero Cinematográfico 3D */
 .lq-hero-glass {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
