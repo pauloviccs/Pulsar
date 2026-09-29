@@ -3,6 +3,7 @@
   import { openUrl } from '@tauri-apps/plugin-opener';
   import { isAddLinkModalOpen, libraryActions } from '../stores/libraryStore';
   import { playerActions } from '../stores/playerStore';
+  import { currentProfile } from '../stores/authStore';
   import { t } from '../i18n';
   import type { Track, Playlist, LinkDetection, SpotifyImportProgress } from '../types';
   import { safeInvoke } from '../api/tauri';
@@ -145,6 +146,8 @@
         showSpotifyConfig = true;
         loadSpotifyCredentials();
         errorMessage = 'Para importar playlists e músicas do Spotify, configure seu Client ID e Client Secret gratuitos do Spotify abaixo.';
+      } else if (str.includes('502') || str.includes('Bad Gateway') || str.includes('instabilidade')) {
+        errorMessage = 'Os servidores do Spotify apresentaram instabilidade temporária (502 Bad Gateway) ou a playlist não está pública. Verifique se o link está correto e tente novamente.';
       } else {
         errorMessage = str || $t('modals.analyzeFailed');
       }
@@ -156,8 +159,17 @@
   async function handleYouTubeImport(targetUrl: string, linkType: string) {
     if (linkType === 'playlist') {
       const pl = await safeInvoke<Playlist>('resolve_playlist', { url: targetUrl });
-      resolvedPlaylist = pl;
-      libraryActions.addPlaylist(pl);
+      if (pl) {
+        const prof = $currentProfile;
+        if (prof) {
+          pl.user_id = prof.id;
+          pl.owner_name = prof.display_name || prof.username;
+          pl.owner_username = prof.username;
+          pl.owner_avatar_url = prof.avatar_url;
+        }
+        resolvedPlaylist = pl;
+        libraryActions.addPlaylist(pl);
+      }
     } else {
       const track = await safeInvoke<Track>('resolve_track', { url: targetUrl });
       resolvedTrack = track;
@@ -194,9 +206,18 @@
 
       try {
         const pl = await safeInvoke<Playlist>('resolve_spotify_playlist', { url: targetUrl });
-        resolvedPlaylist = pl;
-        libraryActions.addPlaylist(pl);
-        importStats = stats;
+        if (pl) {
+          const prof = $currentProfile;
+          if (prof) {
+            pl.user_id = prof.id;
+            pl.owner_name = prof.display_name || prof.username;
+            pl.owner_username = prof.username;
+            pl.owner_avatar_url = prof.avatar_url;
+          }
+          resolvedPlaylist = pl;
+          libraryActions.addPlaylist(pl);
+          importStats = stats;
+        }
       } finally {
         if (unlisten) unlisten();
         spotifyProgress = null;
@@ -509,15 +530,24 @@
 
         <!-- Playlist/Álbum Importado -->
         {#if resolvedPlaylist}
-          <div class="glass-card rounded-xl p-3.5 flex items-center gap-3.5 border border-[#3093AA]/30 animate-[scale-up_0.2s_ease-out]">
-            <img src={resolvedPlaylist.cover_image} alt="" class="w-12 h-12 rounded-lg object-cover shadow-sm" />
+          <div class="glass-card rounded-2xl p-3.5 flex items-center gap-3.5 border border-[#3093AA]/40 shadow-lg shadow-black/30 animate-[scale-up_0.2s_ease-out]">
+            <div class="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/20 shadow-md">
+              <img 
+                src={resolvedPlaylist.cover_image || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80'} 
+                alt="Capa de {resolvedPlaylist.name}" 
+                class="w-full h-full object-cover" 
+              />
+            </div>
             <div class="flex-1 min-w-0">
-              <h4 class="text-xs font-semibold text-[#F0F0F5] truncate">{resolvedPlaylist.name}</h4>
-              <p class="text-[11px] text-[#F0F0F5]/50 truncate">{resolvedPlaylist.track_count} {$t('modals.tracksImported')}</p>
+              <h4 class="text-xs font-bold text-[#F0F0F5] truncate">{resolvedPlaylist.name}</h4>
+              <p class="text-[11px] text-[#F0F0F5]/60 truncate">{resolvedPlaylist.track_count} {$t('modals.tracksImported')}</p>
               {#if wasCancelled}
                 <span class="text-[10px] font-mono text-amber-400 font-medium">Importação interrompida pelo usuário</span>
               {:else}
-                <span class="text-[10px] font-mono text-[#3093AA]">{$t('modals.savedToSQLite')}</span>
+                <span class="text-[10px] font-mono text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 class="w-3 h-3" />
+                  {$t('modals.savedToSQLite')}
+                </span>
               {/if}
             </div>
           </div>

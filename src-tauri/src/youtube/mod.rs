@@ -174,8 +174,8 @@ impl YouTubeSidecar {
         })
     }
 
-    /// Extrai faixas de uma playlist inteira do YouTube
-    pub async fn extract_playlist(url: &str) -> Result<(String, Vec<TrackMetadata>), String> {
+    /// Extrai faixas de uma playlist inteira do YouTube, incluindo sua capa original
+    pub async fn extract_playlist(url: &str) -> Result<(String, Option<String>, Vec<TrackMetadata>), String> {
         let bin = Self::get_binary_path();
 
         let mut cmd = Command::new(&bin);
@@ -203,6 +203,23 @@ impl YouTubeSidecar {
             .and_then(|v| v.as_str())
             .unwrap_or("Playlist do YouTube")
             .to_string();
+
+        // Extrai a melhor capa da playlist disponível nos metadados
+        let mut playlist_cover: Option<String> = None;
+        if let Some(thumbs) = val.get("thumbnails").and_then(|t| t.as_array()) {
+            if let Some(best) = thumbs.iter().rev().find_map(|t| t.get("url").and_then(|u| u.as_str())) {
+                if !best.is_empty() {
+                    playlist_cover = Some(best.to_string());
+                }
+            }
+        }
+        if playlist_cover.is_none() {
+            if let Some(thumb) = val.get("thumbnail").and_then(|v| v.as_str()) {
+                if !thumb.is_empty() {
+                    playlist_cover = Some(thumb.to_string());
+                }
+            }
+        }
 
         let mut tracks = Vec::new();
         if let Some(entries) = val.get("entries").and_then(|e| e.as_array()) {
@@ -252,7 +269,16 @@ impl YouTubeSidecar {
             }
         }
 
-        Ok((playlist_title, tracks))
+        // Fallback inteligente: se a playlist não tem arte própria, usa a thumbnail da primeira faixa
+        if playlist_cover.is_none() {
+            if let Some(first_track) = tracks.first() {
+                if !first_track.thumbnail_url.is_empty() {
+                    playlist_cover = Some(first_track.thumbnail_url.clone());
+                }
+            }
+        }
+
+        Ok((playlist_title, playlist_cover, tracks))
     }
 
     /// Resolve apenas a URL do stream direto de um vídeo caso tenha expirado

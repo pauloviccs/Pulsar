@@ -436,11 +436,12 @@ impl Database {
         Ok(list)
     }
 
-    /// Cria uma nova playlist com metadados do criador
+    /// Cria uma nova playlist com metadados do criador e capa opcional
     pub fn create_playlist(
         &self,
         name: &str,
         description: &str,
+        cover_image: Option<&str>,
         user_id: Option<&str>,
         owner_name: Option<&str>,
         owner_username: Option<&str>,
@@ -449,19 +450,20 @@ impl Database {
     ) -> Result<PlaylistDTO, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let id = uuid::Uuid::new_v4().to_string();
-        let default_cover = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
+        let fallback_cover = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
+        let final_cover = cover_image.unwrap_or(fallback_cover);
 
         conn.execute(
             "INSERT INTO playlists (id, name, description, cover_image_path, user_id, owner_name, owner_username, visibility, is_followed, play_count, owner_avatar_url)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 0, ?9)",
-            params![id, name, description, default_cover, user_id, owner_name, owner_username, visibility.unwrap_or("public"), owner_avatar_url],
+            params![id, name, description, final_cover, user_id, owner_name, owner_username, visibility.unwrap_or("public"), owner_avatar_url],
         ).map_err(|e| e.to_string())?;
 
         Ok(PlaylistDTO {
             id,
             name: name.to_string(),
             description: description.to_string(),
-            cover_image: default_cover.to_string(),
+            cover_image: final_cover.to_string(),
             created_at: chrono_now(),
             is_imported_youtube_playlist: false,
             track_count: 0,

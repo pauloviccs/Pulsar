@@ -55,14 +55,23 @@ pub async fn resolve_playlist(
     import_state.is_cancelled.store(false, Ordering::SeqCst);
     println!("[Pulsar] Extraindo playlist do YouTube: {}", url);
 
-    let (playlist_title, tracks) = YouTubeSidecar::extract_playlist(&url).await?;
+    let (playlist_title, playlist_cover, tracks) = YouTubeSidecar::extract_playlist(&url).await?;
 
     if tracks.is_empty() {
         return Err("Nenhuma faixa encontrada na playlist fornecida.".to_string());
     }
 
-    // Criar a playlist no SQLite
-    let pl = db.create_playlist(&playlist_title, "Playlist importada do YouTube", None, None, None, Some("public"), None)?;
+    // Criar a playlist no SQLite já com a capa extraída
+    let pl = db.create_playlist(
+        &playlist_title,
+        "Playlist importada do YouTube",
+        playlist_cover.as_deref(),
+        None,
+        None,
+        None,
+        Some("public"),
+        None,
+    )?;
 
     let mut saved_count = 0usize;
     // Salvar cada faixa e associar à playlist
@@ -79,10 +88,13 @@ pub async fn resolve_playlist(
 
     println!("[Pulsar] Playlist '{}' importada com {} faixas!", playlist_title, saved_count);
 
-    // Retornar a playlist atualizada com contagem real
+    // Retornar a playlist atualizada com contagem real e capa
     let mut updated_pl = pl;
     updated_pl.track_count = saved_count as i64;
     updated_pl.is_imported_youtube_playlist = true;
+    if let Some(ref c) = playlist_cover {
+        updated_pl.cover_image = c.clone();
+    }
 
     Ok(updated_pl)
 }
@@ -106,6 +118,7 @@ pub fn get_playlist_tracks(playlist_id: String, db: State<'_, Database>) -> Resu
 pub fn create_playlist(
     name: String,
     description: String,
+    cover_image: Option<String>,
     user_id: Option<String>,
     owner_name: Option<String>,
     owner_username: Option<String>,
@@ -116,6 +129,7 @@ pub fn create_playlist(
     db.create_playlist(
         &name,
         &description,
+        cover_image.as_deref(),
         user_id.as_deref(),
         owner_name.as_deref(),
         owner_username.as_deref(),
@@ -446,13 +460,19 @@ pub async fn resolve_spotify_playlist(
     let total = spotify_tracks.len();
     println!("[Pulsar] {} faixas detectadas no Spotify, iniciando busca no YouTube...", total);
 
-    // Criar playlist no SQLite
-    let pl = db.create_playlist(&name, "Importado do Spotify", None, None, None, Some("public"), None)?;
+    let cover_opt = if cover.trim().is_empty() { None } else { Some(cover.as_str()) };
 
-    // Atualizar capa se disponível
-    if !cover.is_empty() {
-        let _ = db.update_playlist(&pl.id, &name, "Importado do Spotify", Some(&cover));
-    }
+    // Criar playlist no SQLite já com a capa original da fonte
+    let pl = db.create_playlist(
+        &name,
+        "Importado do Spotify",
+        cover_opt,
+        None,
+        None,
+        None,
+        Some("public"),
+        None,
+    )?;
 
     let mut saved_count = 0usize;
 
@@ -516,6 +536,9 @@ pub async fn resolve_spotify_playlist(
     let mut updated_pl = pl;
     updated_pl.track_count = saved_count as i64;
     updated_pl.is_imported_youtube_playlist = false; // É do Spotify
+    if !cover.is_empty() {
+        updated_pl.cover_image = cover;
+    }
 
     Ok(updated_pl)
 }

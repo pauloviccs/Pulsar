@@ -152,7 +152,11 @@ impl SpotifyResolver {
 
         let token = self.authenticate().await?;
 
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .timeout(Duration::from_secs(15))
+            .build()
+            .map_err(|e| format!("Falha ao inicializar cliente HTTP: {}", e))?;
         let resp = client
             .get(format!("https://api.spotify.com/v1/tracks/{}", track_id))
             .bearer_auth(&token)
@@ -174,35 +178,68 @@ impl SpotifyResolver {
         Self::parse_track_json(&json)
     }
 
-    /// Extrai todas as faixas de uma playlist pública do Spotify (com paginação automática)
+    /// Extrai todas as faixas de uma playlist pública do Spotify (com paginação automática e alta resiliência a instabilidades do gateway)
     pub async fn resolve_playlist(&self, url: &str) -> Result<(String, String, Vec<SpotifyTrackMeta>), String> {
         let playlist_id = link_resolver::extract_spotify_id(url)
             .ok_or("ID de playlist inválido na URL do Spotify")?;
 
         let token = self.authenticate().await?;
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .timeout(Duration::from_secs(15))
+            .build()
+            .map_err(|e| format!("Falha ao inicializar cliente HTTP: {}", e))?;
 
-        // Buscar dados da playlist
-        let pl_resp = client
-            .get(format!("https://api.spotify.com/v1/playlists/{}?fields=name,description,images", playlist_id))
-            .bearer_auth(&token)
-            .send()
-            .await
-            .map_err(|e| format!("Erro ao buscar playlist do Spotify: {}", e))?;
+        // Buscar dados da playlist (sem o parâmetro ?fields que causa 502 Bad Gateway em servidores de borda do Spotify)
+        let mut attempts = 0;
+        let mut pl_json: Option<serde_json::Value> = None;
+        let mut last_status = None;
 
-        if !pl_resp.status().is_success() {
-            let status = pl_resp.status();
-            if status.as_u16() == 404 {
-                return Err("Playlist não encontrada no Spotify.".to_string());
+        while attempts < 3 {
+            attempts += 1;
+            let req = client
+                .get(format!("https://api.spotify.com/v1/playlists/{}", playlist_id))
+                .bearer_auth(&token);
+
+            match req.send().await {
+                Ok(resp) => {
+                    let status = resp.status();
+                    last_status = Some(status);
+
+                    if status.is_success() {
+                        if let Ok(json) = resp.json::<serde_json::Value>().await {
+                            pl_json = Some(json);
+                            break;
+                        }
+                    } else if status.as_u16() == 404 {
+                        return Err("Playlist não encontrada no Spotify. Verifique se o link ou ID está correto.".to_string());
+                    } else if status.as_u16() == 401 || status.as_u16() == 403 {
+                        return Err("Esta playlist é privada ou inacessível no Spotify. Ela precisa ser pública para ser importada.".to_string());
+                    } else if status.as_u16() >= 500 {
+                        // 502 Bad Gateway / 503 / 504 no servidor do Spotify: aguarda e tenta novamente
+                        println!("[Pulsar Spotify] Servidor do Spotify retornou {} na tentativa {}. Tentando novamente...", status, attempts);
+                        tokio::time::sleep(Duration::from_millis(600 * attempts as u64)).await;
+                    } else {
+                        return Err(format!("Spotify retornou código HTTP {} ao buscar playlist.", status));
+                    }
+                }
+                Err(e) => {
+                    println!("[Pulsar Spotify] Erro de rede ao conectar com Spotify na tentativa {}: {}", attempts, e);
+                    tokio::time::sleep(Duration::from_millis(600 * attempts as u64)).await;
+                }
             }
-            if status.as_u16() == 401 || status.as_u16() == 403 {
-                return Err("Esta playlist é privada. Não é possível acessá-la com as credenciais padrão.".to_string());
-            }
-            return Err(format!("Spotify retornou {} ao buscar playlist", status));
         }
 
-        let pl_json: serde_json::Value = pl_resp.json().await
-            .map_err(|e| format!("Erro ao decodificar playlist do Spotify: {}", e))?;
+        let pl_json = match pl_json {
+            Some(j) => j,
+            None => {
+                let status_str = last_status.map(|s| s.to_string()).unwrap_or_else(|| "502 Bad Gateway".to_string());
+                return Err(format!(
+                    "O servidor do Spotify apresentou instabilidade temporária ({}) ou a playlist não pôde ser acessada. Certifique-se de que a playlist está configurada como Pública no Spotify.",
+                    status_str
+                ));
+            }
+        };
 
         let playlist_name = pl_json.get("name")
             .and_then(|v| v.as_str())
@@ -217,49 +254,68 @@ impl SpotifyResolver {
             .unwrap_or("")
             .to_string();
 
-        // Buscar faixas com paginação
+        // 1. Coleta das faixas iniciais já retornadas no payload principal (até 100)
         let mut tracks = Vec::new();
-        let mut offset = 0u32;
-        let limit = 100u32;
-
-        loop {
-            let tracks_resp = client
-                .get(format!(
-                    "https://api.spotify.com/v1/playlists/{}/tracks?offset={}&limit={}",
-                    playlist_id, offset, limit
-                ))
-                .bearer_auth(&token)
-                .send()
-                .await
-                .map_err(|e| format!("Erro ao buscar faixas da playlist: {}", e))?;
-
-            if !tracks_resp.status().is_success() {
-                break;
-            }
-
-            let tracks_json: serde_json::Value = tracks_resp.json().await
-                .map_err(|e| format!("Erro ao decodificar faixas: {}", e))?;
-
-            if let Some(items) = tracks_json.get("items").and_then(|v| v.as_array()) {
-                for item in items {
-                    if let Some(track) = item.get("track") {
-                        if let Ok(meta) = Self::parse_track_json(track) {
-                            tracks.push(meta);
-                        }
+        if let Some(items) = pl_json.get("tracks").and_then(|t| t.get("items")).and_then(|v| v.as_array()) {
+            for item in items {
+                if let Some(track) = item.get("track") {
+                    if let Ok(meta) = Self::parse_track_json(track) {
+                        tracks.push(meta);
                     }
                 }
             }
+        }
 
-            // Verificar se há mais páginas
-            let has_next = tracks_json.get("next")
-                .map(|v: &serde_json::Value| !v.is_null())
-                .unwrap_or(false);
+        // 2. Se houver mais páginas além das 100 primeiras, continuar a paginação
+        let has_more = pl_json.get("tracks")
+            .and_then(|t| t.get("next"))
+            .map(|v| !v.is_null())
+            .unwrap_or(false);
 
-            if !has_next {
-                break;
+        if has_more {
+            let mut offset = 100u32;
+            let limit = 100u32;
+
+            loop {
+                let tracks_resp = client
+                    .get(format!(
+                        "https://api.spotify.com/v1/playlists/{}/tracks?offset={}&limit={}",
+                        playlist_id, offset, limit
+                    ))
+                    .bearer_auth(&token)
+                    .send()
+                    .await;
+
+                let tracks_resp = match tracks_resp {
+                    Ok(r) if r.status().is_success() => r,
+                    _ => break,
+                };
+
+                let tracks_json: serde_json::Value = match tracks_resp.json().await {
+                    Ok(j) => j,
+                    Err(_) => break,
+                };
+
+                if let Some(items) = tracks_json.get("items").and_then(|v| v.as_array()) {
+                    for item in items {
+                        if let Some(track) = item.get("track") {
+                            if let Ok(meta) = Self::parse_track_json(track) {
+                                tracks.push(meta);
+                            }
+                        }
+                    }
+                }
+
+                let has_next = tracks_json.get("next")
+                    .map(|v: &serde_json::Value| !v.is_null())
+                    .unwrap_or(false);
+
+                if !has_next {
+                    break;
+                }
+
+                offset += limit;
             }
-
-            offset += limit;
         }
 
         Ok((playlist_name, playlist_cover, tracks))
@@ -271,26 +327,58 @@ impl SpotifyResolver {
             .ok_or("ID de álbum inválido na URL do Spotify")?;
 
         let token = self.authenticate().await?;
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .timeout(Duration::from_secs(15))
+            .build()
+            .map_err(|e| format!("Falha ao inicializar cliente HTTP: {}", e))?;
 
-        // Buscar dados do álbum
-        let album_resp = client
-            .get(format!("https://api.spotify.com/v1/albums/{}", album_id))
-            .bearer_auth(&token)
-            .send()
-            .await
-            .map_err(|e| format!("Erro ao buscar álbum do Spotify: {}", e))?;
+        // Buscar dados do álbum com retentativas em caso de erro temporário
+        let mut attempts = 0;
+        let mut album_json: Option<serde_json::Value> = None;
+        let mut last_status = None;
 
-        if !album_resp.status().is_success() {
-            let status = album_resp.status();
-            if status.as_u16() == 404 {
-                return Err("Álbum não encontrado no Spotify.".to_string());
+        while attempts < 3 {
+            attempts += 1;
+            let req = client
+                .get(format!("https://api.spotify.com/v1/albums/{}", album_id))
+                .bearer_auth(&token);
+
+            match req.send().await {
+                Ok(resp) => {
+                    let status = resp.status();
+                    last_status = Some(status);
+
+                    if status.is_success() {
+                        if let Ok(json) = resp.json::<serde_json::Value>().await {
+                            album_json = Some(json);
+                            break;
+                        }
+                    } else if status.as_u16() == 404 {
+                        return Err("Álbum não encontrado no Spotify. Verifique se o link está correto.".to_string());
+                    } else if status.as_u16() == 401 || status.as_u16() == 403 {
+                        return Err("Este álbum é privado ou inacessível no Spotify.".to_string());
+                    } else if status.as_u16() >= 500 {
+                        println!("[Pulsar Spotify] Servidor do Spotify retornou {} no álbum. Tentativa {}...", status, attempts);
+                        tokio::time::sleep(Duration::from_millis(600 * attempts as u64)).await;
+                    } else {
+                        return Err(format!("Spotify retornou código HTTP {} ao buscar álbum.", status));
+                    }
+                }
+                Err(e) => {
+                    println!("[Pulsar Spotify] Erro ao conectar para álbum na tentativa {}: {}", attempts, e);
+                    tokio::time::sleep(Duration::from_millis(600 * attempts as u64)).await;
+                }
             }
-            return Err(format!("Spotify retornou {} ao buscar álbum", status));
         }
 
-        let album_json: serde_json::Value = album_resp.json().await
-            .map_err(|e| format!("Erro ao decodificar álbum do Spotify: {}", e))?;
+        let album_json = match album_json {
+            Some(j) => j,
+            None => {
+                let status_str = last_status.map(|s| s.to_string()).unwrap_or_else(|| "indisponível".to_string());
+                return Err(format!("Os servidores do Spotify estão instáveis ({}) ao buscar o álbum. Tente novamente em instantes.", status_str));
+            }
+        };
 
         let album_name = album_json.get("name")
             .and_then(|v| v.as_str())
