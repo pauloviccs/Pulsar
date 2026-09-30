@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import type { Track, RepeatMode } from '../types';
+import type { Track, RepeatMode, VideoPlayerAspectRatio, VideoPlayerScale, VideoQualityPreference, VideoFitMode } from '../types';
 import { safeInvoke } from '../api/tauri';
 
 export const currentTrack = writable<Track | null>(null);
@@ -21,6 +21,21 @@ export const activePlaylistId = writable<string | null>(null);
 export const isNowPlayingOpen = writable<boolean>(false);
 export const isQueueOpen = writable<boolean>(false);
 export const isVideoVisible = writable<boolean>(false);
+
+// Configurações do Formato de Vídeo (Proporção, Tamanho de Monitor/TV, Qualidade e Enquadramento)
+export const videoAspectRatio = writable<VideoPlayerAspectRatio>(
+  (typeof window !== 'undefined' && (localStorage.getItem('pulsar_video_aspect') as VideoPlayerAspectRatio)) || '16:9'
+);
+export const videoScale = writable<VideoPlayerScale>(
+  (typeof window !== 'undefined' && (localStorage.getItem('pulsar_video_scale') as VideoPlayerScale)) || 'compact'
+);
+export const videoQuality = writable<VideoQualityPreference>(
+  (typeof window !== 'undefined' && (localStorage.getItem('pulsar_video_quality') as VideoQualityPreference)) || 'auto'
+);
+export const videoFit = writable<VideoFitMode>(
+  (typeof window !== 'undefined' && (localStorage.getItem('pulsar_video_fit') as VideoFitMode)) || 'contain'
+);
+export const isNativeFullscreen = writable<boolean>(false);
 
 // Mini Player State
 export const isMiniPlayer = writable<boolean>(false);
@@ -238,13 +253,11 @@ export const playerActions = {
   },
 
   toggleVideo() {
-    isVideoVisible.update(v => {
-      const next = !v;
-      import('../services/syncEngine').then(({ syncEngine }) => {
-        syncEngine.pushSettingsDebounced({ video_visible: next });
-      });
-      return next;
-    });
+    isVideoVisible.update(v => !v);
+  },
+
+  setVideoVisible(visible: boolean) {
+    isVideoVisible.set(visible);
   },
 
   async toggleMiniPlayer(enable?: boolean, videoMode?: boolean) {
@@ -314,5 +327,52 @@ export const playerActions = {
       localStorage.setItem('pulsar_lastfm_enabled', enabled.toString());
       localStorage.setItem('pulsar_lastfm_user', user);
     }
+  },
+
+  setVideoAspectRatio(ratio: VideoPlayerAspectRatio) {
+    videoAspectRatio.set(ratio);
+    if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_aspect', ratio);
+  },
+
+  setVideoScale(scale: VideoPlayerScale) {
+    videoScale.set(scale);
+    if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_scale', scale);
+  },
+
+  setVideoQuality(quality: VideoQualityPreference) {
+    videoQuality.set(quality);
+    if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_quality', quality);
+  },
+
+  setVideoFit(fit: VideoFitMode) {
+    videoFit.set(fit);
+    if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_fit', fit);
+  },
+
+  async toggleNativeFullscreen() {
+    try {
+      const isFs = await safeInvoke<boolean | null>('toggle_window_fullscreen');
+      if (typeof isFs === 'boolean') {
+        isNativeFullscreen.set(isFs);
+        return;
+      }
+    } catch {
+      // Fallback para Web / Preview
+    }
+
+    if (typeof document !== 'undefined') {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+          isNativeFullscreen.set(true);
+        } else {
+          await document.exitFullscreen();
+          isNativeFullscreen.set(false);
+        }
+      } catch (err) {
+        console.warn('[Pulsar Fullscreen] Erro ao alternar tela cheia nativa:', err);
+      }
+    }
   }
 };
+

@@ -209,7 +209,7 @@
           volume: vol,
           shuffle: shuf,
           repeat_mode: rep,
-          video_visible: vid,
+          video_visible: false,
         }
       }).catch(() => {});
     }, 1200);

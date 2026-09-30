@@ -178,6 +178,7 @@ pub fn run() {
             commands::set_minimize_to_tray,
             commands::update_taskbar_thumbnail,
             commands::drag_window,
+            commands::toggle_window_fullscreen,
             // Multi-Platform (YouTube Music + Spotify)
             commands::detect_link_platform,
             commands::resolve_spotify_track,

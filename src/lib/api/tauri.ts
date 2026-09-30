@@ -128,6 +128,9 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>,
   if (cmd === 'save_playlist_order') {
     return (null as unknown) as T;
   }
+  if (cmd === 'toggle_window_fullscreen') {
+    return (false as unknown) as T;
+  }
 
   return (null as unknown) as T;
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { X, Trash2, Music, Play, ListOrdered } from '@lucide/svelte';
-  import { queue, queueIndex, currentTrack, playerActions, isQueueOpen, formatTime } from '../stores/playerStore';
+  import { queue, queueIndex, currentTrack, playerActions, isQueueOpen, isNowPlayingOpen, formatTime } from '../stores/playerStore';
 
   function close() {
     isQueueOpen.set(false);
@@ -15,7 +15,7 @@
 {#if $isQueueOpen}
   <aside 
     aria-label="Fila de reprodução"
-    class="fixed top-0 right-0 bottom-20 w-80 z-40 p-4 bg-[#0B1020]/90 backdrop-blur-2xl border-l border-white/[0.08] shadow-2xl flex flex-col justify-between text-[#F0F0F5] select-none animate-[slide-left_0.2s_ease-out]"
+    class="fixed top-0 right-0 {$isNowPlayingOpen ? 'bottom-0 z-[70]' : 'bottom-20 z-40'} w-80 p-4 bg-[#0B1020]/95 backdrop-blur-3xl border-l border-white/[0.12] shadow-2xl flex flex-col justify-between text-[#F0F0F5] select-none animate-[slide-left_0.2s_ease-out]"
   >
     <!-- Header -->
     <div class="flex items-center justify-between pb-3 border-b border-white/[0.08]">

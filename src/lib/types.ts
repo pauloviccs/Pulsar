@@ -52,6 +52,11 @@ export interface Playlist {
   followed_at?: string;
 }
 
+export type VideoPlayerAspectRatio = '16:9' | '16:10' | '19.5:9' | '21:9' | '32:9';
+export type VideoPlayerScale = 'compact' | 'monitor-24' | 'monitor-32' | 'ultrawide' | 'tv-large';
+export type VideoQualityPreference = 'auto' | '2160p' | '1440p' | '1080p' | '720p';
+export type VideoFitMode = 'contain' | 'cover';
+
 export type RepeatMode = 'none' | 'one' | 'all';
 
 export interface PlaybackState {

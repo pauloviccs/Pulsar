@@ -529,9 +529,10 @@ export const syncEngine = {
         if (cloudSettings.repeat_mode) {
           repeatMode.set(cloudSettings.repeat_mode as RepeatMode);
         }
-        if (typeof cloudSettings.video_visible === 'boolean') {
-          isVideoVisible.set(cloudSettings.video_visible);
-        }
+        // REGRA FIX v0.2.8: O Modo Vídeo DEVE vir toggle off por default (Local-First áudio priorizado).
+        // Não restauramos video_visible da nuvem para evitar inicialização com vídeo ativo.
+        // O usuário decide quando ativá-lo manualmente na interface.
+        isVideoVisible.set(false);
         if (cloudSettings.locale) {
           currentLocale.set(cloudSettings.locale as any);
         }
@@ -874,7 +875,7 @@ export const syncEngine = {
         if (settings.shuffle !== undefined) payload.shuffle = settings.shuffle;
         if (settings.repeat_mode !== undefined) payload.repeat_mode = settings.repeat_mode;
         if (settings.locale !== undefined) payload.locale = settings.locale;
-        if (settings.video_visible !== undefined) payload.video_visible = settings.video_visible;
+        if (settings.video_visible !== undefined) payload.video_visible = false;
         if (settings.spotify_connected !== undefined) payload.spotify_connected = settings.spotify_connected;
         if (settings.lastfm_username !== undefined) payload.lastfm_username = settings.lastfm_username;
 

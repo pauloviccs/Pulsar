@@ -329,6 +329,17 @@ pub fn drag_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub async fn toggle_window_fullscreen(app: tauri::AppHandle) -> Result<bool, String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let is_fs = window.is_fullscreen().unwrap_or(false);
+        let next_state = !is_fs;
+        window.set_fullscreen(next_state).map_err(|e| e.to_string())?;
+        return Ok(next_state);
+    }
+    Ok(false)
+}
+
 #[derive(serde::Serialize)]
 pub struct CacheInfo {
     pub total_bytes: u64,

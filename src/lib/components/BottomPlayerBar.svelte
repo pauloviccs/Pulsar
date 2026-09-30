@@ -71,7 +71,7 @@
 
   function handleToggleVideo() {
     const nextVid = !$isVideoVisible;
-    isVideoVisible.set(nextVid);
+    playerActions.setVideoVisible(nextVid);
     if (nextVid && !$isNowPlayingOpen) {
       isNowPlayingOpen.set(true);
     }
