@@ -83,6 +83,7 @@ pub fn get_local_stream_base_url() -> String {
 pub async fn start_proxy_server(state: StreamState) {
     let app = Router::new()
         .route("/stream/{video_id}", get(handle_stream))
+        .route("/precache/{video_id}", get(handle_precache))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
@@ -214,4 +215,31 @@ async fn handle_stream(
     *response.headers_mut() = response_headers;
 
     response
+}
+
+async fn handle_precache(
+    Path(video_id): Path<String>,
+    State(state): State<StreamState>,
+) -> Response {
+    let cached_file = state.cache_dir.join(format!("{}.m4a", video_id));
+    if cached_file.exists() || state.get_url(&video_id).is_some() {
+        return (StatusCode::OK, "ready").into_response();
+    }
+
+    let state_clone = state.clone();
+    let vid = video_id.clone();
+    tokio::spawn(async move {
+        match YouTubeSidecar::get_direct_stream_url(&vid).await {
+            Ok(url) => {
+                state_clone.register_url(vid.clone(), url.clone());
+                crate::logger::log_info(&format!("[Pulsar Pre-Buffer] Stream pré-aquecido para {}", vid));
+                let _ = state_clone.http_client.get(&url).header("Range", "bytes=0-524288").send().await;
+            }
+            Err(e) => {
+                crate::logger::log_warn(&format!("[Pulsar Pre-Buffer] Falha ao pré-aquecer {}: {}", vid, e));
+            }
+        }
+    });
+
+    (StatusCode::OK, "precache_started").into_response()
 }

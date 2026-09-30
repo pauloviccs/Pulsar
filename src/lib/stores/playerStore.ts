@@ -142,6 +142,29 @@ export const playerActions = {
     }
   },
 
+  peekNextTrack(): Track | null {
+    const q = get(queue);
+    const idx = get(queueIndex);
+    const isShuffle = get(shuffle);
+    const rep = get(repeatMode);
+
+    if (q.length === 0) return null;
+    if (rep === 'one') return get(currentTrack);
+
+    let nextIdx = idx + 1;
+    if (isShuffle) {
+      nextIdx = (idx + 1) % q.length;
+    } else if (nextIdx >= q.length) {
+      if (rep === 'all') {
+        nextIdx = 0;
+      } else {
+        return null;
+      }
+    }
+
+    return q[nextIdx] || null;
+  },
+
   previous() {
     const time = get(currentTime);
     if (time > 3) {

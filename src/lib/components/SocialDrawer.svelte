@@ -36,6 +36,13 @@
   let addFriendInput = $state('');
   let addFriendStatus = $state<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
 
+  $effect(() => {
+    if ($isSocialDrawerOpen) {
+      socialActions.loadFriends();
+      socialActions.revalidateFriendsPresence();
+    }
+  });
+
   // Lista de amigos aceitos
   let acceptedFriends = $derived(
     $socialState.friends.filter((f: Friendship) => f.status === 'accepted')

@@ -15,7 +15,11 @@
     Disc3,
     PanelLeftClose,
     PanelLeftOpen,
-    Sparkles
+    Sparkles,
+    Pin,
+    GripVertical,
+    ChevronUp,
+    ChevronDown
   } from '@lucide/svelte';
   import { 
     activeView, 
@@ -52,6 +56,99 @@
   let pendingIncomingCount = $derived(
     $socialState.pendingRequests.filter(f => f.friend_id === $currentProfile?.id || f.friend_id === $currentUser?.id).length
   );
+
+  // Estado de Drag and Drop para ordenação das playlists
+  let draggedPlaylistId = $state<string | null>(null);
+  let dragOverPlaylistId = $state<string | null>(null);
+  let dropPosition = $state<'top' | 'bottom' | null>(null);
+  let isDraggingActive = false;
+
+  function handleDragStart(e: DragEvent, id: string) {
+    if (!e.dataTransfer) return;
+    draggedPlaylistId = id;
+    isDraggingActive = true;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.setData('application/x-pulsar-playlist', id);
+    console.log(`[Frontend] [DragDrop] Iniciando arrasto da playlist: ${id}`);
+  }
+
+  function handleDragOver(e: DragEvent, targetId: string) {
+    e.preventDefault();
+    if (!draggedPlaylistId || draggedPlaylistId === targetId) return;
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+    dragOverPlaylistId = targetId;
+    const targetElement = e.currentTarget as HTMLElement;
+    const rect = targetElement.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    dropPosition = e.clientY < midpoint ? 'top' : 'bottom';
+  }
+
+  function handleDragLeave(e: DragEvent, targetId: string) {
+    const currentTarget = e.currentTarget as HTMLElement | null;
+    const relatedTarget = e.relatedTarget as Node | null;
+    if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) {
+      return;
+    }
+    if (dragOverPlaylistId === targetId) {
+      dragOverPlaylistId = null;
+      dropPosition = null;
+    }
+  }
+
+  function handleDrop(e: DragEvent, targetId: string) {
+    e.preventDefault();
+    const sourceId = draggedPlaylistId || e.dataTransfer?.getData('application/x-pulsar-playlist') || e.dataTransfer?.getData('text/plain');
+    if (!sourceId || sourceId === targetId) {
+      draggedPlaylistId = null;
+      dragOverPlaylistId = null;
+      dropPosition = null;
+      setTimeout(() => { isDraggingActive = false; }, 150);
+      return;
+    }
+
+    const currentList = $userLibraryPlaylists;
+    const currentIds = currentList.map(p => p.id);
+    const fromIndex = currentIds.indexOf(sourceId);
+
+    if (fromIndex !== -1) {
+      const newIds = [...currentIds];
+      const [movedId] = newIds.splice(fromIndex, 1);
+      
+      const newTargetIndex = newIds.indexOf(targetId);
+      if (newTargetIndex !== -1) {
+        if (dropPosition === 'bottom') {
+          newIds.splice(newTargetIndex + 1, 0, movedId);
+        } else {
+          newIds.splice(newTargetIndex, 0, movedId);
+        }
+      } else {
+        newIds.push(movedId);
+      }
+
+      console.log(`[Frontend] [DragDrop] Movida playlist ${sourceId} para posição ${dropPosition} de ${targetId}`);
+      libraryActions.reorderPlaylists(newIds);
+    }
+
+    draggedPlaylistId = null;
+    dragOverPlaylistId = null;
+    dropPosition = null;
+    setTimeout(() => { isDraggingActive = false; }, 150);
+  }
+
+  function handleDragEnd() {
+    draggedPlaylistId = null;
+    dragOverPlaylistId = null;
+    dropPosition = null;
+    setTimeout(() => { isDraggingActive = false; }, 150);
+  }
+
+  function onPlaylistClick(pl: Playlist) {
+    if (isDraggingActive) return;
+    navigate('playlist-detail', pl);
+  }
 </script>
 
 <aside 
@@ -260,36 +357,133 @@
     <div class="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-1 pr-0.5 pb-20">
       {#each $userLibraryPlaylists as pl (pl.id)}
         {#if $isSidebarCollapsed}
-          <!-- MODO COMPACTO -->
-          <button
-            type="button"
-            onclick={() => navigate('playlist-detail', pl)}
-            class="relative group/mini flex items-center justify-center p-1 rounded-xl transition-all cursor-pointer {$selectedPlaylist?.id === pl.id ? 'bg-[#3093AA]/25 ring-2 ring-[#3093AA]' : 'hover:bg-white/[0.08]'}"
-            title="{pl.name} • {pl.track_count} faixas"
+          <!-- MODO COMPACTO (Com Drag and Drop e Indicador de Pin) -->
+          <div
+            draggable="true"
+            ondragstart={(e) => handleDragStart(e, pl.id)}
+            ondragover={(e) => handleDragOver(e, pl.id)}
+            ondragleave={(e) => handleDragLeave(e, pl.id)}
+            ondrop={(e) => handleDrop(e, pl.id)}
+            ondragend={handleDragEnd}
+            role="listitem"
+            class="relative flex items-center justify-center {draggedPlaylistId === pl.id ? 'opacity-30 scale-95' : ''} transition-all duration-150"
           >
-            <img 
-              src={pl.cover_image || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=100&auto=format&fit=crop&q=80'} 
-              alt={pl.name}
-              class="w-9 h-9 rounded-xl object-cover shadow-sm border border-white/[0.12] transition-transform duration-300 group-hover/mini:scale-105"
-            />
-          </button>
-        {:else}
-          <!-- MODO EXPANDIDO -->
-          <button
-            type="button"
-            onclick={() => navigate('playlist-detail', pl)}
-            class="w-full flex items-center gap-3 p-2 rounded-2xl transition-all text-left cursor-pointer group {$selectedPlaylist?.id === pl.id ? 'bg-white/[0.10] text-[#3093AA] font-bold border border-white/[0.16] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]' : 'text-white/80 hover:bg-white/[0.05] hover:text-[#F0F0F5]'}"
-          >
-            <img 
-              src={pl.cover_image || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=100&auto=format&fit=crop&q=80'} 
-              alt={pl.name}
-              class="w-10 h-10 rounded-xl object-cover shrink-0 shadow-sm border border-white/[0.12] group-hover:scale-105 transition-transform"
-            />
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-semibold truncate group-hover:text-white transition-colors">{pl.name}</p>
-              <p class="text-[10px] text-white/40 truncate">Playlist • {pl.track_count} {pl.track_count === 1 ? 'música' : 'músicas'}</p>
+            {#if dragOverPlaylistId === pl.id && dropPosition === 'top'}
+              <div class="absolute -top-1 left-1 right-1 h-[2px] bg-[#3093AA] rounded-full shadow-[0_0_8px_#3093AA] z-30 pointer-events-none"></div>
+            {/if}
+            {#if dragOverPlaylistId === pl.id && dropPosition === 'bottom'}
+              <div class="absolute -bottom-1 left-1 right-1 h-[2px] bg-[#3093AA] rounded-full shadow-[0_0_8px_#3093AA] z-30 pointer-events-none"></div>
+            {/if}
+
+            <div
+              role="button"
+              tabindex="0"
+              onclick={() => onPlaylistClick(pl)}
+              onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlaylistClick(pl); } }}
+              class="relative group/mini flex items-center justify-center p-1 rounded-xl transition-all cursor-pointer {$selectedPlaylist?.id === pl.id ? 'bg-[#3093AA]/25 ring-2 ring-[#3093AA]' : 'hover:bg-white/[0.08]'}"
+              title="{pl.name} {pl.is_pinned ? '• [Fixada]' : ''} • {pl.track_count} faixas"
+            >
+              <img 
+                src={pl.cover_image || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=100&auto=format&fit=crop&q=80'} 
+                alt={pl.name}
+                class="w-9 h-9 rounded-xl object-cover shadow-sm border border-white/[0.12] transition-transform duration-300 group-hover/mini:scale-105 pointer-events-none select-none"
+              />
+              {#if pl.is_pinned}
+                <div class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#161922] border border-[#3093AA] flex items-center justify-center shadow-md">
+                  <Pin class="w-2 h-2 text-[#3093AA] fill-current" />
+                </div>
+              {/if}
             </div>
-          </button>
+          </div>
+        {:else}
+          <!-- MODO EXPANDIDO (Com Drag and Drop, Handle no hover e Indicador de Pin) -->
+          <div
+            draggable="true"
+            ondragstart={(e) => handleDragStart(e, pl.id)}
+            ondragover={(e) => handleDragOver(e, pl.id)}
+            ondragleave={(e) => handleDragLeave(e, pl.id)}
+            ondrop={(e) => handleDrop(e, pl.id)}
+            ondragend={handleDragEnd}
+            role="listitem"
+            class="relative group/item w-full cursor-grab active:cursor-grabbing {draggedPlaylistId === pl.id ? 'opacity-30 scale-[0.98]' : ''} transition-all duration-150"
+          >
+            {#if dragOverPlaylistId === pl.id && dropPosition === 'top'}
+              <div class="absolute -top-1 left-2 right-2 h-[2px] bg-[#3093AA] rounded-full shadow-[0_0_8px_#3093AA] z-30 pointer-events-none"></div>
+            {/if}
+            {#if dragOverPlaylistId === pl.id && dropPosition === 'bottom'}
+              <div class="absolute -bottom-1 left-2 right-2 h-[2px] bg-[#3093AA] rounded-full shadow-[0_0_8px_#3093AA] z-30 pointer-events-none"></div>
+            {/if}
+
+            <div
+              role="button"
+              tabindex="0"
+              onclick={() => onPlaylistClick(pl)}
+              onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlaylistClick(pl); } }}
+              class="w-full flex items-center gap-2 p-2 rounded-2xl transition-all text-left cursor-pointer group {$selectedPlaylist?.id === pl.id ? 'bg-white/[0.10] text-[#3093AA] font-bold border border-white/[0.16] shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]' : 'text-white/80 hover:bg-white/[0.05] hover:text-[#F0F0F5]'}"
+            >
+              <!-- Drag handle com visual aprimorado e cursor claro -->
+              <div 
+                role="button"
+                tabindex="-1"
+                aria-label="Arrastar para reordenar"
+                draggable="true"
+                ondragstart={(e) => handleDragStart(e, pl.id)}
+                class="opacity-0 group-hover:opacity-70 hover:!opacity-100 transition-opacity -ml-1 text-white/50 cursor-grab active:cursor-grabbing shrink-0 p-1 rounded-lg hover:bg-white/10" 
+                title="Arrastar para reordenar"
+              >
+                <GripVertical class="w-3.5 h-3.5" />
+              </div>
+
+              <div class="relative shrink-0 pointer-events-none select-none">
+                <img 
+                  src={pl.cover_image || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=100&auto=format&fit=crop&q=80'} 
+                  alt={pl.name}
+                  class="w-10 h-10 rounded-xl object-cover shadow-sm border border-white/[0.12] group-hover:scale-105 transition-transform"
+                />
+                {#if pl.is_pinned}
+                  <div class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#161922] border border-[#3093AA] flex items-center justify-center shadow-md">
+                    <Pin class="w-2 h-2 text-[#3093AA] fill-current" />
+                  </div>
+                {/if}
+              </div>
+
+              <div class="min-w-0 flex-1 pointer-events-none select-none">
+                <div class="flex items-center gap-1.5">
+                  <p class="text-xs font-semibold truncate group-hover:text-white transition-colors">{pl.name}</p>
+                  {#if pl.is_pinned}
+                    <span class="text-[8px] text-[#3093AA] font-bold uppercase tracking-wider shrink-0 bg-[#3093AA]/15 px-1 py-0.2 rounded border border-[#3093AA]/30">Fixada</span>
+                  {/if}
+                </div>
+                <p class="text-[10px] text-white/40 truncate">Playlist • {pl.track_count} {pl.track_count === 1 ? 'música' : 'músicas'}</p>
+              </div>
+
+              <!-- Botões rápidos de subir/descer (Reorganização com 1 clique) -->
+              <div 
+                role="toolbar"
+                tabindex="-1"
+                class="opacity-0 group-hover:opacity-80 hover:!opacity-100 transition-opacity flex flex-col shrink-0 gap-0.5 ml-auto" 
+                onclick={(e) => e.stopPropagation()}
+                onkeydown={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onclick={() => libraryActions.movePlaylistUp(pl.id)}
+                  class="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/15 transition cursor-pointer"
+                  title="Mover para cima"
+                >
+                  <ChevronUp class="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onclick={() => libraryActions.movePlaylistDown(pl.id)}
+                  class="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/15 transition cursor-pointer"
+                  title="Mover para baixo"
+                >
+                  <ChevronDown class="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
         {/if}
       {/each}
     </div>

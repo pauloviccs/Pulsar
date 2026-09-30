@@ -48,8 +48,63 @@ function translateAuthError(err: any): string {
   return msg || 'Falha na autenticação.';
 }
 
+let presenceHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
 export const authActions = {
+  startHeartbeat(userId: string) {
+    this.stopHeartbeat();
+    if (typeof window === 'undefined' || !userId || userId.startsWith('guest')) return;
+
+    // Heartbeat leve a cada 60 segundos mantendo updated_at fresco
+    presenceHeartbeatTimer = setInterval(async () => {
+      const supabase = getSupabase();
+      const prof = get(currentProfile);
+      if (!supabase || !prof || prof.id !== userId) return;
+
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userId);
+      } catch (e) {
+        // Falha silenciosa de keepalive
+      }
+    }, 60_000);
+  },
+
+  stopHeartbeat() {
+    if (presenceHeartbeatTimer) {
+      clearInterval(presenceHeartbeatTimer);
+      presenceHeartbeatTimer = null;
+    }
+  },
+
   async initAuth() {
+    // Registrar limpeza defensiva de presença no fechamento da janela
+    if (typeof window !== 'undefined' && !(window as any).__pulsar_beforeunload_registered) {
+      (window as any).__pulsar_beforeunload_registered = true;
+      window.addEventListener('beforeunload', () => {
+        const prof = get(currentProfile);
+        const supabase = getSupabase();
+        if (prof && prof.id && !prof.id.startsWith('guest') && supabase) {
+          try {
+            supabase
+              .from('profiles')
+              .update({
+                presence: 'offline',
+                listening_track_title: null,
+                listening_artist: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', prof.id)
+              .then(() => {});
+          } catch {}
+        }
+      });
+    }
+
     const supabase = getSupabase();
     if (!supabase) {
       // Se não há credenciais do Supabase configuradas, verificar se já abriu alguma vez
@@ -82,6 +137,7 @@ export const authActions = {
           currentUser.set(session.user);
           await this.fetchProfile(session.user.id);
         } else {
+          this.stopHeartbeat();
           currentUser.set(null);
           currentProfile.set(guestProfile);
         }
@@ -121,10 +177,21 @@ export const authActions = {
           following_count: followingRes.count || 0
         });
 
+        // Disparar heartbeat ativo para manter updated_at fresco enquanto logado
+        this.startHeartbeat(userId);
+
         // Disparar sincronização inicial e ativar ciclo automático silencioso em segundo plano
         import('../services/syncEngine').then(({ syncEngine }) => {
           syncEngine.hydrateFromCloud(userId);
           syncEngine.startAutoSync(userId);
+        });
+
+        // Carregar amigos, solicitações de amizade e notificações atualizadas
+        import('./socialStore').then(({ socialActions }) => {
+          socialActions.loadFriends();
+        });
+        import('./notificationStore').then(({ notificationActions }) => {
+          notificationActions.initNotifications();
         });
       }
     } catch (err) {
@@ -231,16 +298,35 @@ export const authActions = {
   },
 
   async logout() {
+    this.stopHeartbeat();
+    const prof = get(currentProfile);
+    const supabase = getSupabase();
+    if (supabase && prof && prof.id && !prof.id.startsWith('guest')) {
+      try {
+        await supabase.from('profiles').update({
+          presence: 'offline',
+          listening_track_title: null,
+          listening_artist: null,
+          updated_at: new Date().toISOString()
+        }).eq('id', prof.id);
+      } catch {}
+    }
     import('../services/syncEngine').then(({ syncEngine }) => {
       syncEngine.stopAutoSync();
     });
-    const supabase = getSupabase();
     if (supabase) {
       await supabase.auth.signOut().catch(() => {});
     }
     viewedProfile.set(null);
     currentUser.set(null);
     currentProfile.set(guestProfile);
+  },
+
+  viewMyProfile() {
+    viewedProfile.set(null);
+    import('./libraryStore').then(({ libraryActions }) => {
+      libraryActions.setActiveView('profile');
+    });
   },
 
   async viewUserProfile(profileData: {
@@ -353,13 +439,16 @@ export const authActions = {
     else if (presence === 'busy' || presence === 'dnd') dbPresence = 'dnd';
     else if (presence === 'offline') dbPresence = 'offline';
 
+    const effectiveTrackTitle = presence === 'offline' ? null : (trackTitle || null);
+    const effectiveArtist = presence === 'offline' ? null : (artist || null);
+
     try {
       await supabase
         .from('profiles')
         .update({
           presence: dbPresence,
-          listening_track_title: trackTitle || null,
-          listening_artist: artist || null,
+          listening_track_title: effectiveTrackTitle,
+          listening_artist: effectiveArtist,
           updated_at: new Date().toISOString()
         })
         .eq('id', prof.id);
@@ -368,9 +457,9 @@ export const authActions = {
         ...curr,
         presence,
         presence_status: presence,
-        listening_track_title: trackTitle,
-        current_track_title: trackTitle,
-        listening_artist: artist
+        listening_track_title: effectiveTrackTitle,
+        current_track_title: effectiveTrackTitle,
+        listening_artist: effectiveArtist
       } : null);
     } catch (err) {
       console.warn('[Pulsar Presence] Erro ao sincronizar presença com Supabase:', err);

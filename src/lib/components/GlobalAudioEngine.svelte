@@ -28,8 +28,10 @@
   import { get } from 'svelte/store';
 
   let audioElement: HTMLAudioElement;
+  let prebufferAudioElement: HTMLAudioElement;
   let scrobbledCurrentTrackId = $state<string | null>(null);
   let lastLoadedTrackId: string | null = null;
+  let prebufferedTrackId: string | null = null;
   let systemScanner: SystemAudioScanner | null = null;
   let upnpScanner: UpnpScanner | null = null;
   let castScanner: CastScanner | null = null;
@@ -122,16 +124,21 @@
 
     if (lastLoadedTrackId !== track.id) {
       lastLoadedTrackId = track.id;
+      prebufferedTrackId = null;
       scrobbledCurrentTrackId = null;
 
       (async () => {
         try {
           await audioRouter.load(track, targetUrl);
 
-          // Restaurar o volume nominal de forma segura após o target confirmar a carga da faixa
+          // Configurar volume inicial suave se crossfade estiver ativo para permitir fade-in
           const baseVol = get(isMuted) ? 0 : get(volume);
           const normFactor = get(audioNormalization) ? 0.92 : 1.0;
-          await audioRouter.setVolume(Math.max(0, Math.min(1, baseVol * normFactor)));
+          const nominalVol = Math.max(0, Math.min(1, baseVol * normFactor));
+          const crossfade = get(crossfadeSeconds);
+          const initVol = crossfade > 0 ? Math.min(nominalVol, nominalVol * 0.15) : nominalVol;
+
+          await audioRouter.setVolume(initVol);
 
           if (get(isPlaying)) {
             await audioRouter.play();
@@ -215,16 +222,35 @@
       duration.set(dur);
     }
 
-    // Crossfade inteligente estilo Spotify com fade-in e fade-out garantidos
+    const remaining = dur - curTime;
+
+    // SISTEMA PRE-BUFFER-CACHE:
+    // Quando faltarem 20 segundos (ou 80% da música), pré-carrega a próxima faixa em background
+    if ((remaining <= 20 || (dur > 0 && curTime / dur >= 0.8)) && remaining > 0) {
+      const nextTrack = playerActions.peekNextTrack();
+      if (nextTrack && nextTrack.youtube_video_id && prebufferedTrackId !== nextTrack.id) {
+        prebufferedTrackId = nextTrack.id;
+        // 1. Aciona pré-aquecimento no backend Rust (resolução da URL e primeiro bloco Range)
+        safeInvoke('precache_track', { videoId: nextTrack.youtube_video_id }).catch(() => {});
+
+        // 2. Pré-buffer de mídia no elemento de áudio oculto do navegador
+        if (prebufferAudioElement) {
+          const streamUrl = nextTrack.stream_url || `http://127.0.0.1:41235/stream/${nextTrack.youtube_video_id}`;
+          prebufferAudioElement.src = streamUrl;
+          prebufferAudioElement.load();
+        }
+      }
+    }
+
+    // Transição Suave & Crossfade Inteligente estilo Spotify
     const crossfade = $crossfadeSeconds;
     const baseVol = $isMuted ? 0 : $volume;
     const normFactor = $audioNormalization ? 0.92 : 1.0;
     const targetNominalVolume = Math.max(0, Math.min(1, baseVol * normFactor));
 
     if (crossfade > 0 && dur > crossfade * 2) {
-      const remaining = dur - curTime;
       if (remaining <= crossfade && remaining > 0) {
-        // Fade-out nos últimos segundos da música atual
+        // Fade-out suave nos últimos segundos da música atual
         const factor = Math.max(0, remaining / crossfade);
         audioRouter.setVolume(targetNominalVolume * factor);
         if (remaining < 0.25) {
@@ -235,11 +261,7 @@
         const fadeInDuration = Math.min(crossfade, 2);
         const factor = Math.min(1, Math.max(0.1, curTime / fadeInDuration));
         audioRouter.setVolume(targetNominalVolume * factor);
-      } else {
-        // Fora das janelas de transição de crossfade, o volume nominal é mantido naturalmente
       }
-    } else {
-      // Se o crossfade estiver desligado, não envia comandos periódicos de volume
     }
 
     // Integração Scrobbler Last.fm Oficial (após 50% ou 30s da música ouvida)
@@ -259,6 +281,13 @@
 <!-- Tag de áudio real do navegador persistente gerenciada pelo LocalOutputTarget -->
 <audio
   bind:this={audioElement}
+  preload="auto"
+  class="hidden"
+></audio>
+
+<!-- Tag de áudio auxiliar oculta dedicada ao Pre-Buffer-Cache da próxima faixa -->
+<audio
+  bind:this={prebufferAudioElement}
   preload="auto"
   class="hidden"
 ></audio>

@@ -10,7 +10,7 @@ import { writable, get } from 'svelte/store';
 import { getSupabase } from '../api/supabase';
 import { safeInvoke } from '../api/tauri';
 import { currentProfile } from '../stores/authStore';
-import { allTracks, playlists, favoriteTrackIds, recentTracks, selectedPlaylistTracks } from '../stores/libraryStore';
+import { allTracks, playlists, favoriteTrackIds, recentTracks, selectedPlaylistTracks, pinnedPlaylistIds, playlistOrder } from '../stores/libraryStore';
 import { volume, shuffle, repeatMode, isVideoVisible, lastFmUsername } from '../stores/playerStore';
 import { currentLocale } from '../i18n';
 import type { Track, Playlist, CloudSyncState, UserSettings, RepeatMode, CommunityTrendingPlaylist } from '../types';
@@ -74,6 +74,34 @@ export const syncEngine = {
     }
   },
 
+  // Timestamp de controle de cooldown para navegação rápida
+  _lastNavSyncTime: 0,
+
+  /**
+   * Sincronização leve disparada na alternância entre abas e páginas.
+   * Aplica um cooldown inteligente (mínimo de 5 segundos) para evitar requisições
+   * redundantes ao Supabase e ao SQLite em cliques rápidos e contínuos.
+   */
+  async syncOnNavigation(userId?: string) {
+    const prof = get(currentProfile);
+    const targetUserId = userId || prof?.id;
+    if (!targetUserId || isGuestUser(targetUserId)) return;
+
+    const now = Date.now();
+    const COOLDOWN_MS = 5000; // 5 segundos de intervalo mínimo entre requisições completas de navegação
+
+    if (now - this._lastNavSyncTime < COOLDOWN_MS) {
+      return; // Cooldown ativo, dados ainda frescos
+    }
+
+    this._lastNavSyncTime = now;
+    try {
+      await this.hydrateFromCloud(targetUserId);
+    } catch (e) {
+      console.warn('[Pulsar SyncEngine] Falha silenciosa no sync de navegação:', e);
+    }
+  },
+
   /**
    * Puxa todos os dados do Supabase para o usuário logado e hidrata o SQLite local e as stores reativas.
    * Se houver dados locais não presentes na nuvem, efetua sincronização bidirecional.
@@ -113,31 +141,75 @@ export const syncEngine = {
 
       if (plErr) throw plErr;
 
-      // 1.1 Buscar IDs de playlists seguidas pelo usuário
+      // 1.1 Buscar IDs e datas de playlists seguidas pelo usuário
       let followedPlIds: string[] = [];
+      const followedDatesMap = new Map<string, string>();
       try {
         const { data: followedData } = await supabase
           .from('playlist_follows')
-          .select('playlist_id')
+          .select('playlist_id, created_at')
           .eq('user_id', userId);
         if (followedData) {
-          followedPlIds = followedData.map(f => f.playlist_id);
+          for (const f of followedData) {
+            followedPlIds.push(f.playlist_id);
+            if (f.created_at) {
+              followedDatesMap.set(f.playlist_id, f.created_at);
+              followedDatesMap.set(toCanonicalUuid(f.playlist_id), f.created_at);
+            }
+          }
         }
+        console.log(`[Supabase Sync] ${followedPlIds.length} playlists seguidas encontradas para o usuário.`);
       } catch (err) {
-        console.warn('[Pulsar SyncEngine] Falha ao consultar playlist_follows:', err);
+        console.warn('[Supabase Sync] Falha ao consultar playlist_follows:', err);
       }
-      const followedIdSet = new Set(followedPlIds);
+      const followedIdSet = new Set(followedPlIds.map(id => toCanonicalUuid(id)));
 
-      // 2. Se há playlists na nuvem, buscar todas as faixas associadas
+      // 2. Buscar IDs de playlists seguidas de terceiros
       const plList = cloudPlaylists || [];
       const plIds = plList.map(p => p.id);
+      const externalFollowedIds = followedPlIds.filter(id => !plIds.includes(id));
+      let externalFollowedList: any[] = [];
 
+      if (externalFollowedIds.length > 0) {
+        try {
+          const { data: extPls, error: extPlsErr } = await supabase
+            .from('cloud_playlists')
+            .select('*')
+            .in('id', externalFollowedIds);
+
+          if (extPlsErr) {
+            console.warn('[Pulsar SyncEngine] Erro ao buscar playlists seguidas:', extPlsErr);
+          } else if (extPls && extPls.length > 0) {
+            const creatorIds = Array.from(new Set(extPls.map(p => p.user_id).filter(Boolean)));
+            let profilesMap = new Map();
+            if (creatorIds.length > 0) {
+              const { data: creators } = await supabase
+                .from('profiles')
+                .select('id, username, display_name, avatar_url')
+                .in('id', creatorIds);
+              if (creators) {
+                profilesMap = new Map(creators.map(c => [c.id, c]));
+              }
+            }
+
+            externalFollowedList = extPls.map(p => ({
+              ...p,
+              profiles: profilesMap.get(p.user_id) || null
+            }));
+          }
+        } catch (err) {
+          console.warn('[Pulsar SyncEngine] Falha ao consultar playlists seguidas:', err);
+        }
+      }
+
+      // 2.1 Buscar todas as faixas associadas (próprias e seguidas)
+      const allTargetPlaylistIds = [...plIds, ...externalFollowedIds];
       let cloudTracksByPlaylist: Record<string, any[]> = {};
-      if (plIds.length > 0) {
+      if (allTargetPlaylistIds.length > 0) {
         const { data: allPlaylistTracks, error: trkErr } = await supabase
           .from('cloud_playlist_tracks')
           .select('*')
-          .in('playlist_id', plIds)
+          .in('playlist_id', allTargetPlaylistIds)
           .order('position', { ascending: true });
 
         if (!trkErr && allPlaylistTracks) {
@@ -148,28 +220,6 @@ export const syncEngine = {
             cloudTracksByPlaylist[t.playlist_id].push(t);
           }
         }
-      }
-
-      // 2.1 Buscar playlists seguidas de terceiros
-      const externalFollowedIds = followedPlIds.filter(id => !plIds.includes(id));
-      let externalFollowedList: any[] = [];
-      if (externalFollowedIds.length > 0) {
-        try {
-          const { data: extPls } = await supabase
-            .from('cloud_playlists')
-            .select(`
-              *,
-              profiles:user_id (
-                username,
-                display_name,
-                avatar_url
-              )
-            `)
-            .in('id', externalFollowedIds);
-          if (extPls) {
-            externalFollowedList = extPls;
-          }
-        } catch {}
       }
 
       // 3. Carregar faixas da biblioteca pessoal (user_library_tracks)
@@ -218,7 +268,7 @@ export const syncEngine = {
             name: cp.name,
             description: cp.description || '',
             cover_image: cp.cover_image_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
-            created_at: cp.created_at ? cp.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+            created_at: cp.created_at || new Date().toISOString(),
             is_imported_youtube_playlist: cp.is_imported_youtube_playlist || false,
             source_youtube_playlist_id: cp.source_youtube_playlist_id || null,
             track_count: tracksForPl.length,
@@ -228,7 +278,8 @@ export const syncEngine = {
             owner_name: prof?.display_name || prof?.username || cp.owner_name || null,
             owner_username: prof?.username || cp.owner_username || null,
             owner_avatar_url: prof?.avatar_url || cp.owner_avatar_url || null,
-            is_followed: followedIdSet.has(cp.id),
+            is_followed: followedIdSet.has(cp.id) || followedIdSet.has(toCanonicalUuid(cp.id)),
+            is_pinned: get(pinnedPlaylistIds).has(cp.id) || Boolean((cp as any).is_pinned),
             play_count: cp.play_count || 0
           };
 
@@ -258,7 +309,7 @@ export const syncEngine = {
               await safeInvoke('set_playlist_tracks', { playlistId: cp.id, trackIds });
             }
           } catch (e) {
-            console.warn(`[Pulsar SyncEngine] Fallback ao persistir playlist ${cp.name} no SQLite:`, e);
+            console.warn(`[Supabase Sync] Fallback ao persistir playlist ${cp.name} no SQLite:`, e);
           }
 
           hydratedPlaylists.push(playlistObj);
@@ -269,12 +320,15 @@ export const syncEngine = {
       if (externalFollowedList.length > 0) {
         for (const fp of externalFollowedList) {
           const prof = (fp as any).profiles;
+          const canonicalFpId = toCanonicalUuid(fp.id);
+          const followDate = followedDatesMap.get(canonicalFpId) || followedDatesMap.get(fp.id);
           const fpObj: Playlist = {
             id: fp.id,
             name: fp.name,
             description: fp.description || '',
             cover_image: fp.cover_image_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
-            created_at: fp.created_at ? fp.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+            created_at: fp.created_at || new Date().toISOString(),
+            followed_at: followDate || fp.created_at || new Date().toISOString(),
             is_imported_youtube_playlist: fp.is_imported_youtube_playlist || false,
             source_youtube_playlist_id: fp.source_youtube_playlist_id || null,
             track_count: fp.track_count || 0,
@@ -285,10 +339,32 @@ export const syncEngine = {
             owner_username: prof?.username || fp.owner_username || null,
             owner_avatar_url: prof?.avatar_url || fp.owner_avatar_url || null,
             is_followed: true,
+            is_pinned: get(pinnedPlaylistIds).has(fp.id) || Boolean((fp as any).is_pinned),
             play_count: fp.play_count || 0
           };
           try {
             await safeInvoke('upsert_playlist', { playlist: fpObj });
+            const tracksForFp = cloudTracksByPlaylist[fp.id] || [];
+            if (tracksForFp.length > 0) {
+              const trackIds: string[] = [];
+              for (const t of tracksForFp) {
+                const trackDto = {
+                  id: t.id || `t-${t.youtube_video_id}`,
+                  youtube_video_id: t.youtube_video_id,
+                  title: t.title,
+                  artist_guess: t.artist || '',
+                  channel_name: t.channel_name || '',
+                  duration_seconds: t.duration_seconds || 0,
+                  thumbnail_url: t.thumbnail_url || '',
+                  audio_stream_cached: false,
+                  added_at: t.added_at || new Date().toISOString(),
+                  stream_url: `http://127.0.0.1:41235/stream/${t.youtube_video_id}`
+                };
+                const saved = await safeInvoke<any>('save_track_direct', { track: trackDto });
+                trackIds.push(saved?.id || trackDto.id);
+              }
+              await safeInvoke('set_playlist_tracks', { playlistId: fp.id, trackIds });
+            }
           } catch (e) {
             console.warn('[Pulsar SyncEngine] Falha ao persistir playlist seguida no SQLite:', e);
           }
@@ -361,7 +437,33 @@ export const syncEngine = {
       }
 
       if (hydratedPlaylists.length > 0) {
+        const orderList = get(playlistOrder);
+        const getPlTime = (p: Playlist) => {
+          const t = p.followed_at || p.created_at;
+          if (!t) return 0;
+          if (t.startsWith('timestamp-')) {
+            const secs = parseInt(t.replace('timestamp-', ''), 10);
+            return isNaN(secs) ? 0 : secs * 1000;
+          }
+          const ms = new Date(t).getTime();
+          return isNaN(ms) ? 0 : ms;
+        };
+
+        hydratedPlaylists.sort((a, b) => {
+          const pinA = a.is_pinned ? 1 : 0;
+          const pinB = b.is_pinned ? 1 : 0;
+          if (pinA !== pinB) return pinB - pinA;
+          if (orderList && orderList.length > 0) {
+            const idxA = orderList.indexOf(a.id);
+            const idxB = orderList.indexOf(b.id);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return 1;
+            if (idxB !== -1) return -1;
+          }
+          return getPlTime(b) - getPlTime(a);
+        });
         playlists.set(hydratedPlaylists);
+        console.log(`[Supabase Sync] ✅ Hidratação concluída com sucesso! Total no estado: ${hydratedPlaylists.length} playlists.`);
       }
 
       // B. Hidratação de Faixas da Biblioteca (allTracks)
@@ -408,7 +510,7 @@ export const syncEngine = {
         for (const t of currentTracks) {
           if (favVideoIds.has(t.youtube_video_id)) {
             favIdSet.add(t.id);
-            await safeInvoke('toggle_favorite', { trackId: t.id, track: t }).catch(() => {});
+            await safeInvoke('set_favorite', { trackId: t.id, track: t, isFavorite: true }).catch(() => {});
           }
         }
         if (favIdSet.size > 0) {
@@ -483,6 +585,9 @@ export const syncEngine = {
     const prof = get(currentProfile);
     if (!prof || isGuestUser(prof.id)) return;
 
+    // Se a playlist pertence a outro usuário (playlist de terceiro seguida), não envia para cloud_playlists
+    if (playlist.user_id && playlist.user_id !== prof.id) return;
+
     const supabase = getSupabase();
     if (!supabase) return;
 
@@ -553,6 +658,10 @@ export const syncEngine = {
 
     const canonicalPlId = toCanonicalUuid(playlistId);
 
+    // Se a playlist pertencer a outro usuário na store, não sobrescrever faixas no Supabase
+    const pl = get(playlists).find(p => toCanonicalUuid(p.id) === canonicalPlId);
+    if (pl && pl.user_id && pl.user_id !== prof.id) return;
+
     try {
       // 1. Limpar faixas antigas da playlist
       await supabase
@@ -618,17 +727,25 @@ export const syncEngine = {
     if (!supabase) return;
 
     try {
-      const rows = tracks.map(track => ({
-        user_id: prof.id,
-        youtube_video_id: track.youtube_video_id,
-        title: track.title,
-        artist_guess: track.artist_guess || track.artist || '',
-        channel_name: track.channel_name || '',
-        duration_seconds: track.duration_seconds || 0,
-        thumbnail_url: track.thumbnail_url || track.thumbnail || '',
-        source_platform: track.source_platform || 'youtube',
-        added_at: new Date().toISOString()
-      }));
+      const uniqueMap = new Map<string, any>();
+      for (const track of tracks) {
+        if (!track || !track.youtube_video_id) continue;
+        if (!uniqueMap.has(track.youtube_video_id)) {
+          uniqueMap.set(track.youtube_video_id, {
+            user_id: prof.id,
+            youtube_video_id: track.youtube_video_id,
+            title: track.title,
+            artist_guess: track.artist_guess || track.artist || '',
+            channel_name: track.channel_name || '',
+            duration_seconds: track.duration_seconds || 0,
+            thumbnail_url: track.thumbnail_url || track.thumbnail || '',
+            source_platform: track.source_platform || 'youtube',
+            added_at: new Date().toISOString()
+          });
+        }
+      }
+      const rows = Array.from(uniqueMap.values());
+      if (rows.length === 0) return;
 
       const { error } = await supabase
         .from('user_library_tracks')
@@ -820,7 +937,7 @@ export const syncEngine = {
         try {
           const { data: plData } = await supabase
             .from('cloud_playlists')
-            .select('user_id, title')
+            .select('user_id, name')
             .eq('id', canonicalId)
             .maybeSingle();
 
@@ -833,7 +950,7 @@ export const syncEngine = {
               sender_avatar_url: prof.avatar_url,
               type: 'playlist_follow',
               title: 'Playlist favoritada',
-              message: `@${prof.username} começou a seguir sua playlist "${plData.title}"!`,
+              message: `@${prof.username} começou a seguir sua playlist "${plData.name || 'Sem título'}"!`,
               target_id: canonicalId,
               link: `playlist:${canonicalId}`
             });

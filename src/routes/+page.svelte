@@ -20,7 +20,8 @@
     Lock,
     Share2,
     Bookmark,
-    Check
+    Check,
+    Pin
   } from '@lucide/svelte';
 
   import SplashScreen from '$lib/components/SplashScreen.svelte';
@@ -86,6 +87,7 @@
   onMount(() => {
     libraryActions.initFromBackend();
     authActions.initAuth();
+    socialActions.loadFriends();
     notificationActions.initNotifications();
     const unsubSocial = socialActions.subscribeToRealtime();
     const unsubNotif = notificationActions.subscribeToRealtime();
@@ -598,6 +600,16 @@
                 </div>
 
                 <div class="flex items-center gap-2">
+                  <!-- Botão de Fixar Playlist no Topo da Biblioteca -->
+                  <button
+                    onclick={() => libraryActions.togglePinPlaylist($selectedPlaylist.id)}
+                    class="flex items-center gap-2 px-4 py-2.5 rounded-full transition-all cursor-pointer shadow-md {$selectedPlaylist.is_pinned ? 'bg-[#3093AA] text-white border border-white/20 font-black shadow-lg shadow-[#3093AA]/30 hover:brightness-110 active:scale-95' : 'lq-glass-pill text-white/80 hover:text-white hover:bg-white/[0.12] active:scale-95'}"
+                    title={$selectedPlaylist.is_pinned ? 'Desafixar do topo da biblioteca' : 'Fixar no topo da biblioteca'}
+                  >
+                    <Pin class="w-4 h-4 {$selectedPlaylist.is_pinned ? 'fill-current text-white rotate-45' : 'text-[#3093AA]'} transition-transform duration-200" />
+                    <span class="text-xs font-bold">{$selectedPlaylist.is_pinned ? 'Fixada no Topo' : 'Fixar Playlist'}</span>
+                  </button>
+
                   {#if isPlaylistOwner}
                     <!-- Botão de Personalização / Edição (Apenas Dono) -->
                     <button

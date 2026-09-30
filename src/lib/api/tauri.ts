@@ -45,7 +45,7 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>,
   if (cmd === 'get_favorites') {
     return ([] as unknown) as T;
   }
-  if (cmd === 'toggle_favorite') {
+  if (cmd === 'toggle_favorite' || cmd === 'set_favorite') {
     return (true as unknown) as T;
   }
   if (cmd === 'resolve_track') {
@@ -120,6 +120,12 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>,
     return ('0.2.6-b' as unknown) as T;
   }
   if (cmd === 'toggle_mini_player') {
+    return (null as unknown) as T;
+  }
+  if (cmd === 'toggle_pin_playlist') {
+    return ((args?.isPinned ?? true) as unknown) as T;
+  }
+  if (cmd === 'save_playlist_order') {
     return (null as unknown) as T;
   }
 

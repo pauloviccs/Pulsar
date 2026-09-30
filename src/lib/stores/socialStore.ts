@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import type { UserProfile, Friendship, ChatMessage, CloudPlaylist, Track } from '../types';
+import type { UserProfile, Friendship, ChatMessage, CloudPlaylist, Track, PresenceStatus } from '../types';
 import { getSupabase } from '../api/supabase';
 import { currentProfile, guestProfile, viewedProfile, isEditProfileModalOpen } from './authStore';
 import { notificationActions } from './notificationStore';
@@ -40,10 +40,64 @@ export const unreadMessageCount = derived(chatMessages, ($msgs) => {
   return $msgs.filter(m => m.receiver_id === myId && !(m.is_read || m.read)).length;
 });
 
-// Canal de escuta Realtime
+// TTL Máximo de Frescor de Presença: 2.5 minutos (150.000 ms)
+export const PRESENCE_TTL_MS = 150_000;
+
+/**
+ * Valida o status de presença e faixa em reprodução contra a última pulsação (heartbeat).
+ * Se o usuário não atualizou seu perfil nos últimos 2.5 minutos, é considerado imediatamente offline
+ * e sua música atual é ocultada para evitar falsas presenças e "Now Playing" fantasmas.
+ */
+export function sanitizePresence(profile: any): { presence_status: PresenceStatus; current_track_title: string | null } {
+  if (!profile) return { presence_status: 'offline', current_track_title: null };
+
+  const rawStatus: PresenceStatus = profile.presence_status || profile.presence || 'offline';
+  const rawTrack = profile.current_track_title || profile.listening_track_title || null;
+
+  if (rawStatus === 'offline') {
+    return { presence_status: 'offline', current_track_title: null };
+  }
+
+  const updatedAtStr = profile.updated_at || profile.last_seen;
+  const updatedAt = updatedAtStr ? new Date(updatedAtStr).getTime() : 0;
+  const now = Date.now();
+  const isFresh = updatedAt > 0 && (now - updatedAt) < PRESENCE_TTL_MS;
+
+  if (!isFresh) {
+    return { presence_status: 'offline', current_track_title: null };
+  }
+
+  return {
+    presence_status: rawStatus,
+    current_track_title: rawTrack
+  };
+}
+
+// Canal de escuta Realtime e Timer de Varredura de Presença
 let realtimeChannel: any = null;
+let presenceRecheckTimer: ReturnType<typeof setInterval> | null = null;
+let realtimeFriendshipTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const socialActions = {
+  /**
+   * Reavalia localmente o frescor das presenças de todos os amigos em memória.
+   * Se um amigo ultrapassou o limite de 2.5 minutos sem atividade, migra-o automaticamente para offline.
+   */
+  revalidateFriendsPresence() {
+    friends.update(list => list.map(f => {
+      if (f.presence_status === 'offline') return f;
+      const { presence_status, current_track_title } = sanitizePresence(f.friend_profile);
+      if (presence_status !== f.presence_status || current_track_title !== f.current_track_title) {
+        return {
+          ...f,
+          presence_status,
+          current_track_title
+        };
+      }
+      return f;
+    }));
+  },
+
   async loadFriends() {
     const supabase = getSupabase();
     const prof = get(currentProfile);
@@ -66,18 +120,21 @@ export const socialActions = {
 
       for (const row of (data as any[]) || []) {
         const otherProfile: UserProfile = row.user_id === prof.id ? row.friend : row.user;
+        const { presence_status, current_track_title } = sanitizePresence(otherProfile);
+
         const item: Friendship = {
           id: row.id,
           user_id: row.user_id,
-          friend_id: row.user_id === prof.id ? row.friend_id : row.user_id,
+          friend_id: row.friend_id,
           status: row.status,
           created_at: row.created_at,
+          updated_at: otherProfile?.updated_at,
           friend_username: otherProfile?.username || 'user',
           friend_tag: otherProfile?.tag || '0000',
           friend_display_name: otherProfile?.display_name || otherProfile?.username || 'Usuário',
           friend_avatar: otherProfile?.avatar_url,
-          presence_status: otherProfile?.presence_status || otherProfile?.presence || 'offline',
-          current_track_title: otherProfile?.current_track_title || otherProfile?.listening_track_title,
+          presence_status,
+          current_track_title,
           friend_profile: otherProfile
         };
 
@@ -90,6 +147,13 @@ export const socialActions = {
 
       friends.set(accepted);
       pendingRequests.set(pending);
+
+      // Inicia timer de revalidação periódica de presença se ainda não estiver ativo
+      if (!presenceRecheckTimer && typeof window !== 'undefined') {
+        presenceRecheckTimer = setInterval(() => {
+          this.revalidateFriendsPresence();
+        }, 30_000);
+      }
     } catch (err) {
       console.warn('[Pulsar Social] Erro ao carregar amigos:', err);
     }
@@ -159,9 +223,17 @@ export const socialActions = {
 
   async acceptFriendRequest(friendshipId: string) {
     const supabase = getSupabase();
-    if (!supabase) return;
+    const prof = get(currentProfile);
+    if (!supabase || !prof || prof.id === guestProfile.id) return;
 
     try {
+      // Buscar os dados da solicitação para saber quem foi o remetente original
+      const { data: reqData } = await supabase
+        .from('friendships')
+        .select('user_id, friend_id')
+        .eq('id', friendshipId)
+        .maybeSingle();
+
       const { error } = await supabase
         .from('friendships')
         .update({ status: 'accepted' })
@@ -169,6 +241,24 @@ export const socialActions = {
 
       if (error) throw error;
       await this.loadFriends();
+
+      // Notificar o remetente da solicitação
+      if (reqData && reqData.user_id && reqData.user_id !== prof.id) {
+        try {
+          await notificationActions.sendNotification({
+            user_id: reqData.user_id,
+            sender_id: prof.id,
+            sender_username: prof.username,
+            sender_avatar_url: prof.avatar_url,
+            type: 'friend_request',
+            title: 'Pedido de amizade aceito',
+            message: `@${prof.username} aceitou seu pedido de amizade!`,
+            link: `user:${prof.id}`
+          });
+        } catch (notifErr) {
+          console.warn('[Pulsar Social] Falha ao enviar notificação de aceite:', notifErr);
+        }
+      }
     } catch (err) {
       console.error('[Pulsar Social] Erro ao aceitar amizade:', err);
     }
@@ -440,18 +530,31 @@ export const socialActions = {
         { event: 'UPDATE', schema: 'public', table: 'profiles' },
         (payload) => {
           const updatedProf = payload.new as UserProfile;
-          // Atualizar presença na lista de amigos
+          const { presence_status, current_track_title } = sanitizePresence(updatedProf);
+          
+          // Atualizar presença imediatamente na lista de amigos
           friends.update(list => list.map(f => {
             if (f.friend_id === updatedProf.id || f.friend_profile?.id === updatedProf.id) {
               return { 
                 ...f, 
-                presence_status: updatedProf.presence_status || updatedProf.presence,
-                current_track_title: updatedProf.current_track_title || updatedProf.listening_track_title,
-                friend_profile: { ...f.friend_profile, ...updatedProf } 
+                presence_status,
+                current_track_title,
+                friend_profile: { ...f.friend_profile, ...updatedProf, presence_status, current_track_title } 
               };
             }
             return f;
           }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships' },
+        () => {
+          // Atualização com debounce leve de 300ms para evitar tempestade de queries
+          if (realtimeFriendshipTimer) clearTimeout(realtimeFriendshipTimer);
+          realtimeFriendshipTimer = setTimeout(() => {
+            this.loadFriends();
+          }, 300);
         }
       )
       .subscribe();
@@ -459,6 +562,11 @@ export const socialActions = {
     return () => {
       if (realtimeChannel && supabase) {
         supabase.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+      }
+      if (presenceRecheckTimer) {
+        clearInterval(presenceRecheckTimer);
+        presenceRecheckTimer = null;
       }
     };
   }

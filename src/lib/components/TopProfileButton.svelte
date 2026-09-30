@@ -53,7 +53,11 @@
 
   function handleNavigate(view: 'profile' | 'settings') {
     closeMenu();
-    libraryActions.setActiveView(view);
+    if (view === 'profile') {
+      authActions.viewMyProfile();
+    } else {
+      libraryActions.setActiveView(view);
+    }
   }
 
   function handleOpenEditProfile() {

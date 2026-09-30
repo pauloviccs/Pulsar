@@ -61,6 +61,10 @@ pub struct PlaylistDTO {
     pub play_count: i64,
     #[serde(default)]
     pub owner_avatar_url: Option<String>,
+    #[serde(default)]
+    pub is_pinned: bool,
+    #[serde(default)]
+    pub custom_order: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,7 +131,16 @@ impl Database {
                 cover_image_path TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 is_imported_youtube_playlist BOOLEAN DEFAULT 0,
-                source_youtube_playlist_id TEXT
+                source_youtube_playlist_id TEXT,
+                user_id TEXT,
+                owner_name TEXT,
+                owner_username TEXT,
+                visibility TEXT DEFAULT 'public',
+                is_followed BOOLEAN DEFAULT 0,
+                play_count INTEGER DEFAULT 0,
+                owner_avatar_url TEXT,
+                is_pinned BOOLEAN DEFAULT 0,
+                custom_order INTEGER DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS playlist_tracks (
@@ -172,6 +185,8 @@ impl Database {
         let _ = conn.execute("ALTER TABLE playlists ADD COLUMN is_followed BOOLEAN DEFAULT 0", []);
         let _ = conn.execute("ALTER TABLE playlists ADD COLUMN play_count INTEGER DEFAULT 0", []);
         let _ = conn.execute("ALTER TABLE playlists ADD COLUMN owner_avatar_url TEXT", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN is_pinned BOOLEAN DEFAULT 0", []);
+        let _ = conn.execute("ALTER TABLE playlists ADD COLUMN custom_order INTEGER DEFAULT 0", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN audio_stream_cached BOOLEAN DEFAULT 0", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN last_played_at TIMESTAMP", []);
         let _ = conn.execute("ALTER TABLE tracks ADD COLUMN source_platform TEXT DEFAULT 'youtube'", []);
@@ -195,42 +210,15 @@ impl Database {
             [],
         );
         let _ = conn.execute("PRAGMA foreign_keys = ON;", []);
-
-        // Seed inicial da playlist padrão com tracks reais caso o banco SQLite esteja vazio (instalação nova)
-        let count: i64 = conn.query_row("SELECT COUNT(*) FROM playlists", [], |row| row.get(0)).unwrap_or(0);
-        if count == 0 {
-            let default_pl_id = "a0000000-0000-4000-8000-000000000001";
-            let default_cover = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80";
-            let _ = conn.execute(
-                "INSERT OR IGNORE INTO playlists (id, name, description, cover_image_path, is_imported_youtube_playlist)
-                 VALUES (?1, ?2, ?3, ?4, 1)",
-                params![
-                    default_pl_id,
-                    "Vibe Coding & Focus",
-                    "Batidas imersivas e lo-fi para programar no fluxo contínuo sem anúncios.",
-                    default_cover
-                ],
-            );
-
-            let tracks_to_seed = [
-                ("b0000000-0000-4000-8000-000000000001", "jfKfPfyJRdk", "Lofi Hip Hop Radio - Beats to Relax/Study to", "Lofi Girl", "Lofi Girl", 245, "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80"),
-                ("b0000000-0000-4000-8000-000000000002", "5qap5aO4i9A", "Midnight City (Synthwave Drive)", "Neon Sunset", "RetroWaves FM", 284, "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&auto=format&fit=crop&q=80"),
-                ("b0000000-0000-4000-8000-000000000003", "DWcJFNfaw9C", "Deep Focus Ambient Sessions", "Aura Sound", "Mind & Code", 360, "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80"),
-            ];
-
-            for (pos, (t_id, v_id, title, artist, ch, dur, thumb)) in tracks_to_seed.iter().enumerate() {
-                let _ = conn.execute(
-                    "INSERT OR IGNORE INTO tracks (id, youtube_video_id, title, artist_guess, channel_name, duration_seconds, thumbnail_path)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                    params![t_id, v_id, title, artist, ch, dur, thumb],
-                );
-                let _ = conn.execute(
-                    "INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position)
-                     VALUES (?1, ?2, ?3)",
-                    params![default_pl_id, t_id, pos as i64],
-                );
-            }
-        }
+        // Limpeza defensiva da antiga playlist mock default 'a0000000-0000-4000-8000-000000000001' se ela não tiver user_id associado
+        let _ = conn.execute(
+            "DELETE FROM playlists WHERE id = 'a0000000-0000-4000-8000-000000000001' AND (user_id IS NULL OR user_id = '' OR user_id = 'guest-local-user');",
+            [],
+        );
+        let _ = conn.execute(
+            "DELETE FROM playlist_tracks WHERE playlist_id = 'a0000000-0000-4000-8000-000000000001';",
+            [],
+        );
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -394,12 +382,13 @@ impl Database {
                         COUNT(pt.track_id) as track_count,
                         COALESCE(SUM(t.duration_seconds), 0) as total_duration,
                         p.user_id, p.owner_name, p.owner_username, COALESCE(p.visibility, 'public'),
-                        COALESCE(p.is_followed, 0), COALESCE(p.play_count, 0), p.owner_avatar_url
+                        COALESCE(p.is_followed, 0), COALESCE(p.play_count, 0), p.owner_avatar_url,
+                        COALESCE(p.is_pinned, 0), COALESCE(p.custom_order, 0)
                  FROM playlists p
                  LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id
                  LEFT JOIN tracks t ON pt.track_id = t.id
                  GROUP BY p.id
-                 ORDER BY p.created_at DESC"
+                 ORDER BY p.is_pinned DESC, p.custom_order ASC, p.created_at DESC"
             )
             .map_err(|e| e.to_string())?;
 
@@ -407,6 +396,8 @@ impl Database {
             .query_map([], |row| {
                 let cover: Option<String> = row.get(3)?;
                 let is_followed_num: i64 = row.get(12).unwrap_or(0);
+                let is_pinned_num: i64 = row.get(15).unwrap_or(0);
+                let custom_order_num: i64 = row.get(16).unwrap_or(0);
                 Ok(PlaylistDTO {
                     id: row.get(0)?,
                     name: row.get(1)?,
@@ -423,6 +414,8 @@ impl Database {
                     is_followed: is_followed_num == 1,
                     play_count: row.get(13).unwrap_or(0),
                     owner_avatar_url: row.get(14).ok(),
+                    is_pinned: is_pinned_num == 1,
+                    custom_order: custom_order_num,
                 })
             })
             .map_err(|e| e.to_string())?;
@@ -454,8 +447,8 @@ impl Database {
         let final_cover = cover_image.unwrap_or(fallback_cover);
 
         conn.execute(
-            "INSERT INTO playlists (id, name, description, cover_image_path, user_id, owner_name, owner_username, visibility, is_followed, play_count, owner_avatar_url)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 0, ?9)",
+            "INSERT INTO playlists (id, name, description, cover_image_path, user_id, owner_name, owner_username, visibility, is_followed, play_count, owner_avatar_url, is_pinned, custom_order)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 0, ?9, 0, 0)",
             params![id, name, description, final_cover, user_id, owner_name, owner_username, visibility.unwrap_or("public"), owner_avatar_url],
         ).map_err(|e| e.to_string())?;
 
@@ -475,6 +468,8 @@ impl Database {
             is_followed: false,
             play_count: 0,
             owner_avatar_url: owner_avatar_url.map(|s| s.to_string()),
+            is_pinned: false,
+            custom_order: 0,
         })
     }
 
@@ -493,6 +488,29 @@ impl Database {
         conn.execute("UPDATE playlists SET is_followed = ?1 WHERE id = ?2", params![val, id])
             .map_err(|e| e.to_string())?;
         Ok(follow)
+    }
+
+    /// Alterna status de playlist fixada no topo (is_pinned)
+    pub fn toggle_pin_playlist(&self, id: &str, is_pinned: bool) -> Result<bool, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let val = if is_pinned { 1 } else { 0 };
+        conn.execute(
+            "UPDATE playlists SET is_pinned = ?1 WHERE id = ?2 OR id = ('pl-' || ?2) OR ('pl-' || id) = ?2",
+            params![val, id],
+        ).map_err(|e| e.to_string())?;
+        Ok(is_pinned)
+    }
+
+    /// Salva a ordenação personalizada das playlists (Drag & Drop)
+    pub fn save_playlist_order(&self, playlist_ids: &[String]) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        for (idx, id) in playlist_ids.iter().enumerate() {
+            let _ = conn.execute(
+                "UPDATE playlists SET custom_order = ?1 WHERE id = ?2 OR id = ('pl-' || ?2) OR ('pl-' || id) = ?2",
+                params![idx as i64, id],
+            );
+        }
+        Ok(())
     }
 
     /// Incrementa atômico do contador de plays de uma playlist
@@ -520,16 +538,26 @@ impl Database {
     ) -> Result<PlaylistDTO, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
 
-        if let Some(cover) = cover_image {
+        let rows_affected = if let Some(cover) = cover_image {
             conn.execute(
-                "UPDATE playlists SET name = ?1, description = ?2, cover_image_path = ?3 WHERE id = ?4",
+                "UPDATE playlists SET name = ?1, description = ?2, cover_image_path = ?3 
+                 WHERE id = ?4 OR id = ('pl-' || ?4) OR ('pl-' || id) = ?4",
                 params![name, description, cover, id],
-            ).map_err(|e| e.to_string())?;
+            ).unwrap_or(0)
         } else {
             conn.execute(
-                "UPDATE playlists SET name = ?1, description = ?2 WHERE id = ?3",
+                "UPDATE playlists SET name = ?1, description = ?2 
+                 WHERE id = ?3 OR id = ('pl-' || ?3) OR ('pl-' || id) = ?3",
                 params![name, description, id],
-            ).map_err(|e| e.to_string())?;
+            ).unwrap_or(0)
+        };
+
+        if rows_affected == 0 {
+            let cover_path = cover_image.unwrap_or("");
+            let _ = conn.execute(
+                "INSERT OR REPLACE INTO playlists (id, name, description, cover_image_path) VALUES (?1, ?2, ?3, ?4)",
+                params![id, name, description, cover_path],
+            );
         }
 
         let pl = conn.query_row(
@@ -537,16 +565,19 @@ impl Database {
                     COUNT(pt.track_id) as track_count,
                     COALESCE(SUM(t.duration_seconds), 0) as total_duration,
                     p.user_id, p.owner_name, p.owner_username, COALESCE(p.visibility, 'public'),
-                    COALESCE(p.is_followed, 0), COALESCE(p.play_count, 0), p.owner_avatar_url
+                    COALESCE(p.is_followed, 0), COALESCE(p.play_count, 0), p.owner_avatar_url,
+                    COALESCE(p.is_pinned, 0), COALESCE(p.custom_order, 0)
              FROM playlists p
              LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id
              LEFT JOIN tracks t ON pt.track_id = t.id
-             WHERE p.id = ?1
+             WHERE p.id = ?1 OR p.id = ('pl-' || ?1) OR ('pl-' || p.id) = ?1
              GROUP BY p.id",
             params![id],
             |row| {
                 let cover: Option<String> = row.get(3)?;
                 let is_followed_num: i64 = row.get(12).unwrap_or(0);
+                let is_pinned_num: i64 = row.get(15).unwrap_or(0);
+                let custom_order_num: i64 = row.get(16).unwrap_or(0);
                 Ok(PlaylistDTO {
                     id: row.get(0)?,
                     name: row.get(1)?,
@@ -563,6 +594,8 @@ impl Database {
                     is_followed: is_followed_num == 1,
                     play_count: row.get(13).unwrap_or(0),
                     owner_avatar_url: row.get(14).ok(),
+                    is_pinned: is_pinned_num == 1,
+                    custom_order: custom_order_num,
                 })
             },
         ).map_err(|e| e.to_string())?;
@@ -574,8 +607,8 @@ impl Database {
     pub fn upsert_playlist(&self, pl: &PlaylistDTO) -> Result<PlaylistDTO, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         conn.execute(
-            "INSERT INTO playlists (id, name, description, cover_image_path, created_at, is_imported_youtube_playlist, user_id, owner_name, owner_username, visibility, is_followed, play_count, owner_avatar_url)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+            "INSERT INTO playlists (id, name, description, cover_image_path, created_at, is_imported_youtube_playlist, user_id, owner_name, owner_username, visibility, is_followed, play_count, owner_avatar_url, is_pinned, custom_order)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
              ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 description = excluded.description,
@@ -587,7 +620,8 @@ impl Database {
                 visibility = COALESCE(excluded.visibility, playlists.visibility),
                 is_followed = excluded.is_followed,
                 play_count = MAX(excluded.play_count, playlists.play_count),
-                owner_avatar_url = COALESCE(excluded.owner_avatar_url, playlists.owner_avatar_url)",
+                owner_avatar_url = COALESCE(excluded.owner_avatar_url, playlists.owner_avatar_url),
+                is_pinned = excluded.is_pinned",
             params![
                 pl.id,
                 pl.name,
@@ -601,7 +635,9 @@ impl Database {
                 pl.visibility.as_deref().unwrap_or("public"),
                 if pl.is_followed { 1 } else { 0 },
                 pl.play_count,
-                pl.owner_avatar_url
+                pl.owner_avatar_url,
+                if pl.is_pinned { 1 } else { 0 },
+                pl.custom_order
             ],
         ).map_err(|e| e.to_string())?;
         Ok(pl.clone())
@@ -657,44 +693,90 @@ impl Database {
         Ok(())
     }
 
+    /// Define estado de favorito (adicionar ou remover) com resolução ultra-segura de ID e chaves estrangeiras
+    pub fn set_favorite(&self, track_id: &str, track: Option<&TrackDTO>, is_favorite: bool) -> Result<bool, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+
+        // 1. Resolver o ID canônico existente na tabela tracks
+        let resolved_id = if let Ok(id) = conn.query_row(
+            "SELECT id FROM tracks WHERE id = ?1",
+            params![track_id],
+            |row| row.get::<_, String>(0),
+        ) {
+            id
+        } else if let Some(t) = track {
+            // Se não encontrou pelo ID fornecido, verifica se já existe pelo youtube_video_id
+            if let Ok(id) = conn.query_row(
+                "SELECT id FROM tracks WHERE youtube_video_id = ?1",
+                params![t.youtube_video_id],
+                |row| row.get::<_, String>(0),
+            ) {
+                id
+            } else {
+                // Inserir a faixa completa
+                let _ = conn.execute(
+                    "INSERT INTO tracks (id, youtube_video_id, title, artist_guess, channel_name, duration_seconds, thumbnail_path)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                     ON CONFLICT(youtube_video_id) DO NOTHING",
+                    params![
+                        t.id,
+                        t.youtube_video_id,
+                        t.title,
+                        t.artist_guess,
+                        t.channel_name,
+                        t.duration_seconds,
+                        t.thumbnail_url
+                    ],
+                );
+                // Retorna o id gravado
+                conn.query_row(
+                    "SELECT id FROM tracks WHERE youtube_video_id = ?1",
+                    params![t.youtube_video_id],
+                    |row| row.get::<_, String>(0),
+                ).unwrap_or_else(|_| track_id.to_string())
+            }
+        } else {
+            // Se não foi passado TrackDTO, verifica se track_id é na verdade um youtube_video_id
+            if let Ok(id) = conn.query_row(
+                "SELECT id FROM tracks WHERE youtube_video_id = ?1",
+                params![track_id],
+                |row| row.get::<_, String>(0),
+            ) {
+                id
+            } else {
+                // Insere registro defensivo básico para satisfazer a chave estrangeira
+                let _ = conn.execute(
+                    "INSERT OR IGNORE INTO tracks (id, youtube_video_id, title) VALUES (?1, ?1, 'Faixa')",
+                    params![track_id],
+                );
+                track_id.to_string()
+            }
+        };
+
+        if is_favorite {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO favorites (track_id) VALUES (?1)",
+                params![resolved_id],
+            );
+            Ok(true)
+        } else {
+            let _ = conn.execute(
+                "DELETE FROM favorites WHERE track_id = ?1 OR track_id = ?2",
+                params![resolved_id, track_id],
+            );
+            Ok(false)
+        }
+    }
+
     /// Alterna estado de favorito de uma faixa garantindo integridade
     pub fn toggle_favorite(&self, track_id: &str, track: Option<&TrackDTO>) -> Result<bool, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let exists: i64 = conn
             .query_row("SELECT COUNT(*) FROM favorites WHERE track_id = ?1", params![track_id], |row| row.get(0))
             .unwrap_or(0);
-
-        if exists > 0 {
-            conn.execute("DELETE FROM favorites WHERE track_id = ?1", params![track_id]).map_err(|e| e.to_string())?;
-            Ok(false)
-        } else {
-            // Garantir que a faixa exista em tracks antes de inserir em favorites
-            let track_exists: i64 = conn
-                .query_row("SELECT COUNT(*) FROM tracks WHERE id = ?1", params![track_id], |row| row.get(0))
-                .unwrap_or(0);
-
-            if track_exists == 0 {
-                if let Some(t) = track {
-                    let _ = conn.execute(
-                        "INSERT INTO tracks (id, youtube_video_id, title, artist_guess, channel_name, duration_seconds, thumbnail_path)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-                         ON CONFLICT(youtube_video_id) DO NOTHING",
-                        params![
-                            t.id,
-                            t.youtube_video_id,
-                            t.title,
-                            t.artist_guess,
-                            t.channel_name,
-                            t.duration_seconds,
-                            t.thumbnail_url
-                        ],
-                    );
-                }
-            }
-
-            conn.execute("INSERT OR IGNORE INTO favorites (track_id) VALUES (?1)", params![track_id]).map_err(|e| e.to_string())?;
-            Ok(true)
-        }
+        let should_fav = exists == 0;
+        drop(conn);
+        self.set_favorite(track_id, track, should_fav)
     }
 
     /// Retorna todas as faixas favoritas completas ordenadas pelas mais recentes
@@ -772,6 +854,23 @@ impl Database {
             _ => None,
         };
 
+        // Se current_playlist_id foi passado, verificar se a playlist realmente existe em playlists local
+        let safe_playlist_id = match &state.current_playlist_id {
+            Some(pid) if !pid.is_empty() => {
+                let exists: bool = conn.query_row(
+                    "SELECT 1 FROM playlists WHERE id = ?1 OR id = ('pl-' || ?1) OR ('pl-' || id) = ?1",
+                    params![pid],
+                    |_| Ok(true)
+                ).unwrap_or(false);
+                if exists {
+                    Some(pid.clone())
+                } else {
+                    None
+                }
+            },
+            _ => None,
+        };
+
         conn.execute(
             "UPDATE playback_state SET
                 current_track_id = ?1,
@@ -784,7 +883,7 @@ impl Database {
              WHERE singleton_id = 1",
             params![
                 safe_track_id,
-                state.current_playlist_id,
+                safe_playlist_id,
                 state.position_seconds,
                 state.volume,
                 state.shuffle,
@@ -900,7 +999,5 @@ impl Database {
 }
 
 fn chrono_now() -> String {
-    let now = std::time::SystemTime::now();
-    let duration = now.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
-    format!("timestamp-{}", duration.as_secs())
+    chrono::Utc::now().to_rfc3339()
 }

@@ -1,8 +1,8 @@
 {
-  "version": "0.2.7",
-  "name": "Pulsar v0.2.7",
-  "url": "https://www.dropbox.com/scl/fi/ls78qz4vki0phy47yvmby/Pulsar_0.2.7_x64-setup.exe?rlkey=8fj84e45bwboni5gmjxv0yz5p&st=tpjs0cd8&dl=1",
-  "notes": "### Novidades do Pulsar v0.2.7!\n\n- **Central de Notificações em Tempo Real:** Novo ícone de sino no topo com badge numérico de não lidas e painel Liquid Glass com alertas de novos seguidores, curtidas em playlists e mensagens.\n- **Social Follow & Amizades Pendentes:** Ao seguir outro usuário, ele recebe notificação instantânea e uma solicitação de amizade pendente é criada automaticamente.\n- **Fix Definitivo de Overlap na Biblioteca:** Renderização progressiva com alta performance a 60 FPS e separação em 3 abas estruturadas (Visão Geral, Playlists e Músicas).\n- **SplashScreen Respirável em 2 Etapas:** Nova abertura calma com 5s apresentando Pulsar e 'Created by' Lumia e VICCS.\n- **Inicialização com o Sistema:** Opção nativa nas Configurações para abrir o Pulsar junto com o Windows por padrão.\n- **Created by Lumia & VICCS:** Assinatura institucional adicionada com destaque no rodapé das Configurações.",
-  "pub_date": "2026-09-29T19:30:00Z",
+  "version": "0.2.8",
+  "name": "Pulsar v0.2.8",
+  "url": "https://www.dropbox.com/scl/fi/ls78qz4vki0phy47yvmby/Pulsar_0.2.8_x64-setup.exe?rlkey=8fj84e45bwboni5gmjxv0yz5p&st=tpjs0cd8&dl=1",
+  "notes": "### Novidades do Pulsar v0.2.8!\n\n- **Playlists Seguidas Reais e Sincronizadas:** Integração completa com o Supabase (tabela playlist_follows) e persistência no SQLite local. Playlists seguidas agora aparecem na Barra Lateral, na página 'Sua Biblioteca' e com dados reais na aba de Perfil.\n- **Transições Suaves e Pré-Buffer Cache:** Novo motor de pré-buffer inteligente que pré-carrega a próxima faixa em segundo plano antes da faixa atual acabar, eliminando o delay entre músicas.\n- **Redesign Minimalista do Sync:** Remoção do texto 'SYNC' e adoção de micro-spinner discreto no player dock.\n- **Clean Slate Onboarding:** Contas novas não possuem mais playlists pré-criadas, iniciando com uma biblioteca pessoal 100% limpa.\n- **Desacoplamento de Perfis:** Correção definitiva no retorno para o 'Meu Perfil', eliminando o cache preso após visitar outros perfis.\n- **Notificações Sociais:** Notificações em tempo real quando você for seguido por outro usuário ou tiver suas playlists favoritadas.",
+  "pub_date": "2026-09-29T22:10:00Z",
   "mandatory": false
 }

@@ -4,71 +4,61 @@ import { currentProfile } from './authStore';
 import { getSupabase } from '../api/supabase';
 import type { Track, Playlist, ActiveView, PlaylistVisibility } from '../types';
 
-const INITIAL_TRACKS: Track[] = [
-  {
-    id: 'b0000000-0000-4000-8000-000000000001',
-    youtube_video_id: 'jfKfPfyJRdk',
-    title: 'Lofi Hip Hop Radio - Beats to Relax/Study to',
-    artist_guess: 'Lofi Girl',
-    channel_name: 'Lofi Girl',
-    duration_seconds: 245,
-    thumbnail_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80',
-    added_at: '2026-09-10',
-    stream_url: 'http://127.0.0.1:41235/stream/jfKfPfyJRdk'
-  },
-  {
-    id: 'b0000000-0000-4000-8000-000000000002',
-    youtube_video_id: '5qap5aO4i9A',
-    title: 'Midnight City (Synthwave Drive)',
-    artist_guess: 'Neon Sunset',
-    channel_name: 'RetroWaves FM',
-    duration_seconds: 284,
-    thumbnail_url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&auto=format&fit=crop&q=80',
-    added_at: '2026-09-09',
-    stream_url: 'http://127.0.0.1:41235/stream/5qap5aO4i9A'
-  },
-  {
-    id: 'b0000000-0000-4000-8000-000000000003',
-    youtube_video_id: 'DWcJFNfaw9C',
-    title: 'Deep Focus Ambient Sessions',
-    artist_guess: 'Aura Sound',
-    channel_name: 'Mind & Code',
-    duration_seconds: 360,
-    thumbnail_url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
-    added_at: '2026-09-08',
-    stream_url: 'http://127.0.0.1:41235/stream/DWcJFNfaw9C'
-  }
-];
+const INITIAL_TRACKS: Track[] = [];
 
-const INITIAL_PLAYLISTS: Playlist[] = [
-  {
-    id: 'a0000000-0000-4000-8000-000000000001',
-    name: 'Vibe Coding & Focus',
-    description: 'Batidas imersivas para programar no fluxo contínuo sem distrações.',
-    cover_image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
-    created_at: '2026-09-01',
-    is_imported_youtube_playlist: true,
-    source_youtube_playlist_id: 'PL-flow-01',
-    track_count: 3,
-    total_duration_seconds: 889,
-    visibility: 'public'
-  }
-];
+const INITIAL_PLAYLISTS: Playlist[] = [];
 
 export const allTracks = writable<Track[]>(INITIAL_TRACKS);
 export const playlists = writable<Playlist[]>(INITIAL_PLAYLISTS);
 
+function loadPinnedSet(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem('pulsar_pinned_playlists');
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function loadPlaylistOrder(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('pulsar_playlist_order');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const pinnedPlaylistIds = writable<Set<string>>(loadPinnedSet());
+export const playlistOrder = writable<string[]>(loadPlaylistOrder());
+
+export function parsePlaylistTime(timeStr?: string | null): number {
+  if (!timeStr) return 0;
+  if (timeStr.startsWith('timestamp-')) {
+    const secs = parseInt(timeStr.replace('timestamp-', ''), 10);
+    return isNaN(secs) ? 0 : secs * 1000;
+  }
+  const ms = new Date(timeStr).getTime();
+  return isNaN(ms) ? 0 : ms;
+}
+
 // Playlists da biblioteca do usuário ativo (criadas por ele ou seguidas, isolando outras contas)
+// 1. Playlists fixadas (is_pinned) SEMPRE no topo absoluto!
+// 2. Playlists novas ou seguidas recentemente no topo das não-fixadas.
+// 3. Ordem manual (Drag & Drop) preservada.
 export const userLibraryPlaylists = derived(
-  [playlists, currentProfile],
-  ([$playlists, $profile]) => {
+  [playlists, currentProfile, pinnedPlaylistIds, playlistOrder],
+  ([$playlists, $profile, $pinnedIds, $order]) => {
     const isGuest = !$profile || $profile.id.startsWith('guest');
-    return $playlists.filter(pl => {
+    const filtered = $playlists.filter(pl => {
+      // Ignora a playlist legada mock caso ainda resida em algum cache local
+      if (pl.id === 'a0000000-0000-4000-8000-000000000001') return false;
       // 1. Usuário logado
       if (!isGuest && $profile) {
         if (pl.user_id && pl.user_id === $profile.id) return true;
         if (pl.is_followed) return true;
-        if (!pl.user_id && pl.id.startsWith('a0000000')) return true;
         return false;
       }
       // 2. Convidado / offline
@@ -76,10 +66,38 @@ export const userLibraryPlaylists = derived(
       if (pl.is_followed) return true;
       return false;
     });
+
+    const withPin = filtered.map(p => ({
+      ...p,
+      is_pinned: $pinnedIds.has(p.id)
+    }));
+
+    const pinned = withPin.filter(p => p.is_pinned);
+    const unpinned = withPin.filter(p => !p.is_pinned);
+
+    const sortGroup = (group: Playlist[]) => {
+      const getPlaylistTime = (p: Playlist) => {
+        return parsePlaylistTime(p.followed_at || p.created_at);
+      };
+
+      if (!$order || $order.length === 0) {
+        return [...group].sort((a, b) => getPlaylistTime(b) - getPlaylistTime(a));
+      }
+      return [...group].sort((a, b) => {
+        const idxA = $order.indexOf(a.id);
+        const idxB = $order.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA === -1 && idxB !== -1) return -1;
+        if (idxA !== -1 && idxB === -1) return 1;
+        return getPlaylistTime(b) - getPlaylistTime(a);
+      });
+    };
+
+    return [...sortGroup(pinned), ...sortGroup(unpinned)];
   }
 );
 
-export const favoriteTrackIds = writable<Set<string>>(new Set(['b0000000-0000-4000-8000-000000000001']));
+export const favoriteTrackIds = writable<Set<string>>(new Set());
 export const activeView = writable<ActiveView>('home');
 export const selectedPlaylist = writable<Playlist | null>(null);
 export const selectedPlaylistTracks = writable<Track[]>([]);
@@ -122,16 +140,24 @@ export const libraryActions = {
     try {
       const backendPlaylists = await safeInvoke<Playlist[]>('get_playlists');
       if (backendPlaylists && backendPlaylists.length > 0) {
-        // Recuperar capas salvas localmente se houver
+        const pinnedSet = get(pinnedPlaylistIds);
         const hydrated = backendPlaylists.map(p => {
+          const isPinned = pinnedSet.has(p.id) || Boolean(p.is_pinned);
+          if (isPinned && !pinnedSet.has(p.id)) {
+            pinnedSet.add(p.id);
+          }
           try {
             const localCover = localStorage.getItem(`pulsar_cover_${p.id}`);
             if (localCover) {
-              return { ...p, cover_image: localCover };
+              return { ...p, is_pinned: isPinned, cover_image: localCover };
             }
           } catch {}
-          return p;
+          return { ...p, is_pinned: isPinned };
         });
+        pinnedPlaylistIds.set(pinnedSet);
+        try {
+          localStorage.setItem('pulsar_pinned_playlists', JSON.stringify(Array.from(pinnedSet)));
+        } catch {}
         playlists.set(hydrated);
       }
     } catch (e) {
@@ -338,9 +364,16 @@ export const libraryActions = {
         owner_username: ownerUsername,
         owner_avatar_url: ownerAvatarUrl,
         is_followed: false,
-        play_count: 0
+        play_count: 0,
+        is_pinned: false
       };
       playlists.update(list => [fullPlaylist, ...list]);
+      playlistOrder.update(order => [fullPlaylist.id, ...order.filter(id => id !== fullPlaylist.id)]);
+      try {
+        localStorage.setItem('pulsar_playlist_order', JSON.stringify(get(playlistOrder)));
+      } catch {}
+
+      console.log(`[Frontend] [Playlist] Nova playlist criada: "${fullPlaylist.name}" (${fullPlaylist.id}) posicionada no topo.`);
 
       import('../services/syncEngine').then(({ syncEngine }) => {
         syncEngine.pushPlaylist(fullPlaylist);
@@ -354,7 +387,7 @@ export const libraryActions = {
         name,
         description,
         cover_image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80',
-        created_at: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString(),
         is_imported_youtube_playlist: false,
         track_count: 0,
         total_duration_seconds: 0,
@@ -363,9 +396,16 @@ export const libraryActions = {
         owner_name: ownerName,
         owner_username: ownerUsername,
         is_followed: false,
-        play_count: 0
+        play_count: 0,
+        is_pinned: false
       };
       playlists.update(list => [fallback, ...list]);
+      playlistOrder.update(order => [fallback.id, ...order.filter(id => id !== fallback.id)]);
+      try {
+        localStorage.setItem('pulsar_playlist_order', JSON.stringify(get(playlistOrder)));
+      } catch {}
+
+      console.log(`[Frontend] [Playlist] Fallback: Nova playlist criada: "${fallback.name}" (${fallback.id}) posicionada no topo.`);
 
       import('../services/syncEngine').then(({ syncEngine }) => {
         syncEngine.pushPlaylist(fallback);
@@ -379,30 +419,204 @@ export const libraryActions = {
     const pl = get(playlists).find(p => p.id === playlistId) || get(selectedPlaylist);
     if (!pl) return;
     const nextVal = !pl.is_followed;
+    const nowIso = new Date().toISOString();
+    const updatedPl: Playlist = { 
+      ...pl, 
+      is_followed: nextVal,
+      followed_at: nextVal ? nowIso : undefined
+    };
 
-    playlists.update(list => list.map(p => {
-      if (p.id === playlistId) {
-        return { ...p, is_followed: nextVal };
+    if (nextVal) {
+      // Playlist seguida recentemente vai para o topo absoluto da ordem imediatamente
+      playlistOrder.update(order => [playlistId, ...order.filter(id => id !== playlistId)]);
+      try {
+        localStorage.setItem('pulsar_playlist_order', JSON.stringify(get(playlistOrder)));
+      } catch {}
+    }
+
+    console.log(`[Frontend] [PlaylistFollow] Playlist ${playlistId} follow alternado para: ${nextVal}. Topo: ${nextVal}`);
+
+    // 1. Atualizar a store playlists garantindo que fique no topo da lista local!
+    playlists.update(list => {
+      const remaining = list.filter(p => p.id !== playlistId);
+      if (nextVal) {
+        // Se seguiu, coloca no TOPO da lista de playlists!
+        return [updatedPl, ...remaining];
+      } else {
+        // Se for playlist de terceiro e deixou de seguir, remove da biblioteca local
+        if (pl.user_id && pl.user_id !== get(currentProfile)?.id) {
+          return remaining;
+        }
+        return [updatedPl, ...remaining];
       }
-      return p;
-    }));
+    });
 
+    // 2. Atualizar a visualização detalhada atual
     selectedPlaylist.update(curr => {
       if (curr && curr.id === playlistId) {
-        return { ...curr, is_followed: nextVal };
+        return updatedPl;
       }
       return curr;
     });
 
+    // 3. Persistir no SQLite local nativo
     try {
-      await safeInvoke('toggle_follow_playlist', { playlistId, follow: nextVal });
+      if (nextVal) {
+        await safeInvoke('upsert_playlist', { playlist: updatedPl });
+        const selTracks = get(selectedPlaylistTracks);
+        if (selTracks && selTracks.length > 0) {
+          const trackIds: string[] = [];
+          for (const t of selTracks) {
+            const saved = await safeInvoke<any>('save_track_direct', { track: t }).catch(() => null);
+            trackIds.push(saved?.id || t.id);
+          }
+          await safeInvoke('set_playlist_tracks', { playlistId, trackIds }).catch(() => {});
+        }
+      } else {
+        await safeInvoke('toggle_follow_playlist', { playlistId, follow: false });
+      }
     } catch (e) {
       console.warn('[Pulsar DB] Erro ao alternar follow da playlist localmente:', e);
     }
 
+    // 4. Sincronizar com o Supabase (gravar em playlist_follows e notificar criador)
     import('../services/syncEngine').then(({ syncEngine }) => {
       syncEngine.toggleFollowPlaylist(playlistId, nextVal);
     });
+  },
+
+  async togglePinPlaylist(playlistId: string, forceState?: boolean): Promise<boolean> {
+    if (!playlistId) return false;
+    let nextState = false;
+
+    // 1. Atualizar pinnedPlaylistIds store e localStorage
+    pinnedPlaylistIds.update(set => {
+      const copy = new Set(set);
+      if (forceState !== undefined) {
+        nextState = forceState;
+      } else {
+        nextState = !copy.has(playlistId);
+      }
+      if (nextState) {
+        copy.add(playlistId);
+      } else {
+        copy.delete(playlistId);
+      }
+      try {
+        localStorage.setItem('pulsar_pinned_playlists', JSON.stringify(Array.from(copy)));
+      } catch {}
+      return copy;
+    });
+
+    // 2. Atualizar store playlists
+    playlists.update(list => list.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, is_pinned: nextState };
+      }
+      return p;
+    }));
+
+    // 3. Atualizar selectedPlaylist se for a playlist em foco
+    selectedPlaylist.update(curr => {
+      if (curr && curr.id === playlistId) {
+        return { ...curr, is_pinned: nextState };
+      }
+      return curr;
+    });
+
+    // 4. Se fixada, promove imediatamente para o topo absoluto da ordem
+    if (nextState) {
+      playlistOrder.update(order => [playlistId, ...order.filter(id => id !== playlistId)]);
+      try {
+        localStorage.setItem('pulsar_playlist_order', JSON.stringify(get(playlistOrder)));
+      } catch {}
+    }
+
+    console.log(`[Frontend] [PlaylistPin] Playlist ${playlistId} agora está: ${nextState ? 'FIXADA NO TOPO' : 'DESAFIXADA'}`);
+
+    // 5. Se for playlist externa que ainda não era seguida e foi fixada, segue automaticamente
+    const pl = get(playlists).find(p => p.id === playlistId);
+    const prof = get(currentProfile);
+    if (nextState && pl && pl.user_id && pl.user_id !== prof?.id && !pl.is_followed) {
+      await this.toggleFollowPlaylist(playlistId);
+    }
+
+    // 6. Persistir no SQLite local nativo
+    try {
+      await safeInvoke('toggle_pin_playlist', { 
+        playlistId, 
+        playlist_id: playlistId, 
+        isPinned: nextState, 
+        is_pinned: nextState 
+      });
+    } catch (e) {
+      console.warn('[Pulsar DB] Erro ao salvar status de pin no SQLite:', e);
+    }
+
+    return nextState;
+  },
+
+  async reorderPlaylists(orderedIds: string[]) {
+    if (!orderedIds || orderedIds.length === 0) return;
+
+    // 1. Atualizar store playlistOrder e localStorage
+    playlistOrder.set(orderedIds);
+    try {
+      localStorage.setItem('pulsar_playlist_order', JSON.stringify(orderedIds));
+    } catch {}
+
+    // 2. Reordenar a store playlists mantendo a consistência
+    playlists.update(list => {
+      const map = new Map(list.map(p => [p.id, p]));
+      const reordered: Playlist[] = [];
+      for (const id of orderedIds) {
+        const item = map.get(id);
+        if (item) {
+          reordered.push(item);
+          map.delete(id);
+        }
+      }
+      for (const remaining of map.values()) {
+        reordered.push(remaining);
+      }
+      return reordered;
+    });
+
+    console.log(`[Frontend] [PlaylistOrder] Nova ordem definida com ${orderedIds.length} playlists. Topo: ${orderedIds[0]}`);
+
+    // 3. Persistir nova ordem no SQLite nativo
+    try {
+      await safeInvoke('save_playlist_order', { 
+        playlistIds: orderedIds, 
+        playlist_ids: orderedIds 
+      });
+    } catch (e) {
+      console.warn('[Pulsar DB] Erro ao salvar ordem de playlists no SQLite:', e);
+    }
+  },
+
+  async movePlaylistUp(playlistId: string) {
+    const list = get(userLibraryPlaylists);
+    const ids = list.map(p => p.id);
+    const idx = ids.indexOf(playlistId);
+    if (idx <= 0) return;
+    const temp = ids[idx];
+    ids[idx] = ids[idx - 1];
+    ids[idx - 1] = temp;
+    console.log(`[Frontend] [PlaylistOrder] Movendo playlist ${playlistId} uma posição acima.`);
+    await this.reorderPlaylists(ids);
+  },
+
+  async movePlaylistDown(playlistId: string) {
+    const list = get(userLibraryPlaylists);
+    const ids = list.map(p => p.id);
+    const idx = ids.indexOf(playlistId);
+    if (idx === -1 || idx >= ids.length - 1) return;
+    const temp = ids[idx];
+    ids[idx] = ids[idx + 1];
+    ids[idx + 1] = temp;
+    console.log(`[Frontend] [PlaylistOrder] Movendo playlist ${playlistId} uma posição abaixo.`);
+    await this.reorderPlaylists(ids);
   },
 
   async recordPlaylistPlay(playlistId: string) {

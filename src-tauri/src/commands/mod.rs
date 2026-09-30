@@ -47,6 +47,41 @@ pub async fn resolve_track(
 }
 
 #[tauri::command]
+pub async fn precache_track(
+    video_id: String,
+    stream_state: State<'_, StreamState>,
+) -> Result<bool, String> {
+    let clean_id = video_id.trim();
+    if clean_id.is_empty() {
+        return Ok(false);
+    }
+
+    let cached_file = stream_state.cache_dir.join(format!("{}.m4a", clean_id));
+    if cached_file.exists() || stream_state.get_url(clean_id).is_some() {
+        return Ok(true);
+    }
+
+    crate::logger::log_info(&format!("[Pulsar Pre-Buffer-Cache] Pré-resolvendo vídeo {}...", clean_id));
+
+    let state_clone = (*stream_state).clone();
+    let vid = clean_id.to_string();
+    tokio::spawn(async move {
+        match YouTubeSidecar::get_direct_stream_url(&vid).await {
+            Ok(url) => {
+                state_clone.register_url(vid.clone(), url.clone());
+                crate::logger::log_info(&format!("[Pulsar Pre-Buffer-Cache] Stream pré-aquecido com sucesso para {}", vid));
+                let _ = state_clone.http_client.get(&url).header("Range", "bytes=0-524288").send().await;
+            }
+            Err(e) => {
+                crate::logger::log_warn(&format!("[Pulsar Pre-Buffer-Cache] Falha ao pré-aquecer {}: {}", vid, e));
+            }
+        }
+    });
+
+    Ok(true)
+}
+
+#[tauri::command]
 pub async fn resolve_playlist(
     url: String,
     db: State<'_, Database>,
@@ -148,6 +183,23 @@ pub fn toggle_follow_playlist(
 }
 
 #[tauri::command]
+pub fn toggle_pin_playlist(
+    playlist_id: String,
+    is_pinned: bool,
+    db: State<'_, Database>,
+) -> Result<bool, String> {
+    db.toggle_pin_playlist(&playlist_id, is_pinned)
+}
+
+#[tauri::command]
+pub fn save_playlist_order(
+    playlist_ids: Vec<String>,
+    db: State<'_, Database>,
+) -> Result<(), String> {
+    db.save_playlist_order(&playlist_ids)
+}
+
+#[tauri::command]
 pub fn increment_playlist_play(
     playlist_id: String,
     db: State<'_, Database>,
@@ -173,6 +225,11 @@ pub fn remove_track_from_playlist(playlist_id: String, track_id: String, db: Sta
 #[tauri::command]
 pub fn toggle_favorite(track_id: String, track: Option<TrackDTO>, db: State<'_, Database>) -> Result<bool, String> {
     db.toggle_favorite(&track_id, track.as_ref())
+}
+
+#[tauri::command]
+pub fn set_favorite(track_id: String, track: Option<TrackDTO>, is_favorite: bool, db: State<'_, Database>) -> Result<bool, String> {
+    db.set_favorite(&track_id, track.as_ref(), is_favorite)
 }
 
 #[tauri::command]

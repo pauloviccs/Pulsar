@@ -47,6 +47,9 @@ export interface Playlist {
   is_followed?: boolean;
   play_count?: number;
   owner_avatar_url?: string;
+  is_pinned?: boolean;
+  custom_order?: number;
+  followed_at?: string;
 }
 
 export type RepeatMode = 'none' | 'one' | 'all';
@@ -83,6 +86,7 @@ export interface UserProfile {
   listening_artist?: string | null;
   current_track_title?: string | null;
   created_at: string;
+  updated_at?: string;
   followers_count?: number;
   following_count?: number;
   is_following?: boolean;
@@ -107,6 +111,7 @@ export interface Friendship {
   friend_id: string;
   status: FriendshipStatus;
   created_at: string;
+  updated_at?: string;
   friend_username: string;
   friend_tag: string;
   friend_display_name: string;
@@ -114,6 +119,7 @@ export interface Friendship {
   presence_status?: PresenceStatus;
   current_track_title?: string | null;
   friend_profile?: UserProfile;
+  followed_at?: string;
 }
 
 export interface ChatMessage {

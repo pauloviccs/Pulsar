@@ -17,7 +17,8 @@
     PictureInPicture2,
     Radio,
     Headphones,
-    Laptop
+    Laptop,
+    Loader2
   } from '@lucide/svelte';
   import { 
     currentTrack, 
@@ -36,6 +37,7 @@
     queue
   } from '../stores/playerStore';
   import { favoriteTrackIds, libraryActions } from '../stores/libraryStore';
+  import { cloudSyncState } from '../services/syncEngine';
   import { audioRouter } from '../audio/AudioRouter';
   import PulsarConnectModal from './PulsarConnectModal.svelte';
   import { t } from '../i18n';
@@ -217,6 +219,18 @@
 
     <!-- Direita: Volume & Ferramentas Táteis em Vidro com Tamanhos Padronizados -->
     <div class="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0 pl-1 sm:pl-3">
+      <!-- Indicador Sutil de Sincronização em Nuvem (Cloud Sync Spinner sem texto) -->
+      {#if $cloudSyncState === 'syncing'}
+        <div 
+          class="w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center rounded-xl lq-glass-pill text-[#3093AA] animate-fade-in shrink-0 shadow-sm"
+          title="Sincronizando biblioteca com a nuvem..."
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Loader2 class="w-3.5 h-3.5 text-[#3093AA] animate-spin" />
+        </div>
+      {/if}
+
       <!-- Toggle Vídeo (Tamanho Fixo sem Estufar) -->
       <button
         onclick={handleToggleVideo}
