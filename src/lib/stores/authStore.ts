@@ -8,7 +8,7 @@ export const userProfile = currentProfile; // Alias
 export const viewedProfile = writable<UserProfile | null>(null);
 export const isAuthModalOpen = writable<boolean>(false);
 export const isEditProfileModalOpen = writable<boolean>(false);
-export const authMode = writable<'login' | 'register' | 'forgot' | 'config'>('login');
+export const authMode = writable<'login' | 'register' | 'forgot' | 'config' | 'reset-confirm'>('login');
 export const isAuthLoading = writable<boolean>(false);
 export const authError = writable<string | null>(null);
 
@@ -64,8 +64,11 @@ function translateAuthError(err: any): string {
   if (msg.includes('Password should be at least')) {
     return 'A senha deve conter no mínimo 6 caracteres.';
   }
-  if (msg.includes('otp_expired') || msg.includes('has expired') || msg.includes('Email link is invalid')) {
-    return 'O link de confirmação expirou ou é inválido.';
+  if (msg.includes('otp_expired') || msg.includes('has expired') || msg.includes('Email link is invalid') || msg.includes('token has expired')) {
+    return 'O código ou link de recuperação expirou ou é inválido. Solicite um novo link.';
+  }
+  if (msg.includes('over_email_send_rate_limit') || msg.includes('after 20 seconds') || msg.includes('429')) {
+    return 'Por segurança, aguarde alguns instantes antes de solicitar outro e-mail de recuperação.';
   }
   return msg || 'Falha na autenticação.';
 }
@@ -167,7 +170,11 @@ export const authActions = {
 
       // Escutar mudanças de estado de autenticação (com trava contra duplo boot)
       supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session?.user) {
+        if (event === 'PASSWORD_RECOVERY') {
+          console.info('[Pulsar Auth] Evento de recuperação de senha disparado.');
+          authMode.set('reset-confirm');
+          isAuthModalOpen.set(true);
+        } else if (session?.user) {
           currentUser.set(session.user);
           await this.fetchProfile(session.user.id);
         } else {
@@ -365,6 +372,98 @@ export const authActions = {
       return { success: true };
     } catch (err: any) {
       return { success: false, error: translateAuthError(err) };
+    }
+  },
+
+  async resetPasswordForEmail(email: string) {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Supabase não configurado.');
+    isAuthLoading.set(true);
+    authError.set(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: 'http://localhost:41235/reset-password'
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      authError.set(translateAuthError(err));
+      throw err;
+    } finally {
+      isAuthLoading.set(false);
+    }
+  },
+
+  async verifyRecoveryOtp(email: string, token: string) {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Supabase não configurado.');
+    isAuthLoading.set(true);
+    authError.set(null);
+    try {
+      const cleanToken = token.trim();
+      let res;
+      if (cleanToken.includes('token=')) {
+        try {
+          const urlObj = new URL(cleanToken);
+          const tokenHash = urlObj.searchParams.get('token') || cleanToken;
+          res = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery'
+          });
+        } catch {
+          res = await supabase.auth.verifyOtp({
+            token_hash: cleanToken,
+            type: 'recovery'
+          });
+        }
+      } else if (cleanToken.includes('access_token=')) {
+        const hashPart = cleanToken.includes('#') ? cleanToken.split('#')[1] : cleanToken;
+        const params = new URLSearchParams(hashPart);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        if (access_token && refresh_token) {
+          res = await supabase.auth.setSession({ access_token, refresh_token });
+        } else {
+          throw new Error('Formato de link inválido.');
+        }
+      } else {
+        res = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token: cleanToken,
+          type: 'recovery'
+        });
+      }
+      if (res?.error) throw res.error;
+      return { success: true };
+    } catch (err: any) {
+      authError.set(translateAuthError(err));
+      throw err;
+    } finally {
+      isAuthLoading.set(false);
+    }
+  },
+
+  async updatePassword(newPassword: string) {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Supabase não configurado.');
+    isAuthLoading.set(true);
+    authError.set(null);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        currentUser.set(session.user);
+        await this.fetchProfile(session.user.id);
+      }
+      return { success: true };
+    } catch (err: any) {
+      authError.set(translateAuthError(err));
+      throw err;
+    } finally {
+      isAuthLoading.set(false);
     }
   },
 

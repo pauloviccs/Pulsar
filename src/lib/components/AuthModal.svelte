@@ -7,10 +7,10 @@
     KeyRound, 
     AlertCircle, 
     Check, 
-    Radio, 
     ArrowRight,
-    AtSign,
-    Hash
+    ArrowLeft,
+    Mail,
+    ShieldCheck
   } from '@lucide/svelte';
   import { 
     isAuthModalOpen, 
@@ -25,6 +25,10 @@
   let password = $state('');
   let username = $state('');
   let displayName = $state('');
+  let recoveryToken = $state('');
+  let newPassword = $state('');
+  let confirmPassword = $state('');
+  let recoveryStage = $state<'request' | 'confirm'>('request');
   let successMessage = $state<string | null>(null);
   let isCaptchaVerified = $state(false);
   let captchaToken = $state<string | null>(null);
@@ -35,6 +39,9 @@
       successMessage = null;
       isCaptchaVerified = false;
       captchaToken = null;
+      if ($authMode === 'reset-confirm') {
+        recoveryStage = 'confirm';
+      }
     }
   });
 
@@ -43,6 +50,10 @@
     const mode = $authMode;
     isCaptchaVerified = false;
     captchaToken = null;
+    authError.set(null);
+    if (mode === 'reset-confirm') {
+      recoveryStage = 'confirm';
+    }
   });
 
   async function handleSubmit(e: Event) {
@@ -72,12 +83,56 @@
         }
         await authActions.register(email, password, username, displayName || username);
       } else if ($authMode === 'forgot') {
-        if (!email.trim()) {
-          authError.set('Informe o e-mail cadastrado para redefinir a senha.');
+        if (recoveryStage === 'request') {
+          if (!email.trim()) {
+            authError.set('Informe o e-mail cadastrado para redefinir a senha.');
+            return;
+          }
+          await authActions.resetPasswordForEmail(email.trim());
+          successMessage = 'Link enviado! Verifique seu e-mail para abrir no navegador ou insira o código abaixo.';
+          recoveryStage = 'confirm';
+        } else {
+          // Confirmação com OTP ou link colado + nova senha
+          if (!recoveryToken.trim()) {
+            authError.set('Informe o código de 6 dígitos ou cole o link recebido por e-mail.');
+            return;
+          }
+          if (!newPassword || newPassword.length < 6) {
+            authError.set('A nova senha deve ter no mínimo 6 caracteres.');
+            return;
+          }
+          if (newPassword !== confirmPassword) {
+            authError.set('As senhas não coincidem.');
+            return;
+          }
+
+          await authActions.verifyRecoveryOtp(email.trim(), recoveryToken.trim());
+          await authActions.updatePassword(newPassword);
+          successMessage = 'Senha redefinida com sucesso! Redirecionando para o login...';
+          newPassword = '';
+          confirmPassword = '';
+          recoveryToken = '';
+          recoveryStage = 'request';
+          setTimeout(() => {
+            authMode.set('login');
+          }, 1500);
+        }
+      } else if ($authMode === 'reset-confirm') {
+        if (!newPassword || newPassword.length < 6) {
+          authError.set('A nova senha deve ter no mínimo 6 caracteres.');
           return;
         }
-        // Simulação / Feedback amigável de recuperação
-        successMessage = 'Se o e-mail estiver cadastrado, um link de recuperação foi enviado!';
+        if (newPassword !== confirmPassword) {
+          authError.set('As senhas não coincidem.');
+          return;
+        }
+        await authActions.updatePassword(newPassword);
+        successMessage = 'Senha atualizada com sucesso! Redirecionando para o login...';
+        newPassword = '';
+        confirmPassword = '';
+        setTimeout(() => {
+          authMode.set('login');
+        }, 1500);
       }
     } catch (err: any) {
       // Erro tratado pelo store
@@ -160,28 +215,45 @@
         </div>
       {/if}
 
-      <!-- Abas de Navegação (Entrar / Criar Conta / Config) -->
-      <div class="flex items-center p-1 rounded-2xl bg-white/[0.05] border border-white/[0.08] shrink-0">
-        <button
-          type="button"
-          onclick={() => { authMode.set('login'); authError.set(null); }}
-          class="flex-1 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 {$authMode === 'login' ? 'bg-white/[0.15] text-white shadow-sm' : 'text-white/50 hover:text-white'}"
-        >
-          <LogIn class="w-3.5 h-3.5" />
-          <span>Entrar</span>
-        </button>
+      <!-- Abas de Navegação (Entrar / Criar Conta / Recuperar) -->
+      {#if $authMode === 'forgot' || $authMode === 'reset-confirm'}
+        <div class="flex items-center justify-between p-1.5 rounded-2xl bg-white/[0.05] border border-white/[0.08] shrink-0">
+          <button
+            type="button"
+            onclick={() => { authMode.set('login'); authError.set(null); successMessage = null; recoveryStage = 'request'; }}
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/[0.08] transition cursor-pointer"
+          >
+            <ArrowLeft class="w-3.5 h-3.5" />
+            <span>Voltar ao Login</span>
+          </button>
+          <div class="flex items-center gap-1.5 text-xs font-bold text-[#EF7D4B] pr-2.5">
+            <KeyRound class="w-3.5 h-3.5" />
+            <span>Recuperar Senha</span>
+          </div>
+        </div>
+      {:else}
+        <div class="flex items-center p-1 rounded-2xl bg-white/[0.05] border border-white/[0.08] shrink-0">
+          <button
+            type="button"
+            onclick={() => { authMode.set('login'); authError.set(null); }}
+            class="flex-1 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 {$authMode === 'login' ? 'bg-white/[0.15] text-white shadow-sm' : 'text-white/50 hover:text-white'}"
+          >
+            <LogIn class="w-3.5 h-3.5" />
+            <span>Entrar</span>
+          </button>
 
-        <button
-          type="button"
-          onclick={() => { authMode.set('register'); authError.set(null); }}
-          class="flex-1 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 {$authMode === 'register' ? 'bg-white/[0.15] text-white shadow-sm' : 'text-white/50 hover:text-white'}"
-        >
-          <UserPlus class="w-3.5 h-3.5" />
-          <span>Criar Conta</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onclick={() => { authMode.set('register'); authError.set(null); }}
+            class="flex-1 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 {$authMode === 'register' ? 'bg-white/[0.15] text-white shadow-sm' : 'text-white/50 hover:text-white'}"
+          >
+            <UserPlus class="w-3.5 h-3.5" />
+            <span>Criar Conta</span>
+          </button>
+        </div>
+      {/if}
 
-      <!-- Formulário de Login / Cadastro com Scroll Interno -->
+      <!-- Formulário com Scroll Interno -->
       <form onsubmit={handleSubmit} class="flex-1 overflow-y-auto pr-1 flex flex-col gap-3">
           {#if $authMode === 'register'}
             <!-- Nome de Exibição & Nome de Usuário -->
@@ -220,28 +292,153 @@
             </p>
           {/if}
 
-          <!-- E-mail -->
-          <div class="flex flex-col gap-1">
-            <label for="auth-email" class="text-[11px] font-semibold text-white/70">E-mail</label>
-            <input
-              id="auth-email"
-              type="email"
-              bind:value={email}
-              placeholder="voce@exemplo.com"
-              required
-              class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
-            />
-          </div>
+          <!-- Modo Recuperação de Senha (Forgot) -->
+          {#if $authMode === 'forgot'}
+            {#if recoveryStage === 'request'}
+              <div class="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/70 leading-relaxed">
+                Digite seu e-mail cadastrado. Enviaremos um link de recuperação que abrirá no seu navegador (e servidor local do Pulsar) para redefinir sua senha com total segurança.
+              </div>
 
-          <!-- Senha -->
-          {#if $authMode !== 'forgot'}
+              <div class="flex flex-col gap-1">
+                <label for="auth-email-forgot" class="text-[11px] font-semibold text-white/70">E-mail Cadastrado</label>
+                <input
+                  id="auth-email-forgot"
+                  type="email"
+                  bind:value={email}
+                  placeholder="voce@exemplo.com"
+                  required
+                  class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
+                />
+              </div>
+
+              <div class="pt-1 flex justify-center">
+                <button
+                  type="button"
+                  onclick={() => { recoveryStage = 'confirm'; authError.set(null); }}
+                  class="text-[11px] text-[#3093AA] hover:underline cursor-pointer"
+                >
+                  Já recebi o e-mail / Tenho um código ou link
+                </button>
+              </div>
+            {:else}
+              <!-- Etapa 2: Inserir OTP/Token e Nova Senha In-App -->
+              <div class="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/70 leading-relaxed">
+                Insira o código de 6 dígitos recebido por e-mail (ou cole o link completo) e crie sua nova senha:
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label for="auth-email-confirm" class="text-[11px] font-semibold text-white/70">E-mail</label>
+                <input
+                  id="auth-email-confirm"
+                  type="email"
+                  bind:value={email}
+                  placeholder="voce@exemplo.com"
+                  required
+                  class="w-full py-2 px-3.5 rounded-xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label for="auth-token" class="text-[11px] font-semibold text-white/70">Código de 6 dígitos ou Link</label>
+                <input
+                  id="auth-token"
+                  type="text"
+                  bind:value={recoveryToken}
+                  placeholder="Ex: 839210 ou cole o link do e-mail"
+                  required
+                  class="w-full py-2 px-3.5 rounded-xl liquid-input text-xs text-[#F0F0F5] font-mono focus:outline-none"
+                />
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col gap-1">
+                  <label for="auth-new-pass" class="text-[11px] font-semibold text-white/70">Nova Senha</label>
+                  <input
+                    id="auth-new-pass"
+                    type="password"
+                    bind:value={newPassword}
+                    placeholder="Mínimo 6 chars"
+                    required
+                    class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label for="auth-confirm-pass" class="text-[11px] font-semibold text-white/70">Confirmar Senha</label>
+                  <input
+                    id="auth-confirm-pass"
+                    type="password"
+                    bind:value={confirmPassword}
+                    placeholder="Repita a senha"
+                    required
+                    class="w-full py-2 px-3 rounded-xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div class="pt-1 flex justify-center">
+                <button
+                  type="button"
+                  onclick={() => { recoveryStage = 'request'; authError.set(null); }}
+                  class="text-[11px] text-white/50 hover:text-white hover:underline cursor-pointer"
+                >
+                  Voltar para reenviar e-mail
+                </button>
+              </div>
+            {/if}
+          {:else if $authMode === 'reset-confirm'}
+            <!-- Modo Acionado via Evento de Recuperação Direta -->
+            <div class="p-3 rounded-2xl bg-[#3093AA]/15 border border-[#3093AA]/30 text-[11px] text-[#3093AA] leading-relaxed">
+              Autenticação de recuperação validada! Digite sua nova senha para acessar o Pulsar.
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <div class="flex flex-col gap-1">
+                <label for="reset-new-pass" class="text-[11px] font-semibold text-white/70">Nova Senha</label>
+                <input
+                  id="reset-new-pass"
+                  type="password"
+                  bind:value={newPassword}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                  class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label for="reset-conf-pass" class="text-[11px] font-semibold text-white/70">Confirmar Nova Senha</label>
+                <input
+                  id="reset-conf-pass"
+                  type="password"
+                  bind:value={confirmPassword}
+                  placeholder="Repita a nova senha"
+                  required
+                  class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
+                />
+              </div>
+            </div>
+          {:else}
+            <!-- E-mail (Login / Register) -->
+            <div class="flex flex-col gap-1">
+              <label for="auth-email" class="text-[11px] font-semibold text-white/70">E-mail</label>
+              <input
+                id="auth-email"
+                type="email"
+                bind:value={email}
+                placeholder="voce@exemplo.com"
+                required
+                class="w-full py-2.5 px-3.5 rounded-2xl liquid-input text-xs text-[#F0F0F5] focus:outline-none"
+              />
+            </div>
+
+            <!-- Senha -->
             <div class="flex flex-col gap-1">
               <div class="flex items-center justify-between">
                 <label for="auth-pass" class="text-[11px] font-semibold text-white/70">Senha</label>
                 {#if $authMode === 'login'}
                   <button
                     type="button"
-                    onclick={() => authMode.set('forgot')}
+                    onclick={() => { authMode.set('forgot'); recoveryStage = 'request'; authError.set(null); successMessage = null; }}
                     class="text-[10px] text-[#3093AA] hover:underline cursor-pointer"
                   >
                     Esqueceu a senha?
@@ -291,9 +488,12 @@
             {:else if $authMode === 'register'}
               <UserPlus class="w-4 h-4" />
               <span>Criar Conta e Obter TAG</span>
+            {:else if $authMode === 'forgot' && recoveryStage === 'request'}
+              <Mail class="w-4 h-4" />
+              <span>Enviar Link de Recuperação</span>
             {:else}
-              <KeyRound class="w-4 h-4" />
-              <span>Redefinir Senha</span>
+              <ShieldCheck class="w-4 h-4" />
+              <span>Salvar Nova Senha</span>
             {/if}
           </button>
         </form>

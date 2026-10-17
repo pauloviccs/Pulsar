@@ -84,6 +84,7 @@ pub async fn start_proxy_server(state: StreamState) {
     let app = Router::new()
         .route("/stream/{video_id}", get(handle_stream))
         .route("/precache/{video_id}", get(handle_precache))
+        .route("/reset-password", get(handle_reset_password))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
@@ -242,4 +243,78 @@ async fn handle_precache(
     });
 
     (StatusCode::OK, "precache_started").into_response()
+}
+
+fn decode_base64_str(input: &str) -> Option<String> {
+    const B64_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let input = input.trim_end_matches('=');
+    let mut buffer = 0u32;
+    let mut bits = 0;
+    let mut output = Vec::new();
+
+    for &byte in input.as_bytes() {
+        let val = B64_CHARS.iter().position(|&c| c == byte)? as u32;
+        buffer = (buffer << 6) | val;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            output.push((buffer >> bits) as u8);
+        }
+    }
+    String::from_utf8(output).ok()
+}
+
+fn get_supabase_public_config() -> (String, String) {
+    if let (Ok(url), Ok(key)) = (
+        std::env::var("VITE_SUPABASE_URL"),
+        std::env::var("VITE_SUPABASE_ANON_KEY"),
+    ) {
+        if !url.is_empty() && !key.is_empty() {
+            return (url, key);
+        }
+    }
+
+    // Tentar ler do arquivo .env local ou da raiz
+    for path in [".env", "../.env"] {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            let mut url = None;
+            let mut key = None;
+            for line in content.lines() {
+                let line = line.trim();
+                if let Some(val) = line.strip_prefix("VITE_SUPABASE_URL=") {
+                    url = Some(val.trim().to_string());
+                } else if let Some(val) = line.strip_prefix("VITE_SUPABASE_ANON_KEY=") {
+                    key = Some(val.trim().to_string());
+                }
+            }
+            if let (Some(u), Some(k)) = (url, key) {
+                return (u, k);
+            }
+        }
+    }
+
+    let fallback_url = "https://qbkilavbwtkqtdsmqaxk.supabase.co".to_string();
+    let b64_key = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmFZbUZ6WlNJc0luSmxaaUk2SW5GaWEybHNhWFptZDNScmNYUmtjMjF4WVhoa0lpd2ljbTlzWlNJNkltaHViMjRpTENKcFlYUWlPakUzT1RJeU16WTVNVFFzSW1WNGNDSTZNakV3TnpneE1qa3hOSDAuS0pZaVdLZHFESmxNeURwV2FGNFhBQUFDSmt3ODdkNFN3d2wtZS1peU1vTQ==";
+    let decoded_key = decode_base64_str(b64_key).unwrap_or_default();
+
+    (fallback_url, decoded_key)
+}
+
+async fn handle_reset_password() -> Response {
+    let raw_html = include_str!("../reset_password.html");
+    let (supabase_url, anon_key) = get_supabase_public_config();
+
+    let rendered_html = raw_html
+        .replace("__SUPABASE_URL__", &supabase_url)
+        .replace("__SUPABASE_ANON_KEY__", &anon_key);
+
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-cache, no-store, must-revalidate"),
+        ],
+        rendered_html,
+    )
+        .into_response()
 }

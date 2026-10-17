@@ -186,9 +186,17 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 
 ## 📝 Patch Notes: O Que Há de Novo
 
-### 🌟 Versão Atual: `v0.2.9` *(Arquitetura Local-First, Delta Sync Inteligente & Otimização de Egress Estilo Spotify)*
+### 🌟 Versão Atual: `v0.2.9` *(Arquitetura Local-First, Recuperação de Senha Segura, Dynamic Island & Otimização de Egress Estilo Spotify)*
 
-* ⚡ **Redução de 99.998% de Egress no Supabase:**
+* 🔑 **Sistema Completo de Recuperação de Senha (Nativo & In-App):**
+  * **Fim do redirecionamento para porta morta (`localhost:3000`):** Infraestrutura do Supabase reconfigurada para roteamento direto ao servidor Axum do Pulsar (`http://localhost:41235/reset-password`).
+  * **Página de Redefinição Web Apple Liquid Glass:** Servida nativamente pelo backend Rust embarcado, com validação de tokens hash, verificação de sessão e integração direta com `supabase.auth.updateUser()`.
+  * **Fluxo Híbrido In-App no `AuthModal.svelte`:** Caso prefira não usar o navegador, o usuário pode digitar o e-mail e inserir o código de 6 dígitos recebido por e-mail diretamente no aplicativo para definir a nova senha.
+  * **Tratamento Defensivo de Erros:** Suporte a rate limit de segurança (HTTP 429) e mensagens amigáveis para links expirados.
+* 🏝️ **Dynamic Island Desktop Nativa (Drag & Drop, Minimizar e Bandeja do Sistema):**
+  * **Movimentação 100% Livre:** O usuário pode clicar e arrastar a Dynamic Island para qualquer posição da tela ou monitor com movimentação física nativa via API Tauri (`start_dragging()`).
+  * **Controles Rápidos de Janela:** Botões dedicados para minimizar para a barra de tarefas ou fechar diretamente para a área de notificação do Windows (System Tray).
+* ⚡ **Redução de 99.998% de Egress no Supabase (Arquitetura Local-First Estilo Spotify):**
   * **Check-Before-Fetch:** O app agora consulta uma RPC ultraleve (`get_user_sync_state`) de ~180 bytes para verificar se houve mudanças na nuvem. Se nada mudou, **zero bytes de biblioteca são transferidos**, mantendo o cache SQLite local 100% preservado.
   * **Delta Sync Incremental:** Quando faixas são adicionadas, apenas os deltas (`updated_at > last_sync`) são baixados, dispensando o antigo download maciço de milhares de faixas.
   * **Sincronização Granular de Playlists:** Faixas de playlists só são baixadas para a playlist cujo carimbo `updated_at` sofreu modificação real.
@@ -197,6 +205,10 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
   * Cooldown de 25s entre ciclos e intervalo de auto-sync expandido para 30 minutos.
 * 🛑 **Circuit Breaker Automático para Quotas & Erros 402:**
   * Ao detectar cota de nuvem esgotada ou instabilidade de rede, o aplicativo suspende chamadas ao Supabase por 15 minutos e opera de forma suave e transparente em modo **100% Offline** utilizando o banco SQLite nativo.
+* 🎵 **Estabilidade do Player & Consistência de Estado:**
+  * **Curtir Faixas Reativo:** Sincronização imediata do botão de favorito entre modais, gavetas de fila e telas sem perda de estado visual.
+  * **Shuffle Fluido:** Correção de travamentos e paradas involuntárias na fila de reprodução aleatória.
+  * **Vídeo & Legendas:** Prevenção de alternância indevida entre vídeo e capa, com sincronização precisa de legendas adaptadas às dimensões do player.
 * 🚀 **Eliminação de Megalodons Base64 & Timeout 57014:**
   * Projeção explícita de colunas no carregamento de amigos e perfis, dispensando o tráfego em massa de avatares de até 850 KB e sanando de forma definitiva o timeout de banco no módulo social.
 * 🔓 **Acesso Local Resiliente no Modo Convidado & Offline:**
