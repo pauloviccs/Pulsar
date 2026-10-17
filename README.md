@@ -12,7 +12,7 @@
 
   <p align="center">
     <a href="https://github.com/pauloviccs/Pulsar/releases">
-      <img src="https://img.shields.io/badge/Versão-v0.2.6-FC7753?style=for-the-badge&logo=windows&logoColor=white" alt="Versão v0.2.6" />
+      <img src="https://img.shields.io/badge/Versão-v0.2.9-FC7753?style=for-the-badge&logo=windows&logoColor=white" alt="Versão v0.2.9" />
     </a>
     <img src="https://img.shields.io/badge/Pulsar%20Connect-Cast%20%7C%20UPnP%20%7C%20BT-66D7D1?style=for-the-badge&logo=airplayvideo&logoColor=09090D" alt="Pulsar Connect" />
     <img src="https://img.shields.io/badge/Spotify-Web%20API-1DB954?style=for-the-badge&logo=spotify&logoColor=white" alt="Spotify Web API" />
@@ -95,7 +95,7 @@ Leve sua música para qualquer cômodo da sua casa ou escritório com uma centra
 
 Mantenha seu Pulsar sempre na última versão sem dor de cabeça:
 
-* **Detecção Silenciosa e Segura:** O app verifica releases através de um manifesto descentralizado `latest.json`, aceitando links diretos de qualquer servidor de distribuição rápida.
+* **Detecção Silenciosa e Segura:** O app verifica releases através de um manifesto descentralizado `latest.json`, aceitando links diretos de qualquer servidor de distribuição rápida (Dropbox Mirror oficial ativo).
 * **Modal de Atualização Seamless:** Interface translúcida com animações fluidas, exibindo as novidades da versão formatadas, cálculo dinâmico de progresso e barra de download elegante.
 * **Instalação com Um Clique:** Conclua o download do executável oficial e atualize seu software sem precisar abrir páginas da web ou substituir arquivos manualmente.
 
@@ -127,25 +127,43 @@ Você não precisa parar o que está fazendo nem minimizar sua tela cheia para t
 * Conecte sua conta do **Last.fm** nativamente em segundos com fluxo OAuth no navegador padrão via `@tauri-apps/plugin-opener`.
 * O motor do Pulsar rastreia sua reprodução em tempo real com **Now Playing dinâmico** e efetua o **Scrobble automático** ao atingir 50% ou 4 minutos da faixa.
 * Algoritmo inteligente de extração com fallback em cascata que identifica artistas e títulos mesmo em faixas raras sem metadados convencionais.
+* Chaves e tokens isolados com segurança em variáveis de ambiente `.env`.
 
 ---
 
-### 📺 Modo Duplo Sincronizado: Som Cristalino ou Clipe Oficial
+### 📺 Formatos do Player, Telas Ultrawide & Motor Drift Lock A/V
 
-* Escolha como você quer curtir:
-  * **Modo Áudio:** Som de alta fidelidade via proxy local Axum (41235) com suporte a HTTP 206 Range (seeking instantâneo) e sem desperdício de dados.
-  * **Modo Vídeo 16:9:** O clipe oficial roda sincronizado em alta definição sem travamentos, telas pretas ou recarregamentos súbitos ao pausar e avançar.
+* **Formatos Flexíveis de Tela (`VideoFormatDropdown.svelte`):** Menu suspenso Apple Liquid Glass para alternar entre formatos Widescreen 16:9 (1080p, 2K QHD, 4K UHD), 16:10 Full HD+ (1920×1200), 19.5:9 Alongado, 21:9 Cinema Ultrawide e 32:9 Super Ultrawide.
+* **Presets de Escala por Display:** Otimizado para Laptops (~576px), Monitores 21.5"-24" (~768px), 27"-32" (~1024px), Ultrawide 34"-49" (~1200px) e grandes TVs de 32" a 98"+ (`88vw`).
+* **Enquadramento `contain` vs `cover`:** Escolha entre visualização integral sem cortes ou preenchimento imersivo sem bordas pretas laterais.
+* **Drift Lock A/V Contínuo:** Handshake inicial `'listening'` e sincronização instantânea com `$currentTime`. Correção contínua em tempo real caso a defasagem ultrapasse 300ms, impedindo reprodução fantasma com áudio pausado.
+* **Arquitetura Audio-First:** Modo Vídeo estritamente desativado por padrão na inicialização do player para economizar banda e CPU, operando com consumo levíssimo de RAM (~30MB em segundo plano).
+* **HUD Global de Escape & Tecla Esc:** Pílula flutuante Liquid Glass (`z-[100]`) com atalho global `Escape` no teclado e botão de cabeçalho para saída instantânea da tela cheia.
+* **Glass Layering Protocol:** Stacking context z-index estrito que evita sobreposição do vídeo sobre a gaveta de fila (`QueueDrawer` em `z-[70]`), controles e cabeçalhos.
 
 ---
 
-### 👥 Pulsar Social & Presença em Tempo Real
+### 👥 Pulsar Social, Notificações em Tempo Real & Sincronização
 
 A música fica muito melhor compartilhada:
 
-* **Perfis com TAG Única:** Crie seu perfil e receba uma tag alfanumérica exclusiva (ex: `@seu_nome#7X9A`).
-* **Status "Ouvindo Agora":** Seus amigos sabem exatamente o que está tocando no seu player em tempo real.
-* **Direct Chat Estilo iMessage:** Converse instantaneamente e compartilhe músicas que seus amigos podem dar Play direto da conversa.
-* **Modo Convidado Offline:** Quer usar o app apenas localmente sem criar conta? Com um clique você entra no modo offline e sua biblioteca fica 100% no seu disco.
+* 🔔 **Central de Notificações em Tempo Real (`NotificationCenter.svelte`):** Ícone de sino com badge numérico reativo em gradiente coral/dourado ao lado do perfil. Alertas instantâneos de novos seguidores, playlists favoritadas pela comunidade, mensagens diretas e convites de amizade.
+* 🤝 **Follow Social & Amizades Pendentes:** Seguir outro usuário dispara notificação e adiciona automaticamente um pedido pendente de amizade, unificando a rede social com aprovação fluida.
+* 🗂️ **Gestão Avançada de Playlists na Sidebar:** Playlists novas e seguidas posicionadas no topo, suporte completo a **Fixar Playlist** (`is_pinned`) e **Drag & Drop** com persistência no SQLite e Supabase.
+* ☁️ **Sincronização de Playlists Seguidas:** Suas playlists seguidas aparecem na biblioteca, sidebar e perfil com autoria real preservada via Foreign Key com `profiles`.
+* ⚡ **Pre-Buffer Cache:** Pré-carregamento contínuo da próxima faixa 20 segundos antes do término da música atual, garantindo transição instantânea sem lacunas de áudio.
+* 🚀 **Inicialização Nativa com o Windows (Autostart):** O Pulsar inicia suavemente junto com o sistema através da chave de Registro do Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`), gerenciada diretamente em Rust.
+* 🏷️ **Perfis com TAG Única:** Crie seu perfil e receba uma tag alfanumérica exclusiva (ex: `@seu_nome#7X9A`).
+* 💬 **Direct Chat Estilo iMessage:** Converse instantaneamente e compartilhe músicas que seus amigos podem dar Play direto da conversa.
+* 👤 **Modo Convidado Offline & Clean Slate:** Contas novas iniciam 100% limpas sem dados mock, com Empty State amigável e opção de uso totalmente local sem necessidade de login.
+* 🏛️ **Assinatura Institucional:** Identidade visual e logos em SVG de alta fidelidade da **Lumia** e **VICCS** na tela de abertura respirável (SplashScreen em duas etapas) e no rodapé das configurações.
+
+---
+
+### 📱 Blindagem Total para Monitores Pivotados e Telas Verticais
+
+* Usa um segundo monitor na vertical (9:16) para programar, codar ou ler chats?
+* O Pulsar conta com uma malha de layout responsiva onde **nenhum modal vaza**, nenhum botão de confirmação fica escondido e as capas se ajustam harmonicamente à altura da sua janela.
 
 ---
 
@@ -168,7 +186,79 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 
 ## 📝 Patch Notes: O Que Há de Novo
 
-### 🌟 Versão Atual: `v0.2.6` *(Central Home Dashboard & Sidebar Retrátil Liquid Glass)*
+### 🌟 Versão Atual: `v0.2.9` *(Arquitetura Local-First, Delta Sync Inteligente & Otimização de Egress Estilo Spotify)*
+
+* ⚡ **Redução de 99.998% de Egress no Supabase:**
+  * **Check-Before-Fetch:** O app agora consulta uma RPC ultraleve (`get_user_sync_state`) de ~180 bytes para verificar se houve mudanças na nuvem. Se nada mudou, **zero bytes de biblioteca são transferidos**, mantendo o cache SQLite local 100% preservado.
+  * **Delta Sync Incremental:** Quando faixas são adicionadas, apenas os deltas (`updated_at > last_sync`) são baixados, dispensando o antigo download maciço de milhares de faixas.
+  * **Sincronização Granular de Playlists:** Faixas de playlists só são baixadas para a playlist cujo carimbo `updated_at` sofreu modificação real.
+* 🛡️ **Blindagem Anti-Storm & Single-Flight Locks:**
+  * Bloqueio estrito de corridas de boot concorrente no `authStore` e `syncEngine` (`activeHydrationPromise`).
+  * Cooldown de 25s entre ciclos e intervalo de auto-sync expandido para 30 minutos.
+* 🛑 **Circuit Breaker Automático para Quotas & Erros 402:**
+  * Ao detectar cota de nuvem esgotada ou instabilidade de rede, o aplicativo suspende chamadas ao Supabase por 15 minutos e opera de forma suave e transparente em modo **100% Offline** utilizando o banco SQLite nativo.
+* 🚀 **Eliminação de Megalodons Base64 & Timeout 57014:**
+  * Projeção explícita de colunas no carregamento de amigos e perfis, dispensando o tráfego em massa de avatares de até 850 KB e sanando de forma definitiva o timeout de banco no módulo social.
+* 🔓 **Acesso Local Resiliente no Modo Convidado & Offline:**
+  * Usuários deslogados ou operando offline agora visualizam normalmente todas as playlists gravadas localmente no SQLite, erradicando a tela vazia em caso de indisponibilidade de rede.
+* 🛠️ **Correção de Chave Estrangeira SQLite (`FOREIGN KEY constraint failed`):**
+  * Inserção defensiva com `duration_seconds: 0` na tabela de faixas locais, eliminando a falha de constraint ao alternar favoritos.
+
+---
+
+### `v0.2.8` *(Player de Vídeo Ultrawide, Drift Lock A/V, Glass Layering Protocol & Clean Slate Onboarding)*
+
+* 🖥️ **Formatos e Presets de Display do Player de Vídeo (`VideoFormatDropdown.svelte`):**
+  * **Menu em Liquid Glass VisionOS:** Menus suspensos com abas para Tamanho/Display, Proporção e Qualidade.
+  * **Resoluções e Proporções Suportadas:** 16:9 Widescreen (1080p, 2K QHD, 4K UHD), 16:10 Full HD+ (1920×1200), 19.5:9 Ultra-Alongado, 21:9 Cinema Ultrawide (3440×1440) e 32:9 Super Ultrawide (5120×1440).
+  * **Presets Físicos de Escala:** Calibrados para Laptops (~576px), Monitores 21.5"-24" (~768px), Monitores 27"-32" (~1024px), Ultrawide 34"-49" (~1200px) e TVs 32" até 98"+ (`88vw`).
+  * **Modos de Enquadramento:** Alternância entre `contain` (original sem perdas) e `cover` (zoom imersivo sem letterboxing).
+  * **Tela Cheia Nativa:** Comando Rust IPC de hardware `toggle_window_fullscreen` sem bordas do Windows.
+  * **100% Livre de Emojis:** Interface limpa utilizando exclusivamente ícones vetoriais SVG Lucide.
+* 🎧 **Modo Vídeo Desligado por Padrão (Arquitetura Audio-First):**
+  * O player inicia estritamente com o Modo Vídeo desligado (`isVideoVisible = false`), operando com pegada ultraleve de ~30MB RAM em segundo plano e sem desperdício de dados.
+  * Ativação sob demanda pelo usuário sem hidratação residual forçada pela nuvem.
+* 🔒 **Motor de Sincronização Contínua A/V & Drift Lock (`NowPlayingView.svelte`):**
+  * Handshake `'listening'` no carregamento do iframe com sincronização imediata com `$currentTime`.
+  * Monitoramento de defasagem em tempo real: correção automática se a diferença entre áudio e vídeo passar de 300ms (com throttle de 1.2s para evitar repetições visuais).
+  * Heartbeat a cada 1s garantindo bloqueio integral de reprodução de vídeo quando o áudio estiver pausado.
+* 🧭 **HUD Global de Saída de Tela Cheia & Tecla Esc (`+layout.svelte`):**
+  * Pílula flutuante central no topo da janela em Liquid Glass (`z-[100]`) com atalho global de teclado `Escape` e botão de cabeçalho dedicado.
+* 🛡️ **Resolução Definitiva de Stacking Context (Glass Layering Protocol):**
+  * Reestruturação completa de z-index: cabeçalho em `z-40 relative`, menu em `z-[60]` com backdrop de proteção `z-[55]`, e gaveta `QueueDrawer` elevada para `z-[70]` ancorada em `bottom-0`.
+  * Travamento de altura vertical de viewport (`max-h-[36vh]` a `max-h-[52vh]`) com `overflow-hidden`, impedindo sobreposição dos controles.
+* 🗂️ **Gestão Avançada de Playlists na Barra Lateral e Biblioteca:**
+  * Playlists novas e seguidas posicionadas automaticamente no topo da lista.
+  * Suporte a **Fixar Playlist** (`is_pinned`) e **Drag & Drop** com persistência no SQLite e Supabase.
+  * Hidratação em nuvem de playlists seguidas com dados reais do autor original (`profiles`).
+* ⚡ **Pre-Buffer Cache & Transição Suave entre Faixas:**
+  * Pré-carregamento contínuo da próxima faixa da fila a 20s do término da atual, eliminando pausas e silêncios entre músicas.
+* 🧼 **Clean Slate Onboarding & Desacoplamento de Perfis:**
+  * Contas novas iniciam 100% limpas sem playlists mock pré-injetadas (`INITIAL_PLAYLISTS = []`) e com Empty State acolhedor em Liquid Glass.
+  * Navegação entre perfis desacoplada, eliminando retenção indevida de dados em cache ao voltar para "Meu Perfil".
+* 💫 **Redesign Minimalista do Modal de SYNC:**
+  * Remoção do texto redundante "SYNC", mantendo anel caústico minimalista.
+
+---
+
+### `v0.2.7` *(Evolução Social, Central de Notificações, SplashScreen Respirável & Autostart Windows)*
+
+* 🔔 **Central de Notificações em Tempo Real (`NotificationCenter.svelte`):**
+  * Sino no topo com badge gradiente coral/dourado reativo, popover Apple Liquid Glass e suporte a alertas de novos seguidores, playlists favoritadas, mensagens diretas e convites de amizade.
+* 🤝 **Social Follow & Solicitação de Amizade Mútua:**
+  * Seguir um usuário agora dispara notificação em tempo real e insere um convite pendente na lista de amizades automaticamente.
+* 🚀 **Inicialização com o Sistema Operacional (Windows Registry Autostart):**
+  * Configuração nativa em Rust para inicialização automática com o Windows através de `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+* ⚡ **Fix Crítico de Overlap e Paginação na "Sua Biblioteca":**
+  * Renderização progressiva em fatias de 60 faixas em `TrackList.svelte`, eliminando sobreposição de camadas de GPU no WebView2 ao lidar com milhares de músicas.
+* 🌊 **Nova SplashScreen Respirável em 2 Etapas:**
+  * Animação suave com Fase 1 (Pulsar) e Fase 2 (Assinatura oficial "Created by Lumia & VICCS").
+* 🔐 **Segurança e Isolamento de Dados:**
+  * Isolamento de chaves Last.fm em `.env` e segregação estrita multi-contas no SQLite e Supabase.
+
+---
+
+### `v0.2.6` *(Central Home Dashboard & Sidebar Retrátil Liquid Glass)*
 
 * 🏠 **Nova Central Home Dashboard (Página Inicial):**
   * **Hero Banner Monumental:** Capa em alta definição com iluminação difusa reativa, badge dinâmica (*PLAYLIST EM ALTA / DESTAQUE*) e botão primário de ação rápida **"Ouvir Agora"** com 1 clique + suporte ao modo aleatório (*Shuffle*).
@@ -287,7 +377,14 @@ Você não precisa compilar nem lidar com código para aproveitar o Pulsar.
 | **Mini Player Flutuante Apple Liquid Glass** | ✅ Pronto | Interface & Desktop |
 | **Controles na Barra de Tarefas do Windows (Taskbar)** | ✅ Pronto | Integração Windows |
 | **Scrobble Automático no Last.fm & Now Playing** | ✅ Pronto | Serviços Conectados |
+| **Formatos do Player: Ultrawide, Super Ultrawide & TVs** | ✅ Pronto | Vídeo & Display |
+| **Motor de Sincronização Contínua A/V & Drift Lock** | ✅ Pronto | Engine de Áudio |
+| **HUD de Escape em Tela Cheia & Tecla Esc** | ✅ Pronto | Interface & Desktop |
+| **Central de Notificações em Tempo Real (Sino com Badge)** | ✅ Pronto | Social & Presença |
 | **Perfis Sociais com Tags (#) e Status em Tempo Real** | ✅ Pronto | Social & Presença |
+| **Gestão de Playlists (Pin no Topo, Drag & Drop e Sincronização)** | ✅ Pronto | Biblioteca & Playlists |
+| **Pre-Buffer Cache & Transição Suave entre Faixas** | ✅ Pronto | Engine de Áudio |
+| **Inicialização Nativa com o Windows (Autostart HKCU)** | ✅ Pronto | Integração Windows |
 | **Estúdio de Recorte 1:1 de Capas de Playlist** | ✅ Pronto | Personalização |
 | **Suporte Nativo a Monitores Verticais / Telas Retrato** | ✅ Pronto | UI / Responsividade |
 | **Pulsar Connect: Smart TVs & DLNA (Volume Debounced & Auto-Recovery)** | ✅ Pronto | Conectividade & Áudio |

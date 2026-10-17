@@ -3,5 +3,7 @@
   "rust-analyzer.linkedProjects": [
     "src-tauri/Cargo.toml"
   ],
-  "rust-analyzer.check.command": "check"
+  "rust-analyzer.check.command": "check",
+  "antigravityChime.volume": 50,
+  "antigravityChime.onlyWhenUnfocused": true
 }

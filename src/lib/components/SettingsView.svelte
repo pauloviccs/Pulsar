@@ -33,6 +33,7 @@
     crossfadeSeconds, 
     audioNormalization, 
     minimizeToTray, 
+    hideDynamicIslandOnMinimize,
     lastFmEnabled, 
     lastFmUsername, 
     playerActions 
@@ -421,6 +422,23 @@
         class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$minimizeToTray ? 'bg-[#F3B044]' : 'bg-white/[0.1]'}"
       >
         <div class="w-5 h-5 rounded-full bg-white transition-transform {$minimizeToTray ? 'translate-x-6' : 'translate-x-0'}"></div>
+      </button>
+    </div>
+
+    <!-- Toggle Ocultar Dynamic Island ao Minimizar -->
+    <div class="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+      <div>
+        <p class="text-xs font-bold text-[#F0F0F5]">Ocultar Dynamic Island ao Minimizar</p>
+        <p class="text-[11px] text-white/50">Quando desativado, o Pulsar se transforma na pílula flutuante estilo Apple ao minimizar a tela.</p>
+      </div>
+
+      <button
+        type="button"
+        aria-label="Alternar ocultar Dynamic Island ao minimizar"
+        onclick={() => playerActions.setHideDynamicIslandOnMinimize(!$hideDynamicIslandOnMinimize)}
+        class="w-12 h-6 rounded-full p-0.5 transition cursor-pointer {$hideDynamicIslandOnMinimize ? 'bg-[#F3B044]' : 'bg-white/[0.1]'}"
+      >
+        <div class="w-5 h-5 rounded-full bg-white transition-transform {$hideDynamicIslandOnMinimize ? 'translate-x-6' : 'translate-x-0'}"></div>
       </button>
     </div>
   </div>

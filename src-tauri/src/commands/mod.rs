@@ -1,7 +1,7 @@
 use crate::audio_engine::StreamState;
 use crate::db::{Database, PlaybackStateDTO, PlaylistDTO, TrackDTO};
 use crate::youtube::YouTubeSidecar;
-use crate::ImportState;
+use crate::{ImportState, TrayState};
 use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager, State};
 
@@ -300,7 +300,7 @@ pub async fn toggle_mini_player(
     if let Some(window) = app.get_webview_window("main") {
         if enable {
             let width = if video_mode { 460.0 } else { 380.0 };
-            let height = if video_mode { 360.0 } else { 160.0 };
+            let height = if video_mode { 360.0 } else { 62.0 };
             let _ = window.set_min_size::<tauri::Size>(None);
             let _ = window.set_decorations(false);
             let _ = window.set_always_on_top(true);
@@ -322,9 +322,46 @@ pub async fn toggle_mini_player(
 }
 
 #[tauri::command]
+pub fn get_hide_dynamic_island(tray_state: State<'_, TrayState>) -> bool {
+    tray_state.hide_dynamic_island_on_minimize.load(Ordering::SeqCst)
+}
+
+#[tauri::command]
+pub fn set_hide_dynamic_island(
+    app: tauri::AppHandle,
+    tray_state: State<'_, TrayState>,
+    db: State<'_, Database>,
+    hide: bool,
+) -> Result<(), String> {
+    tray_state.hide_dynamic_island_on_minimize.store(hide, Ordering::SeqCst);
+    let _ = db.save_setting("hide_dynamic_island_on_minimize", if hide { "true" } else { "false" });
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.emit("dynamic-island-setting-changed", hide);
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn drag_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.start_dragging();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn minimize_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_always_on_top(false);
+        let _ = window.minimize();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn hide_to_tray(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
     }
     Ok(())
 }

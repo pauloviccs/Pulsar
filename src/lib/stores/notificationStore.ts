@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { getSupabase } from '../api/supabase';
 import { currentProfile, guestProfile } from './authStore';
+import { playNotificationSound } from '../utils/soundEffects';
 
 export interface NotificationItem {
   id: string;
@@ -136,6 +137,7 @@ export const notificationActions = {
         this.saveToStorage(updated);
         return updated;
       });
+      playNotificationSound();
       return;
     }
 
@@ -262,6 +264,7 @@ export const notificationActions = {
               this.saveToStorage(updated);
               return updated;
             });
+            playNotificationSound();
           }
         )
         .subscribe();

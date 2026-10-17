@@ -36,7 +36,7 @@
     isVideoVisible,
     queue
   } from '../stores/playerStore';
-  import { favoriteTrackIds, libraryActions } from '../stores/libraryStore';
+  import { favoriteTrackIds, isTrackFavorite, libraryActions } from '../stores/libraryStore';
   import { cloudSyncState } from '../services/syncEngine';
   import { audioRouter } from '../audio/AudioRouter';
   import PulsarConnectModal from './PulsarConnectModal.svelte';
@@ -55,13 +55,23 @@
 
   function handleSeekInput(e: Event) {
     const val = parseFloat((e.target as HTMLInputElement).value);
-    dragTime = val;
+    dragTime = isNaN(val) ? 0 : val;
   }
 
   function handleSeekChange(e: Event) {
     const val = parseFloat((e.target as HTMLInputElement).value);
-    playerActions.seek(val);
+    const target = isNaN(val) || val <= 0.5 ? 0 : val;
+    playerActions.seek(target);
     isDragging = false;
+  }
+
+  function handleSeekPointerUp(e: Event) {
+    if (isDragging) {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      const target = isNaN(val) || val <= 0.5 ? 0 : val;
+      playerActions.seek(target);
+      isDragging = false;
+    }
   }
 
   function handleVolume(e: Event) {
@@ -123,7 +133,7 @@
           title="{$t('trackList.favorite')}"
         >
           <Heart 
-            class="w-4 h-4 {$favoriteTrackIds.has($currentTrack.id) ? 'fill-[#F3B044] text-[#F3B044]' : ''}" 
+            class="w-4 h-4 {isTrackFavorite($currentTrack, $favoriteTrackIds) ? 'fill-[#F3B044] text-[#F3B044]' : ''}" 
           />
         </button>
       {:else}
@@ -208,6 +218,7 @@
             value={isDragging ? dragTime : $currentTime}
             onpointerdown={handleSeekPointerDown}
             oninput={handleSeekInput}
+            onpointerup={handleSeekPointerUp}
             onchange={handleSeekChange}
             class="w-full h-1 bg-white/[0.14] group-hover:h-1.5 rounded-full appearance-none cursor-pointer accent-[#EF7D4B] transition-all"
           />

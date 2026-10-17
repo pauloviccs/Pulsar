@@ -39,6 +39,7 @@
   import DeletePlaylistModal from '$lib/components/DeletePlaylistModal.svelte';
   import EditPlaylistModal from '$lib/components/EditPlaylistModal.svelte';
   import MiniPlayerView from '$lib/components/MiniPlayerView.svelte';
+  import DynamicIslandView from '$lib/components/DynamicIslandView.svelte';
   import GlobalAudioEngine from '$lib/components/GlobalAudioEngine.svelte';
   import UserProfileView from '$lib/components/UserProfileView.svelte';
   import AuthModal from '$lib/components/AuthModal.svelte';
@@ -57,6 +58,7 @@
     playlists, 
     userLibraryPlaylists,
     favoriteTrackIds, 
+    isTrackFavorite,
     activeView, 
     selectedPlaylist, 
     selectedPlaylistTracks,
@@ -68,10 +70,18 @@
     playlistToDelete,
     playlistToEdit
   } from '$lib/stores/libraryStore';
-  import { playerActions, isMiniPlayer, currentTrack } from '$lib/stores/playerStore';
+  import { 
+    playerActions, 
+    isMiniPlayer, 
+    isMiniPlayerVideo, 
+    hideDynamicIslandOnMinimize, 
+    currentTrack 
+  } from '$lib/stores/playerStore';
   import { authActions, currentUser, currentProfile, isAuthModalOpen } from '$lib/stores/authStore';
   import { socialActions } from '$lib/stores/socialStore';
   import { t, currentLocale } from '$lib/i18n';
+  import { safeListen, isTauri } from '$lib/api/tauri';
+  import { get } from 'svelte/store';
   import type { Track } from '$lib/types';
 
   let searchInput = $state('');
@@ -89,8 +99,36 @@
     authActions.initAuth();
     socialActions.loadFriends();
     notificationActions.initNotifications();
+    playerActions.initDynamicIslandSettings();
+
     const unsubSocial = socialActions.subscribeToRealtime();
     const unsubNotif = notificationActions.subscribeToRealtime();
+
+    let unlistenIsland: any = null;
+    let unlistenResize: any = null;
+
+    safeListen<boolean>('dynamic-island-setting-changed', (event) => {
+      hideDynamicIslandOnMinimize.set(event.payload);
+    }).then(unsub => { unlistenIsland = unsub; });
+
+    // Transição suave para Dynamic Island quando minimizar a janela principal (estilo Apple)
+    if (isTauri()) {
+      import('@tauri-apps/api/webviewWindow').then(({ getCurrentWebviewWindow }) => {
+        const win = getCurrentWebviewWindow();
+        win.listen('tauri://resize', async () => {
+          try {
+            const isMin = await win.isMinimized();
+            const isHidden = get(hideDynamicIslandOnMinimize);
+            const hasTrack = get(currentTrack);
+            const inMini = get(isMiniPlayer);
+            if (isMin && !isHidden && hasTrack && !inMini) {
+              await win.unminimize();
+              playerActions.toggleMiniPlayer(true);
+            }
+          } catch {}
+        }).then(unlisten => { unlistenResize = unlisten; });
+      });
+    }
 
     // Verificação de atualização suave em background após 3.5s
     const updateTimer = setTimeout(() => {
@@ -100,6 +138,8 @@
     return () => {
       unsubSocial();
       unsubNotif();
+      if (unlistenIsland) unlistenIsland();
+      if (unlistenResize) unlistenResize();
       clearTimeout(updateTimer);
     };
   });
@@ -118,7 +158,7 @@
 
   // Faixas favoritas filtradas
   let favoriteTracks = $derived(
-    $allTracks.filter(t => $favoriteTrackIds.has(t.id))
+    $allTracks.filter(t => isTrackFavorite(t, $favoriteTrackIds))
   );
 
   // Verifica se o usuário atual é dono da playlist selecionada
@@ -182,10 +222,20 @@
 <GlobalAudioEngine />
 
 {#if $isMiniPlayer}
-  <!-- MODO MINI PLAYER FLUTUANTE ULTRA COMPACTO -->
-  <div class="w-screen h-screen overflow-hidden bg-[#0B1020]">
-    <MiniPlayerView />
-  </div>
+  <!-- MODO MINI PLAYER / DYNAMIC ISLAND ESTILO APPLE (macOS / iPhone) -->
+  {#if $isMiniPlayerVideo}
+    <div class="w-screen h-screen overflow-hidden bg-[#0B1020]">
+      <MiniPlayerView />
+    </div>
+  {:else}
+    <div 
+      class="w-screen h-screen overflow-hidden bg-transparent p-1 flex items-center justify-center" 
+      data-tauri-drag-region 
+      style="-webkit-app-region: drag;"
+    >
+      <DynamicIslandView />
+    </div>
+  {/if}
 {:else}
   <!-- LAYOUT PRINCIPAL DO PULSAR EM ILHAS FLUTUANTES (LIQUID GLASS) -->
   <div class="h-screen w-screen flex flex-col p-2 sm:p-3 md:p-3.5 bg-[#070A14] text-[#F0F0F5] select-none overflow-hidden font-sans relative">

@@ -131,6 +131,9 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>,
   if (cmd === 'toggle_window_fullscreen') {
     return (false as unknown) as T;
   }
+  if (cmd === 'minimize_window' || cmd === 'hide_to_tray' || cmd === 'drag_window') {
+    return (null as unknown) as T;
+  }
 
   return (null as unknown) as T;
 }

@@ -61,10 +61,8 @@ export const userLibraryPlaylists = derived(
         if (pl.is_followed) return true;
         return false;
       }
-      // 2. Convidado / offline
-      if (!pl.user_id || pl.user_id === 'guest-local-user') return true;
-      if (pl.is_followed) return true;
-      return false;
+      // 2. Convidado / offline: todas as playlists salvas localmente no computador ficam disponíveis
+      return true;
     });
 
     const withPin = filtered.map(p => ({
@@ -98,6 +96,15 @@ export const userLibraryPlaylists = derived(
 );
 
 export const favoriteTrackIds = writable<Set<string>>(new Set());
+
+/**
+ * Helper unificado para checar se uma faixa é favorita,
+ * compatível tanto com o ID interno (SQLite/Playlist) quanto com youtube_video_id.
+ */
+export function isTrackFavorite(track: Track | null | undefined, favs: Set<string>): boolean {
+  if (!track || !favs) return false;
+  return favs.has(track.id) || (Boolean(track.youtube_video_id) && favs.has(track.youtube_video_id));
+}
 export const activeView = writable<ActiveView>('home');
 export const selectedPlaylist = writable<Playlist | null>(null);
 export const selectedPlaylistTracks = writable<Track[]>([]);
@@ -174,11 +181,22 @@ export const libraryActions = {
           }
           return Array.from(map.values());
         });
-        favoriteTrackIds.set(new Set(favTracks.map(t => t.id)));
+        favoriteTrackIds.update(s => {
+          const next = new Set(s);
+          for (const ft of favTracks) {
+            next.add(ft.id);
+            if (ft.youtube_video_id) next.add(ft.youtube_video_id);
+          }
+          return next;
+        });
       } else {
         const favIds = await safeInvoke<string[]>('get_favorites');
         if (favIds) {
-          favoriteTrackIds.set(new Set(favIds));
+          favoriteTrackIds.update(s => {
+            const next = new Set(s);
+            for (const id of favIds) next.add(id);
+            return next;
+          });
         }
       }
     } catch (e) {
@@ -301,35 +319,47 @@ export const libraryActions = {
   },
 
   async toggleFavorite(trackId: string, trackObj?: Track) {
+    const trk = trackObj || get(allTracks).find(t => t.id === trackId || t.youtube_video_id === trackId);
+    const videoId = trk?.youtube_video_id || (trackId.length === 11 ? trackId : undefined);
+
+    let isFavNow = false;
+
     favoriteTrackIds.update(favs => {
       const next = new Set(favs);
-      if (next.has(trackId)) {
+      const isCurrentlyFav = next.has(trackId) || (Boolean(videoId) && next.has(videoId!));
+
+      if (isCurrentlyFav) {
         next.delete(trackId);
+        if (videoId) next.delete(videoId);
+        if (trk?.id) next.delete(trk.id);
+        isFavNow = false;
       } else {
         next.add(trackId);
+        if (videoId) next.add(videoId);
+        if (trk?.id) next.add(trk.id);
+        isFavNow = true;
       }
       return next;
     });
 
     if (trackObj) {
       allTracks.update(current => {
-        if (!current.some(t => t.id === trackObj.id)) {
+        if (!current.some(t => t.id === trackObj.id || (t.youtube_video_id && t.youtube_video_id === trackObj.youtube_video_id))) {
           return [trackObj, ...current];
         }
         return current;
       });
     }
 
-    const isFav = get(favoriteTrackIds).has(trackId);
-    const trk = trackObj || get(allTracks).find(t => t.id === trackId);
-    if (trk) {
+    const vId = videoId || trk?.youtube_video_id;
+    if (vId) {
       import('../services/syncEngine').then(({ syncEngine }) => {
-        syncEngine.pushFavorite(trk.youtube_video_id, isFav);
+        syncEngine.pushFavorite(vId, isFavNow);
       });
     }
 
     try {
-      await safeInvoke('toggle_favorite', { trackId, track: trackObj || null });
+      await safeInvoke('toggle_favorite', { trackId, track: trackObj || trk || null });
     } catch (e) {
       console.error('[Pulsar DB] Erro ao alternar favorito:', e);
     }

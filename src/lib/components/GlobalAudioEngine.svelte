@@ -17,7 +17,7 @@
     lastFmEnabled,
     lastFmUsername
   } from '../stores/playerStore';
-  import { favoriteTrackIds, libraryActions } from '../stores/libraryStore';
+  import { favoriteTrackIds, isTrackFavorite, libraryActions } from '../stores/libraryStore';
   import { safeInvoke, safeListen } from '../api/tauri';
   import { lastFmService } from '../services/lastfm';
   import { audioRouter } from '../audio/AudioRouter';
@@ -107,7 +107,7 @@
   $effect(() => {
     const playing = $isPlaying;
     const hasTrack = !!$currentTrack;
-    const isFav = $currentTrack ? $favoriteTrackIds.has($currentTrack.id) : false;
+    const isFav = $currentTrack ? isTrackFavorite($currentTrack, $favoriteTrackIds) : false;
 
     safeInvoke('update_taskbar_thumbnail', {
       isPlaying: playing,
@@ -209,7 +209,7 @@
           volume: vol,
           shuffle: shuf,
           repeat_mode: rep,
-          video_visible: false,
+          video_visible: vid,
         }
       }).catch(() => {});
     }, 1200);

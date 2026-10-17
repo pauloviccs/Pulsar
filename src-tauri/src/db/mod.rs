@@ -744,9 +744,9 @@ impl Database {
             ) {
                 id
             } else {
-                // Insere registro defensivo básico para satisfazer a chave estrangeira
+                // Insere registro defensivo básico para satisfazer a chave estrangeira (fornecendo duration_seconds: 0 para evitar violação de NOT NULL)
                 let _ = conn.execute(
-                    "INSERT OR IGNORE INTO tracks (id, youtube_video_id, title) VALUES (?1, ?1, 'Faixa')",
+                    "INSERT OR IGNORE INTO tracks (id, youtube_video_id, title, duration_seconds) VALUES (?1, ?1, 'Faixa', 0)",
                     params![track_id],
                 );
                 track_id.to_string()

@@ -20,7 +20,12 @@ export const activePlaylistId = writable<string | null>(null);
 
 export const isNowPlayingOpen = writable<boolean>(false);
 export const isQueueOpen = writable<boolean>(false);
-export const isVideoVisible = writable<boolean>(false);
+export const isVideoVisible = writable<boolean>(
+  typeof window !== 'undefined' ? localStorage.getItem('pulsar_video_visible') === 'true' : false
+);
+export const videoCaptions = writable<'off' | 'on'>(
+  (typeof window !== 'undefined' && (localStorage.getItem('pulsar_video_captions') as 'off' | 'on')) || 'off'
+);
 
 // Configurações do Formato de Vídeo (Proporção, Tamanho de Monitor/TV, Qualidade e Enquadramento)
 export const videoAspectRatio = writable<VideoPlayerAspectRatio>(
@@ -37,9 +42,12 @@ export const videoFit = writable<VideoFitMode>(
 );
 export const isNativeFullscreen = writable<boolean>(false);
 
-// Mini Player State
+// Mini Player State / Dynamic Island
 export const isMiniPlayer = writable<boolean>(false);
 export const isMiniPlayerVideo = writable<boolean>(false);
+export const hideDynamicIslandOnMinimize = writable<boolean>(
+  typeof window !== 'undefined' ? localStorage.getItem('pulsar_hide_dynamic_island_on_minimize') === 'true' : false
+);
 
 // Configurações do Player
 export const crossfadeSeconds = writable<number>(
@@ -81,6 +89,11 @@ function notifyTrackAndPlaylistPlay(track: Track, playlistId?: string | null) {
   }).catch(() => {});
 }
 
+// Variáveis de controle de transporte (Shuffle sem repetição e Duplo-clique no voltar)
+let lastNextCall = 0;
+let lastPrevClickTime = 0;
+let nextShuffleIdx: number | null = null;
+
 // Player Actions
 export const playerActions = {
   playTrack(track: Track, tracksQueue?: Track[], playlistId?: string) {
@@ -121,6 +134,10 @@ export const playerActions = {
   },
 
   next() {
+    const now = Date.now();
+    if (now - lastNextCall < 350) return;
+    lastNextCall = now;
+
     const q = get(queue);
     const idx = get(queueIndex);
     const isShuffle = get(shuffle);
@@ -130,13 +147,20 @@ export const playerActions = {
 
     if (rep === 'one') {
       currentTime.set(0);
+      seekRequest.set(0);
       isPlaying.set(true);
       return;
     }
 
     let nextIdx = idx + 1;
     if (isShuffle) {
-      nextIdx = Math.floor(Math.random() * q.length);
+      if (nextShuffleIdx !== null && nextShuffleIdx >= 0 && nextShuffleIdx < q.length && nextShuffleIdx !== idx) {
+        nextIdx = nextShuffleIdx;
+      } else {
+        const candidates = q.map((_, i) => i).filter(i => i !== idx);
+        nextIdx = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : 0;
+      }
+      nextShuffleIdx = null;
     } else if (nextIdx >= q.length) {
       if (rep === 'all') {
         nextIdx = 0;
@@ -151,6 +175,7 @@ export const playerActions = {
     if (nextTrack) {
       currentTrack.set(nextTrack);
       currentTime.set(0);
+      seekRequest.set(0);
       duration.set(nextTrack.duration_seconds);
       isPlaying.set(true);
       notifyTrackAndPlaylistPlay(nextTrack, get(activePlaylistId));
@@ -168,7 +193,11 @@ export const playerActions = {
 
     let nextIdx = idx + 1;
     if (isShuffle) {
-      nextIdx = (idx + 1) % q.length;
+      if (nextShuffleIdx === null || nextShuffleIdx === idx || nextShuffleIdx >= q.length) {
+        const candidates = q.map((_, i) => i).filter(i => i !== idx);
+        nextShuffleIdx = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : 0;
+      }
+      nextIdx = nextShuffleIdx;
     } else if (nextIdx >= q.length) {
       if (rep === 'all') {
         nextIdx = 0;
@@ -181,12 +210,19 @@ export const playerActions = {
   },
 
   previous() {
+    const now = Date.now();
     const time = get(currentTime);
-    if (time > 3) {
+    const isDoubleBack = (now - lastPrevClickTime < 1500);
+    lastPrevClickTime = now;
+
+    // Se a música estiver além de 3 segundos E NÃO for um duplo-clique: reinicia a faixa atual do início (0:00)
+    if (time > 3 && !isDoubleBack) {
       currentTime.set(0);
+      seekRequest.set(0);
       return;
     }
 
+    // Duplo-clique (< 1.5s) OU nos primeiros 3 segundos: volta para a faixa anterior
     const q = get(queue);
     const idx = get(queueIndex);
     if (q.length === 0) return;
@@ -201,6 +237,7 @@ export const playerActions = {
     if (prevTrack) {
       currentTrack.set(prevTrack);
       currentTime.set(0);
+      seekRequest.set(0);
       duration.set(prevTrack.duration_seconds);
       isPlaying.set(true);
       notifyTrackAndPlaylistPlay(prevTrack, get(activePlaylistId));
@@ -253,11 +290,29 @@ export const playerActions = {
   },
 
   toggleVideo() {
-    isVideoVisible.update(v => !v);
+    isVideoVisible.update(v => {
+      const next = !v;
+      if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_visible', next.toString());
+      return next;
+    });
   },
 
   setVideoVisible(visible: boolean) {
+    if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_visible', visible.toString());
     isVideoVisible.set(visible);
+  },
+
+  toggleVideoCaptions() {
+    videoCaptions.update(c => {
+      const next = c === 'on' ? 'off' : 'on';
+      if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_captions', next);
+      return next;
+    });
+  },
+
+  setVideoCaptions(mode: 'off' | 'on') {
+    if (typeof window !== 'undefined') localStorage.setItem('pulsar_video_captions', mode);
+    videoCaptions.set(mode);
   },
 
   async toggleMiniPlayer(enable?: boolean, videoMode?: boolean) {
@@ -287,6 +342,28 @@ export const playerActions = {
         console.warn('[Pulsar MiniPlayer] Erro ao ajustar tamanho do vídeo:', e);
       }
     }
+  },
+
+  async setHideDynamicIslandOnMinimize(hide: boolean) {
+    hideDynamicIslandOnMinimize.set(hide);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pulsar_hide_dynamic_island_on_minimize', hide.toString());
+    }
+    try {
+      await safeInvoke('set_hide_dynamic_island', { hide });
+    } catch {}
+  },
+
+  async initDynamicIslandSettings() {
+    try {
+      const isHidden = await safeInvoke<boolean>('get_hide_dynamic_island');
+      if (typeof isHidden === 'boolean') {
+        hideDynamicIslandOnMinimize.set(isHidden);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('pulsar_hide_dynamic_island_on_minimize', isHidden.toString());
+        }
+      }
+    } catch {}
   },
 
   addToQueue(track: Track) {

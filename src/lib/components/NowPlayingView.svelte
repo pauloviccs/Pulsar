@@ -15,7 +15,8 @@
     ListOrdered, 
     Sparkles, 
     Image as ImageIcon,
-    Minimize2 
+    Minimize2,
+    Subtitles
   } from '@lucide/svelte';
   import { 
     currentTrack, 
@@ -35,10 +36,12 @@
     videoScale,
     videoQuality,
     videoFit,
-    isNativeFullscreen
+    isNativeFullscreen,
+    videoCaptions,
+    seekRequest
   } from '../stores/playerStore';
   import { untrack, onMount } from 'svelte';
-  import { favoriteTrackIds, libraryActions } from '../stores/libraryStore';
+  import { favoriteTrackIds, isTrackFavorite, libraryActions } from '../stores/libraryStore';
   import VideoFormatDropdown from './VideoFormatDropdown.svelte';
   import type { VideoQualityPreference } from '../types';
 
@@ -173,15 +176,28 @@
     const vqParam = ytQuality !== 'default' ? `&vq=${ytQuality}` : '';
 
     if (isVisible && track?.youtube_video_id) {
+      const ccParam = $videoCaptions === 'on' ? '&cc_load_policy=1&cc_lang_pref=pt' : '&cc_load_policy=0';
       if (loadedVideoId !== track.youtube_video_id) {
         loadedVideoId = track.youtube_video_id;
         const initialStart = untrack(() => Math.max(0, Math.floor($currentTime)));
         const autoplayParam = untrack(() => $isPlaying) ? 1 : 0;
-        iframeSrc = `https://www.youtube-nocookie.com/embed/${track.youtube_video_id}?autoplay=${autoplayParam}&mute=1&controls=0&modestbranding=1&loop=1&playlist=${track.youtube_video_id}&enablejsapi=1&start=${initialStart}${vqParam}`;
+        iframeSrc = `https://www.youtube-nocookie.com/embed/${track.youtube_video_id}?autoplay=${autoplayParam}&mute=1&controls=0&modestbranding=1&loop=1&playlist=${track.youtube_video_id}&enablejsapi=1&start=${initialStart}${vqParam}${ccParam}`;
       }
     } else if (!isVisible) {
       loadedVideoId = null;
       iframeSrc = '';
+    }
+  });
+
+  $effect(() => {
+    const cc = $videoCaptions;
+    if ($isVideoVisible && videoIframe && iframeSrc) {
+      if (cc === 'on') {
+        sendIframeCommand('loadModule', ['captions']);
+        sendIframeCommand('setOption', ['captions', 'track', { languageCode: 'pt' }]);
+      } else {
+        sendIframeCommand('unloadModule', ['captions']);
+      }
     }
   });
 
@@ -223,6 +239,16 @@
     return () => clearInterval(interval);
   });
 
+  // Sincronizar qualquer comando de Seek externo (barra de reprodução, botões ou teclas) com o iframe
+  $effect(() => {
+    if ($seekRequest !== null && $isVideoVisible && videoIframe) {
+      const target = $seekRequest;
+      const cleanTarget = isNaN(target) || target <= 0.5 ? 0 : target;
+      sendIframeCommand('seekTo', [cleanTarget, true]);
+      lastSyncTime = Date.now();
+    }
+  });
+
   function handleSeekPointerDown() {
     isDragging = true;
     dragTime = $currentTime;
@@ -230,15 +256,27 @@
 
   function handleSeekInput(e: Event) {
     const val = parseFloat((e.target as HTMLInputElement).value);
-    dragTime = val;
+    dragTime = isNaN(val) ? 0 : val;
   }
 
   function handleSeekChange(e: Event) {
     const val = parseFloat((e.target as HTMLInputElement).value);
-    playerActions.seek(val);
+    const target = isNaN(val) || val <= 0.5 ? 0 : val;
+    playerActions.seek(target);
     isDragging = false;
     lastSyncTime = Date.now();
-    sendIframeCommand('seekTo', [val, true]);
+    sendIframeCommand('seekTo', [target, true]);
+  }
+
+  function handleSeekPointerUp(e: Event) {
+    if (isDragging) {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      const target = isNaN(val) || val <= 0.5 ? 0 : val;
+      playerActions.seek(target);
+      isDragging = false;
+      lastSyncTime = Date.now();
+      sendIframeCommand('seekTo', [target, true]);
+    }
   }
 
   function handleVolume(e: Event) {
@@ -292,6 +330,16 @@
         </button>
 
         {#if $isVideoVisible}
+          <!-- Alternância de Legendas (CC On / Off) -->
+          <button
+            onclick={() => playerActions.toggleVideoCaptions()}
+            class="px-3 py-2 rounded-full lq-glass-pill transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold {$videoCaptions === 'on' ? 'bg-[#3093AA]/25 border border-[#3093AA]/50 text-[#3093AA]' : 'text-white/60 hover:text-white'}"
+            title={$videoCaptions === 'on' ? 'Legendas Ativadas (Clique para remover)' : 'Legendas Desativadas (Clique para ativar)'}
+          >
+            <Subtitles class="w-3.5 h-3.5" />
+            <span class="hidden sm:inline">{$videoCaptions === 'on' ? 'Legendas ON' : 'Legendas OFF'}</span>
+          </button>
+
           <VideoFormatDropdown />
         {/if}
 
@@ -330,6 +378,10 @@
               <span class="text-[#EF7D4B] font-semibold">{$videoAspectRatio}</span>
               <span class="text-white/40">•</span>
               <span class="text-[#3093AA] font-semibold">{$videoQuality.toUpperCase()}</span>
+              {#if $videoCaptions === 'on'}
+                <span class="text-white/40">•</span>
+                <span class="text-[#F3B044] font-semibold">CC</span>
+              {/if}
             </div>
           </div>
 
@@ -374,7 +426,7 @@
             class="p-2.5 sm:p-3 rounded-2xl lq-glass-frost hover:bg-white/[0.12] transition cursor-pointer text-white/50 shadow-md shrink-0"
             title="Favoritar"
           >
-            <Heart class="w-5 h-5 {$favoriteTrackIds.has($currentTrack.id) ? 'fill-[#F3B044] text-[#F3B044]' : ''}" />
+            <Heart class="w-5 h-5 {isTrackFavorite($currentTrack, $favoriteTrackIds) ? 'fill-[#F3B044] text-[#F3B044]' : ''}" />
           </button>
         </div>
 
@@ -387,6 +439,7 @@
             value={isDragging ? dragTime : $currentTime}
             onpointerdown={handleSeekPointerDown}
             oninput={handleSeekInput}
+            onpointerup={handleSeekPointerUp}
             onchange={handleSeekChange}
             class="w-full h-1.5 bg-white/[0.12] rounded-full appearance-none cursor-pointer accent-[#EF7D4B] transition"
           />

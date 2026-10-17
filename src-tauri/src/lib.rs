@@ -24,6 +24,7 @@ use tauri::{
 #[derive(Clone)]
 pub struct TrayState {
     pub minimize_to_tray: Arc<AtomicBool>,
+    pub hide_dynamic_island_on_minimize: Arc<AtomicBool>,
 }
 
 #[derive(Clone)]
@@ -46,8 +47,14 @@ pub fn run() {
         start_proxy_server(proxy_state).await;
     });
 
+    let hide_island_saved = db.get_setting("hide_dynamic_island_on_minimize")
+        .unwrap_or(None)
+        .map(|s| s == "true")
+        .unwrap_or(false);
+
     let tray_state = TrayState {
         minimize_to_tray: Arc::new(AtomicBool::new(true)),
+        hide_dynamic_island_on_minimize: Arc::new(AtomicBool::new(hide_island_saved)),
     };
 
     let import_state = ImportState {
@@ -70,8 +77,10 @@ pub fn run() {
         }))
         .setup(|app| {
             let open_i = MenuItem::with_id(app, "open", "Abrir Pulsar", true, None::<&str>)?;
+            let hide_tray_i = MenuItem::with_id(app, "hide_tray", "Minimizar para a Bandeja", true, None::<&str>)?;
+            let toggle_island_i = MenuItem::with_id(app, "toggle_island", "Ocultar Dynamic Island ao Minimizar", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Sair do Pulsar", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&open_i, &hide_tray_i, &toggle_island_i, &quit_i])?;
 
             let mut tray_builder = TrayIconBuilder::new()
                 .menu(&menu)
@@ -86,6 +95,23 @@ pub fn run() {
                                 let _ = window.show();
                                 let _ = window.unminimize();
                                 let _ = window.set_focus();
+                            }
+                        }
+                        "hide_tray" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.hide();
+                            }
+                        }
+                        "toggle_island" => {
+                            use tauri::Emitter;
+                            let tray_state = app.state::<TrayState>();
+                            let curr = tray_state.hide_dynamic_island_on_minimize.load(Ordering::SeqCst);
+                            let next = !curr;
+                            tray_state.hide_dynamic_island_on_minimize.store(next, Ordering::SeqCst);
+                            let db = app.state::<Database>();
+                            let _ = db.save_setting("hide_dynamic_island_on_minimize", if next { "true" } else { "false" });
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.emit("dynamic-island-setting-changed", next);
                             }
                         }
                         _ => {}
@@ -173,11 +199,15 @@ pub fn run() {
             commands::save_track_direct,
             commands::set_playlist_tracks,
             commands::toggle_mini_player,
+            commands::get_hide_dynamic_island,
+            commands::set_hide_dynamic_island,
             commands::get_cache_info,
             commands::clear_audio_cache,
             commands::set_minimize_to_tray,
             commands::update_taskbar_thumbnail,
             commands::drag_window,
+            commands::minimize_window,
+            commands::hide_to_tray,
             commands::toggle_window_fullscreen,
             // Multi-Platform (YouTube Music + Spotify)
             commands::detect_link_platform,

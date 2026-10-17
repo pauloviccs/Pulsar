@@ -19,6 +19,7 @@
     allTracks, 
     playlists, 
     favoriteTrackIds, 
+    isTrackFavorite,
     recentTracks, 
     libraryActions 
   } from '../stores/libraryStore';
@@ -111,7 +112,7 @@
 
   // Músicas favoritas
   let favoriteTracksList = $derived(
-    $allTracks.filter(t => $favoriteTrackIds.has(t.id))
+    $allTracks.filter(t => isTrackFavorite(t, $favoriteTrackIds))
   );
 
   // Faixa ou Playlist em destaque para o Hero Banner

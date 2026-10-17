@@ -16,6 +16,7 @@
   import { 
     playlists, 
     favoriteTrackIds, 
+    isTrackFavorite,
     allTracks, 
     libraryActions 
   } from '../stores/libraryStore';
@@ -219,7 +220,7 @@
   });
 
   let userFavoriteTracks = $derived(
-    $allTracks.filter(t => $favoriteTrackIds.has(t.id))
+    $allTracks.filter(t => isTrackFavorite(t, $favoriteTrackIds))
   );
 
   async function copyHandleTag() {

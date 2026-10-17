@@ -1,8 +1,8 @@
 {
-  "version": "0.2.8",
-  "name": "Pulsar v0.2.8",
-  "url": "https://www.dropbox.com/scl/fi/jfnu9rdi06qgxqlpemnbk/Pulsar_0.2.8_x64-setup.exe?rlkey=13jlobivveldy6ne0284nuqyk&st=j8xlgjp9&dl=1",
-  "notes": "### Novidades do Pulsar v0.2.8!\n\n- **Playlists Seguidas Reais e Sincronizadas:** Integração completa com o Supabase (tabela playlist_follows) e persistência no SQLite local. Playlists seguidas agora aparecem na Barra Lateral, na página 'Sua Biblioteca' e com dados reais na aba de Perfil.\n- **Transições Suaves e Pré-Buffer Cache:** Novo motor de pré-buffer inteligente que pré-carrega a próxima faixa em segundo plano antes da faixa atual acabar, eliminando o delay entre músicas.\n- **Redesign Minimalista do Sync:** Remoção do texto 'SYNC' e adoção de micro-spinner discreto no player dock.\n- **Clean Slate Onboarding:** Contas novas não possuem mais playlists pré-criadas, iniciando com uma biblioteca pessoal 100% limpa.\n- **Desacoplamento de Perfis:** Correção definitiva no retorno para o 'Meu Perfil', eliminando o cache preso após visitar outros perfis.\n- **Notificações Sociais:** Notificações em tempo real quando você for seguido por outro usuário ou tiver suas playlists favoritadas.",
+  "version": "0.2.9",
+  "name": "Pulsar v0.2.9",
+  "url": "https://www.dropbox.com/scl/fi/8jbg2jrid2lkd3kpi5a0a/Pulsar_0.2.9_x64-setup.exe?rlkey=130mn98pyk9am4n44ms7z6fz2&st=xbgt20wk&dl=1",
+  "notes": "### Novidades do Pulsar v0.2.9 - Dynamic Island",
   "pub_date": "2026-09-29T22:10:00Z",
   "mandatory": false
 }

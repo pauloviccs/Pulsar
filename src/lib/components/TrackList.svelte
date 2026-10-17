@@ -2,7 +2,7 @@
   import { Play, Pause, Heart, Plus, Clock, Disc3, ListPlus, Trash2, Check } from '@lucide/svelte';
   import type { Track } from '../types';
   import { currentTrack, isPlaying, playerActions, formatTime } from '../stores/playerStore';
-  import { favoriteTrackIds, libraryActions, activeView, selectedPlaylist, playlists } from '../stores/libraryStore';
+  import { favoriteTrackIds, isTrackFavorite, libraryActions, activeView, selectedPlaylist, playlists } from '../stores/libraryStore';
   import { currentProfile } from '../stores/authStore';
   import { t } from '../i18n';
 
@@ -143,10 +143,10 @@
           <!-- Favoritar -->
           <button
             onclick={(e) => { e.stopPropagation(); libraryActions.toggleFavorite(track.id, track); }}
-            class="p-1.5 rounded-md transition text-[#F0F0F5]/30 hover:text-[#F3B044] {$favoriteTrackIds.has(track.id) ? 'text-[#F3B044]' : 'opacity-0 group-hover:opacity-100'}"
+            class="p-1.5 rounded-md transition text-[#F0F0F5]/30 hover:text-[#F3B044] {isTrackFavorite(track, $favoriteTrackIds) ? 'text-[#F3B044]' : 'opacity-0 group-hover:opacity-100'}"
             title="{$t('trackList.favorite')}"
           >
-            <Heart class="w-4 h-4 {$favoriteTrackIds.has(track.id) ? 'fill-[#F3B044]' : ''}" />
+            <Heart class="w-4 h-4 {isTrackFavorite(track, $favoriteTrackIds) ? 'fill-[#F3B044]' : ''}" />
           </button>
 
           <!-- Adicionar à Fila -->

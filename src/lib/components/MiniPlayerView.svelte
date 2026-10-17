@@ -25,7 +25,7 @@
     volume,
     isMuted
   } from '../stores/playerStore';
-  import { favoriteTrackIds, libraryActions } from '../stores/libraryStore';
+  import { favoriteTrackIds, isTrackFavorite, libraryActions } from '../stores/libraryStore';
   import { safeInvoke, isTauri } from '../api/tauri';
   import { untrack } from 'svelte';
 
@@ -113,7 +113,7 @@
   }
 
   let isFav = $derived(
-    $currentTrack ? $favoriteTrackIds.has($currentTrack.id) : false
+    $currentTrack ? isTrackFavorite($currentTrack, $favoriteTrackIds) : false
   );
 
   let artistDisplay = $derived(

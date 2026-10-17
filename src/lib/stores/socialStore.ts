@@ -78,6 +78,10 @@ let realtimeChannel: any = null;
 let presenceRecheckTimer: ReturnType<typeof setInterval> | null = null;
 let realtimeFriendshipTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Cache de requisições de amigos para evitar rajadas e timeout
+let lastFriendsFetchTime = 0;
+const FRIENDS_CACHE_TTL_MS = 30_000;
+
 export const socialActions = {
   /**
    * Reavalia localmente o frescor das presenças de todos os amigos em memória.
@@ -98,23 +102,37 @@ export const socialActions = {
     }));
   },
 
-  async loadFriends() {
+  async loadFriends(force = false) {
     const supabase = getSupabase();
     const prof = get(currentProfile);
     if (!supabase || !prof || prof.id === guestProfile.id) return;
+
+    const now = Date.now();
+    if (!force && now - lastFriendsFetchTime < FRIENDS_CACHE_TTL_MS && get(friends).length > 0) {
+      return;
+    }
 
     try {
       const { data, error } = await supabase
         .from('friendships')
         .select(`
           id, user_id, friend_id, status, created_at,
-          friend:profiles!friendships_friend_id_fkey(*),
-          user:profiles!friendships_user_id_fkey(*)
+          friend:profiles!friendships_friend_id_fkey(
+            id, username, tag, display_name, avatar_url, presence_status, current_track_title, current_track_artist, updated_at
+          ),
+          user:profiles!friendships_user_id_fkey(
+            id, username, tag, display_name, avatar_url, presence_status, current_track_title, current_track_artist, updated_at
+          )
         `)
         .or(`user_id.eq.${prof.id},friend_id.eq.${prof.id}`);
 
-      if (error) throw error;
+      if (error) {
+        // Se for erro de timeout ou cota, trata com elegância sem quebrar o app
+        console.warn('[Pulsar Social] Aviso ao carregar amigos:', error.message);
+        return;
+      }
 
+      lastFriendsFetchTime = Date.now();
       const accepted: Friendship[] = [];
       const pending: Friendship[] = [];
 
@@ -154,8 +172,8 @@ export const socialActions = {
           this.revalidateFriendsPresence();
         }, 30_000);
       }
-    } catch (err) {
-      console.warn('[Pulsar Social] Erro ao carregar amigos:', err);
+    } catch (err: any) {
+      console.warn('[Pulsar Social] Falha resiliente ao carregar amigos:', err?.message || err);
     }
   },
 
@@ -214,7 +232,7 @@ export const socialActions = {
         return { success: false, error: insertError.message };
       }
 
-      await this.loadFriends();
+      await this.loadFriends(true);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Falha ao enviar solicitação.' };
@@ -240,7 +258,7 @@ export const socialActions = {
         .eq('id', friendshipId);
 
       if (error) throw error;
-      await this.loadFriends();
+      await this.loadFriends(true);
 
       // Notificar o remetente da solicitação
       if (reqData && reqData.user_id && reqData.user_id !== prof.id) {
@@ -270,7 +288,7 @@ export const socialActions = {
 
     try {
       await supabase.from('friendships').delete().eq('id', friendshipId);
-      await this.loadFriends();
+      await this.loadFriends(true);
     } catch (err) {
       console.error('[Pulsar Social] Erro ao remover amigo:', err);
     }

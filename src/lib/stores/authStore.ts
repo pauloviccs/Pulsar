@@ -28,8 +28,30 @@ export const guestProfile: UserProfile = {
   following_count: 0
 };
 
+function getCachedProfile(): UserProfile | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('pulsar_cached_profile');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedProfile(profile: UserProfile | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (profile && !profile.id.startsWith('guest')) {
+      localStorage.setItem('pulsar_cached_profile', JSON.stringify(profile));
+    }
+  } catch {}
+}
+
 function translateAuthError(err: any): string {
   const msg = err?.message || String(err || '');
+  if (msg.includes('exceed_egress_quota') || msg.includes('restricted due to') || msg.includes('402')) {
+    return 'O serviço em nuvem atingiu temporariamente a cota de transferência do Supabase. O Pulsar continuará operando normalmente em Modo Offline com seus dados e músicas locais.';
+  }
   if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed')) {
     return 'Seu e-mail ainda não foi confirmado no Supabase. No painel do Supabase, desative "Confirm email" em Authentication -> Providers -> Email para login imediato no app, ou confirme o usuário manualmente em Users.';
   }
@@ -49,6 +71,9 @@ function translateAuthError(err: any): string {
 }
 
 let presenceHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let activeProfilePromise: Promise<void> | null = null;
+let lastProfileFetchUserId: string | null = null;
+let lastProfileFetchTime = 0;
 
 export const authActions = {
   startHeartbeat(userId: string) {
@@ -82,6 +107,12 @@ export const authActions = {
   },
 
   async initAuth() {
+    // Carregamento instantâneo do perfil cacheado antes de qualquer chamada de rede (Local-First)
+    const cached = getCachedProfile();
+    if (cached) {
+      currentProfile.set(cached);
+    }
+
     // Registrar limpeza defensiva de presença no fechamento da janela
     if (typeof window !== 'undefined' && !(window as any).__pulsar_beforeunload_registered) {
       (window as any).__pulsar_beforeunload_registered = true;
@@ -107,12 +138,13 @@ export const authActions = {
 
     const supabase = getSupabase();
     if (!supabase) {
-      // Se não há credenciais do Supabase configuradas, verificar se já abriu alguma vez
-      const hasSeenWelcome = typeof window !== 'undefined' ? localStorage.getItem('pulsar_has_seen_welcome') : 'true';
-      if (!hasSeenWelcome) {
-        isAuthModalOpen.set(true);
-      } else {
-        currentProfile.set(guestProfile);
+      if (!cached) {
+        const hasSeenWelcome = typeof window !== 'undefined' ? localStorage.getItem('pulsar_has_seen_welcome') : 'true';
+        if (!hasSeenWelcome) {
+          isAuthModalOpen.set(true);
+        } else {
+          currentProfile.set(guestProfile);
+        }
       }
       return;
     }
@@ -123,15 +155,17 @@ export const authActions = {
         currentUser.set(session.user);
         await this.fetchProfile(session.user.id);
       } else {
-        const hasSeenWelcome = typeof window !== 'undefined' ? localStorage.getItem('pulsar_has_seen_welcome') : 'true';
-        if (!hasSeenWelcome) {
-          isAuthModalOpen.set(true);
-        } else {
-          currentProfile.set(guestProfile);
+        if (!cached) {
+          const hasSeenWelcome = typeof window !== 'undefined' ? localStorage.getItem('pulsar_has_seen_welcome') : 'true';
+          if (!hasSeenWelcome) {
+            isAuthModalOpen.set(true);
+          } else {
+            currentProfile.set(guestProfile);
+          }
         }
       }
 
-      // Escutar mudanças de estado de autenticação
+      // Escutar mudanças de estado de autenticação (com trava contra duplo boot)
       supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
           currentUser.set(session.user);
@@ -139,64 +173,101 @@ export const authActions = {
         } else {
           this.stopHeartbeat();
           currentUser.set(null);
-          currentProfile.set(guestProfile);
+          if (!getCachedProfile()) {
+            currentProfile.set(guestProfile);
+          }
         }
       });
     } catch (err) {
-      console.warn('[Pulsar Auth] Erro ao carregar sessão inicial:', err);
-      currentProfile.set(guestProfile);
+      console.warn('[Pulsar Auth] Erro ao carregar sessão inicial (utilizando fallback offline):', err);
+      if (!cached) {
+        currentProfile.set(guestProfile);
+      }
     }
   },
 
   async fetchProfile(userId: string) {
-    const supabase = getSupabase();
-    if (!supabase) return;
+    if (!userId || userId.startsWith('guest')) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.warn('[Pulsar Auth] Erro ao buscar perfil:', error);
-        return;
-      }
-
-      if (data) {
-        // Buscar contagem de seguidores e seguindo
-        const [followersRes, followingRes] = await Promise.all([
-          supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
-          supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', userId)
-        ]);
-
-        currentProfile.set({
-          ...data,
-          followers_count: followersRes.count || 0,
-          following_count: followingRes.count || 0
-        });
-
-        // Disparar heartbeat ativo para manter updated_at fresco enquanto logado
-        this.startHeartbeat(userId);
-
-        // Disparar sincronização inicial e ativar ciclo automático silencioso em segundo plano
-        import('../services/syncEngine').then(({ syncEngine }) => {
-          syncEngine.hydrateFromCloud(userId);
-          syncEngine.startAutoSync(userId);
-        });
-
-        // Carregar amigos, solicitações de amizade e notificações atualizadas
-        import('./socialStore').then(({ socialActions }) => {
-          socialActions.loadFriends();
-        });
-        import('./notificationStore').then(({ notificationActions }) => {
-          notificationActions.initNotifications();
-        });
-      }
-    } catch (err) {
-      console.error('[Pulsar Auth] Falha ao processar perfil:', err);
+    // Prevenção de concorrência e corrida de duplo boot (Single-Flight Lock)
+    const now = Date.now();
+    if (activeProfilePromise && lastProfileFetchUserId === userId) {
+      return activeProfilePromise;
     }
+    if (lastProfileFetchUserId === userId && now - lastProfileFetchTime < 15_000) {
+      return;
+    }
+
+    lastProfileFetchUserId = userId;
+    lastProfileFetchTime = now;
+
+    activeProfilePromise = (async () => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, username, tag, display_name, avatar_url, banner_url, bio, presence, custom_status, listening_track_title, listening_artist, created_at, updated_at')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.warn('[Pulsar Auth] Erro ao buscar perfil remoto (mantendo cache local):', error.message);
+          const cached = getCachedProfile();
+          if (cached && cached.id === userId) {
+            currentProfile.set(cached);
+          }
+          return;
+        }
+
+        if (data) {
+          // Buscar contagem de seguidores e seguindo de forma leve
+          let followersCount = 0;
+          let followingCount = 0;
+          try {
+            const [followersRes, followingRes] = await Promise.all([
+              supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
+              supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', userId)
+            ]);
+            followersCount = followersRes.count || 0;
+            followingCount = followingRes.count || 0;
+          } catch {}
+
+          const profileObj: UserProfile = {
+            ...data,
+            followers_count: followersCount,
+            following_count: followingCount
+          };
+
+          currentProfile.set(profileObj);
+          saveCachedProfile(profileObj);
+
+          // Disparar heartbeat ativo para manter updated_at fresco enquanto logado
+          this.startHeartbeat(userId);
+
+          // Disparar sincronização inicial (controlada por Delta Sync)
+          import('../services/syncEngine').then(({ syncEngine }) => {
+            syncEngine.hydrateFromCloud(userId);
+            syncEngine.startAutoSync(userId);
+          });
+
+          // Carregar amigos, solicitações de amizade e notificações atualizadas
+          import('./socialStore').then(({ socialActions }) => {
+            socialActions.loadFriends();
+          });
+          import('./notificationStore').then(({ notificationActions }) => {
+            notificationActions.initNotifications();
+          });
+        }
+      } catch (err) {
+        console.error('[Pulsar Auth] Falha ao processar perfil:', err);
+      }
+    })().finally(() => {
+      activeProfilePromise = null;
+    });
+
+    return activeProfilePromise;
   },
 
   async login(email: string, pass: string) {

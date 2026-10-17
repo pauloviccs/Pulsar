@@ -139,7 +139,7 @@
             <span
               class="inline-block w-1.5 h-1.5 rounded-full bg-[#EF7D4B] animate-ping"
             ></span>
-            <span>v0.2.8</span>
+            <span>v0.2.9 - Atualização de Dynamic Island</span>
           </div>
         </div>
       {:else}
